@@ -107,7 +107,7 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
 
   const handleTabPress = (route: string, disabled?: boolean) => {
     if (disabled) return;
-    router.push(route);
+    router.push(route as any);
   };
 
   return (

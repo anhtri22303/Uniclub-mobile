@@ -1,22 +1,23 @@
+import { ENV } from '@configs/environment';
 import { Ionicons } from '@expo/vector-icons';
 import { SignUpCredentials } from '@models/auth/auth.types';
 import AuthService from '@services/auth.service';
 import { useAuthStore } from '@stores/auth.store';
+import { testApiConnection, testLoginEndpoint } from '@utils/apiTest';
 import { getRoleRoute } from '@utils/roleRouting';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MajorSelector from './MajorSelector';
@@ -42,6 +43,23 @@ export default function LoginScreen() {
   const [showLoginError, setShowLoginError] = useState(false);
   const [isLoadingForgotPassword, setIsLoadingForgotPassword] = useState(false);
 
+  // Test API connection when component mounts
+  useEffect(() => {
+    const testConnection = async () => {
+      console.log('🏃‍♂️ LoginScreen mounted, testing API connection...');
+      
+      const healthCheck = await testApiConnection();
+      const loginCheck = await testLoginEndpoint();
+      
+      console.log('📊 API Test Results:', {
+        healthEndpoint: healthCheck,
+        loginEndpoint: loginCheck,
+        apiUrl: ENV.API_URL
+      });
+    };
+    
+    testConnection();
+  }, []);
 
   const handleSubmit = async () => {
     if (isSignUpMode) {
@@ -66,6 +84,7 @@ export default function LoginScreen() {
     setShowLoginError(false);
 
     try {
+      console.log('Attempting login with API URL:', ENV.API_URL);
       const loginResponse = await AuthService.login({ email, password });
       await login(loginResponse);
       
@@ -74,15 +93,23 @@ export default function LoginScreen() {
       const redirectPath = getRoleRoute(authUser?.role);
       
       Alert.alert('Login Successful', 'Welcome back!', [
-        { text: 'OK', onPress: () => router.replace(redirectPath) }
+        { text: 'OK', onPress: () => router.replace(redirectPath as any) }
       ]);
     } catch (error: any) {
       console.error('Login failed:', error);
       setShowLoginError(true);
-      Alert.alert(
-        'Login Failed',
-        error.response?.data?.message || 'Invalid credentials or server error'
-      );
+      
+      let errorMessage = 'Invalid credentials or server error';
+      
+      if (error.message === 'Network Error') {
+        errorMessage = 'Network connection error. Please check your internet connection.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to server. Please try again later.';
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -235,27 +262,7 @@ export default function LoginScreen() {
           className="flex-1"
           showsVerticalScrollIndicator={false}
         >
-          <View className="flex-1 px-6 py-8">
-            {/* Logo Section */}
-            <View className="items-center mb-8">
-              <View className="bg-white rounded-3xl p-8 shadow-lg mb-6">
-                <Image
-                  source={require('../../assets/images/icon.png')} // You can replace with your logo
-                  className="w-32 h-32"
-                  resizeMode="contain"
-                />
-              </View>
-              <Text className="text-2xl font-bold text-blue-900 mb-1">UniClub</Text>
-              <Text className="text-sm text-blue-600 mb-6">DIGITALIZING COMMUNITIES</Text>
-              
-              <TouchableOpacity
-                onPress={handleDownloadApp}
-                className="bg-teal-500 px-6 py-3 rounded-xl flex-row items-center shadow-md"
-              >
-                <Ionicons name="phone-portrait" size={20} color="white" />
-                <Text className="text-white font-medium ml-2">Download App</Text>
-              </TouchableOpacity>
-            </View>
+          <View className="flex-1 justify-center px-6 py-8">
 
             {/* Form Section */}
             <View className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl p-6">

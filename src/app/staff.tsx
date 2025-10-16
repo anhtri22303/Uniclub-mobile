@@ -12,7 +12,7 @@ export default function StaffPage() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/login');
+    router.replace('/login' as any);
   };
 
   return (
@@ -75,7 +75,7 @@ export default function StaffPage() {
 
         {/* Profile Button */}
         <TouchableOpacity 
-          onPress={() => router.push('/profile')}
+          onPress={() => router.push('/profile' as any)}
           className="bg-teal-500 rounded-xl p-4 flex-row items-center justify-center mb-6"
         >
           <Ionicons name="person" size={24} color="white" />

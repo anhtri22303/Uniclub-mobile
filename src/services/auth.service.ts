@@ -1,4 +1,4 @@
-import { axiosClient } from '@configs/axios';
+import { axiosPublic } from '@configs/axios';
 import {
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -11,44 +11,44 @@ import {
 
 export class AuthService {
   /**
-   * Login with email and password
+   * Login with email and password - USE axiosPublic (no JWT token)
    */
   static async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await axiosClient.post<LoginResponse>('/auth/login', credentials);
+    const response = await axiosPublic.post<LoginResponse>('/auth/login', credentials);
     console.log('Login response:', response.data);
     return response.data;
   }
 
   /**
-   * Register new user
+   * Register new user - USE axiosPublic (no JWT token)
    */
   static async signUp(credentials: SignUpCredentials): Promise<SignUpResponse> {
-    const response = await axiosClient.post<SignUpResponse>('/auth/register', credentials);
+    const response = await axiosPublic.post<SignUpResponse>('/auth/register', credentials);
     return response.data;
   }
 
   /**
-   * Forgot password
+   * Forgot password - USE axiosPublic (no JWT token)
    */
   static async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
     const request: ForgotPasswordRequest = { email };
-    const response = await axiosClient.post<ForgotPasswordResponse>('/auth/forgot-password', request);
+    const response = await axiosPublic.post<ForgotPasswordResponse>('/auth/forgot-password', request);
     console.log('Forgot password response:', response.data);
     return response.data;
   }
 
   /**
-   * Login with Google token
+   * Login with Google token - USE axiosPublic (no JWT token)
    */
   static async loginWithGoogleToken(credentials: GoogleLoginRequest): Promise<LoginResponse> {
     try {
       console.log('🚀 Sending Google token to backend:', {
-        url: `${axiosClient.defaults.baseURL}/auth/google`,
+        url: `${axiosPublic.defaults.baseURL}/auth/google`,
         tokenLength: credentials.token?.length || 0,
         tokenStart: credentials.token?.substring(0, 20) + '...',
       });
 
-      const response = await axiosClient.post<LoginResponse>('/auth/google', credentials);
+      const response = await axiosPublic.post<LoginResponse>('/auth/google', credentials);
       console.log('✅ Google token login success:', response.data);
       return response.data;
     } catch (error: any) {

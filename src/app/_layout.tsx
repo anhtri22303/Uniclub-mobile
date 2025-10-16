@@ -11,7 +11,7 @@ import { useColorScheme } from '@hooks/useColorScheme';
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require('@assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   if (!loaded) {
@@ -23,22 +23,23 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthWrapper>
         <Stack>
-              <Stack.Screen name="login" options={{ headerShown: false }} />
-              <Stack.Screen name="profile" options={{ headerShown: false }} />
-              <Stack.Screen name="student" options={{ headerShown: false }} />
-              <Stack.Screen name="student/clubs" options={{ headerShown: false }} />
-              <Stack.Screen name="student/members" options={{ headerShown: false }} />
-              <Stack.Screen name="club-leader" options={{ headerShown: false }} />
-              <Stack.Screen name="club-leader/manage" options={{ headerShown: false }} />
-              <Stack.Screen name="club-leader/members" options={{ headerShown: false }} />
-              <Stack.Screen name="uni-staff" options={{ headerShown: false }} />
-              <Stack.Screen name="uni-staff/club-requests" options={{ headerShown: false }} />
-              <Stack.Screen name="uni-staff/event-requests" options={{ headerShown: false }} />
-              <Stack.Screen name="admin" options={{ headerShown: false }} />
-              <Stack.Screen name="staff" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-        </Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ headerShown: false }} />
+            <Stack.Screen name="student" options={{ headerShown: false }} />
+            <Stack.Screen name="student/clubs" options={{ headerShown: false }} />
+            <Stack.Screen name="student/members" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/manage" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/members" options={{ headerShown: false }} />
+            <Stack.Screen name="uni-staff" options={{ headerShown: false }} />
+            <Stack.Screen name="uni-staff/club-requests" options={{ headerShown: false }} />
+            <Stack.Screen name="uni-staff/event-requests" options={{ headerShown: false }} />
+            <Stack.Screen name="admin" options={{ headerShown: false }} />
+            <Stack.Screen name="staff" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+      </Stack>
       </AuthWrapper>
       <StatusBar style="auto" />
     </ThemeProvider>

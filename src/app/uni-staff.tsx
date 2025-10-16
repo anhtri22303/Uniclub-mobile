@@ -13,7 +13,7 @@ export default function UniStaffPage() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/login');
+    router.replace('/login' as any);
   };
 
   return (
@@ -63,7 +63,7 @@ export default function UniStaffPage() {
             </TouchableOpacity>
             
             <TouchableOpacity className="bg-green-500 rounded-xl p-4 flex-row items-center">
-              <Ionicons name="calendar-check" size={24} color="white" />
+            <Ionicons name="calendar" size={24} color="white" />
               <Text className="text-white font-medium ml-3">Approve Events</Text>
             </TouchableOpacity>
             
@@ -81,7 +81,7 @@ export default function UniStaffPage() {
 
          {/* Profile Button */}
          <TouchableOpacity 
-           onPress={() => router.push('/profile')}
+           onPress={() => router.push('/profile' as any)}
            className="bg-teal-500 rounded-xl p-4 flex-row items-center justify-center mb-6"
          >
            <Ionicons name="person" size={24} color="white" />
@@ -90,7 +90,7 @@ export default function UniStaffPage() {
        </ScrollView>
 
        {/* Navigation Bar */}
-       <NavigationBar role={user?.role} user={user} />
+       <NavigationBar role={user?.role} user={user || undefined} />
      </SafeAreaView>
    );
  }

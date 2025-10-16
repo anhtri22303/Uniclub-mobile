@@ -6,6 +6,7 @@ export interface Event {
   name: string;
   description: string;
   type: string;
+  category?: string;
   date: string;
   time?: string;
   locationId: number;

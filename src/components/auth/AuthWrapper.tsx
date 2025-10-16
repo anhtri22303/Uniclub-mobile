@@ -1,6 +1,6 @@
 import { useAuthStore } from '@stores/auth.store';
 import { getRoleRoute } from '@utils/roleRouting';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -9,8 +9,9 @@ interface AuthWrapperProps {
 }
 
 export default function AuthWrapper({ children }: AuthWrapperProps) {
-  const { isAuthenticated, isLoading, initialize } = useAuthStore();
+  const { isAuthenticated, isLoading, initialize, user } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     initialize();
@@ -18,15 +19,15 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
 
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace('/login');
-      } else {
+      if (!isAuthenticated && pathname !== '/login') {
+        router.replace('/login' as any);
+      } else if (isAuthenticated && pathname === '/login') {
         // Redirect to role-specific page after successful authentication
         const redirectPath = getRoleRoute(user?.role);
-        router.replace(redirectPath);
+        router.replace(redirectPath as any);
       }
     }
-  }, [isAuthenticated, isLoading, user?.role, router]);
+  }, [isAuthenticated, isLoading, user?.role, router, pathname]);
 
   if (isLoading) {
     return (
@@ -36,9 +37,6 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     );
   }
 
-  if (!isAuthenticated) {
-    return null; // Will redirect to login
-  }
-
+  // Always render children to allow navigation to login screen
   return <>{children}</>;
 }
