@@ -1,5 +1,5 @@
 {
-  "name": "structure_reactnative",
+  "name": "SCLMS",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -46,7 +46,8 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "zod": "^3.25.74",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "expo-image-picker": "~16.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

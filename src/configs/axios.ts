@@ -1,22 +1,38 @@
-import * as SecureStore from 'expo-secure-store';
 import { decodeToken } from '@utils/decode';
-
 import axios, { AxiosError } from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import { ENV } from './environment';
 
 const axiosClient = axios.create({
-    baseURL: process.env.EXPO_PUBLIC_API_URL,
+    baseURL: ENV.API_URL,
+    timeout: ENV.REQUEST_TIMEOUT,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
 const axiosPrivate = axios.create({
-    baseURL: process.env.EXPO_PUBLIC_API_URL,
+    baseURL: ENV.API_URL,
+    timeout: ENV.REQUEST_TIMEOUT,
     headers: {
         'Content-Type': 'application/json',
     },
     withCredentials: true,
 });
+
+// Request interceptor for axiosClient to add JWT token
+axiosClient.interceptors.request.use(
+    async (config) => {
+        const token = await SecureStore.getItemAsync('token');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 // Interceptors cho axiosPrivate
 axiosPrivate.interceptors.request.use(

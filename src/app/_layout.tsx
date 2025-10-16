@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import '../../global.css';
 
+import AuthWrapper from '@components/auth/AuthWrapper';
 import { useColorScheme } from '@hooks/useColorScheme';
 
 export default function RootLayout() {
@@ -20,10 +21,25 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <AuthWrapper>
+        <Stack>
+              <Stack.Screen name="login" options={{ headerShown: false }} />
+              <Stack.Screen name="profile" options={{ headerShown: false }} />
+              <Stack.Screen name="student" options={{ headerShown: false }} />
+              <Stack.Screen name="student/clubs" options={{ headerShown: false }} />
+              <Stack.Screen name="student/members" options={{ headerShown: false }} />
+              <Stack.Screen name="club-leader" options={{ headerShown: false }} />
+              <Stack.Screen name="club-leader/manage" options={{ headerShown: false }} />
+              <Stack.Screen name="club-leader/members" options={{ headerShown: false }} />
+              <Stack.Screen name="uni-staff" options={{ headerShown: false }} />
+              <Stack.Screen name="uni-staff/club-requests" options={{ headerShown: false }} />
+              <Stack.Screen name="uni-staff/event-requests" options={{ headerShown: false }} />
+              <Stack.Screen name="admin" options={{ headerShown: false }} />
+              <Stack.Screen name="staff" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+        </Stack>
+      </AuthWrapper>
       <StatusBar style="auto" />
     </ThemeProvider>
   );
