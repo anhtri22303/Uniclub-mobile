@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ export default function ClubLeaderPage() {
   return (
     <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
       <StatusBar style="dark" />
+      <Sidebar role={user?.role} />
       
       {/* Header */}
       <View className="flex-row justify-between items-center px-6 py-4">

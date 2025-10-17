@@ -1,7 +1,10 @@
+import NavigationBar from '@components/navigation/NavigationBar';
+import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import UserService, { EditProfileRequest, UserProfile } from '@services/user.service';
 import { useAuthStore } from '@stores/auth.store';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
@@ -212,33 +215,33 @@ export default function ProfileScreen() {
   const getPointsCardStyle = (points: number) => {
     if (points >= 5000) {
       return {
-        cardClassName: 'bg-gradient-to-r from-purple-600 to-pink-600',
+        cardBgColors: ['#9333EA', '#EC4899'], // purple to pink gradient
         textColor: 'text-white',
-        iconColor: 'text-white',
-        animationClass: 'animate-pulse',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
       };
     }
     if (points >= 3000) {
       return {
-        cardClassName: 'bg-gradient-to-r from-blue-600 to-indigo-600',
+        cardBgColors: ['#0EA5E9', '#6366F1'], // sky to indigo gradient
         textColor: 'text-white',
-        iconColor: 'text-white',
-        animationClass: 'animate-pulse',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
       };
     }
     if (points >= 1000) {
       return {
-        cardClassName: 'bg-amber-100',
+        cardBgColors: ['#FEF3C7', '#FEF3C7'], // amber light
         textColor: 'text-amber-900',
-        iconColor: 'text-amber-600',
-        animationClass: '',
+        iconColor: '#D97706',
+        iconBg: 'bg-amber-200',
       };
     }
     return {
-      cardClassName: 'bg-gray-100',
+      cardBgColors: ['#F1F5F9', '#F1F5F9'], // gray
       textColor: 'text-gray-800',
-      iconColor: 'text-gray-600',
-      animationClass: '',
+      iconColor: '#6B7280',
+      iconBg: 'bg-gray-200',
     };
   };
 
@@ -292,64 +295,93 @@ export default function ProfileScreen() {
   const pointsStyle = getPointsCardStyle(getUserPoints());
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+    <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
+      <Sidebar role={user?.role} />
       
-      {/* Header with logout */}
-      <View className="flex-row justify-between items-center px-6 py-4">
+      {/* Header with logout and view card */}
+      <View className="flex-row justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
         <Text className="text-2xl font-bold text-gray-800">Profile</Text>
-        <TouchableOpacity
-          onPress={handleLogout}
-          className="flex-row items-center bg-red-500 px-4 py-2 rounded-xl"
-        >
-          <Ionicons name="log-out" size={20} color="white" />
-          <Text className="text-white font-medium ml-2">Logout</Text>
-        </TouchableOpacity>
+        <View className="flex-row gap-2">
+          <TouchableOpacity
+            onPress={() => Alert.alert('Virtual Card', 'Virtual student card feature coming soon!')}
+            className="flex-row items-center bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 rounded-xl"
+            style={{ backgroundColor: '#3B82F6' }}
+          >
+            <Ionicons name="card" size={20} color="white" />
+            <Text className="text-white font-medium ml-2">View Card</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="flex-row items-center bg-red-500 px-4 py-2 rounded-xl"
+          >
+            <Ionicons name="log-out" size={20} color="white" />
+            <Text className="text-white font-medium ml-2">Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <View className="bg-white rounded-3xl p-6 shadow-lg mb-6">
-          <View className="items-center">
-            <View className="relative">
-              <TouchableOpacity
-                onPress={handleAvatarUpload}
-                disabled={uploadingAvatar}
-                className="relative"
-              >
-                {avatarPreview ? (
-                  <Image
-                    source={{ uri: avatarPreview }}
-                    className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
-                  />
-                ) : (
-                  <View className="w-24 h-24 rounded-full bg-teal-100 border-4 border-white shadow-lg items-center justify-center">
-                    <Text className="text-2xl font-bold text-teal-600">
-                      {getInitials(profile.fullName || 'U')}
-                    </Text>
+      <ScrollView 
+        className="flex-1 px-6" 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* Profile Header with Gradient Background */}
+        <LinearGradient
+          colors={['#6366F1', '#EC4899']} // Indigo to Pink gradient like in the image
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          className="rounded-3xl shadow-lg mb-6 overflow-hidden"
+        >
+          <View className="p-6 pt-8 pb-8">
+            <View className="items-center">
+              <View className="relative">
+                <TouchableOpacity
+                  onPress={handleAvatarUpload}
+                  disabled={uploadingAvatar}
+                  className="relative"
+                >
+                  {avatarPreview ? (
+                    <Image
+                      source={{ uri: avatarPreview }}
+                      className="w-28 h-28 rounded-full border-4 border-white shadow-lg"
+                    />
+                  ) : (
+                    <View className="w-28 h-28 rounded-full bg-white/30 border-4 border-white shadow-lg items-center justify-center">
+                      <Text className="text-3xl font-bold text-white">
+                        {getInitials(profile.fullName || 'U')}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {uploadingAvatar && (
+                    <View className="absolute inset-0 bg-black/50 rounded-full items-center justify-center">
+                      <ActivityIndicator color="white" />
+                    </View>
+                  )}
+                  
+                  <View className="absolute bottom-0 right-0 bg-emerald-500 rounded-full p-2 border-2 border-white shadow-lg">
+                    <Ionicons name="camera" size={18} color="white" />
                   </View>
-                )}
-                
-                {uploadingAvatar && (
-                  <View className="absolute inset-0 bg-black/50 rounded-full items-center justify-center">
-                    <ActivityIndicator color="white" />
-                  </View>
-                )}
-                
-                <View className="absolute bottom-0 right-0 bg-teal-500 rounded-full p-2 border-2 border-white">
-                  <Ionicons name="camera" size={16} color="white" />
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
+              
+              <Text className="text-2xl font-bold text-white mt-4">{profile.fullName}</Text>
+              <Text className="text-white/90 text-base">{profile.email}</Text>
+              <Text className="text-white font-medium mt-1 bg-white/20 px-3 py-1 rounded-full">
+                {formatRoleName(profile.role.roleName)}
+              </Text>
             </View>
-            
-            <Text className="text-2xl font-bold text-gray-800 mt-4">{profile.fullName}</Text>
-            <Text className="text-gray-600">{profile.email}</Text>
-            <Text className="text-teal-600 font-medium mt-1">{formatRoleName(profile.role.roleName)}</Text>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Points Card */}
-        <View className={`${pointsStyle.cardClassName} rounded-3xl p-6 shadow-lg mb-6`}>
+        <View 
+          className="rounded-3xl p-6 shadow-lg mb-6"
+          style={{
+            backgroundColor: pointsStyle.cardBgColors[0],
+          }}
+        >
           <View className="flex-row items-center justify-between">
             <View>
               <Text className={`text-sm font-medium ${pointsStyle.textColor}`}>
@@ -359,8 +391,8 @@ export default function ProfileScreen() {
                 {getUserPoints().toLocaleString()}
               </Text>
             </View>
-            <View className="bg-white/20 p-3 rounded-full">
-              <Ionicons name="flame" size={24} color="white" />
+            <View className={`${pointsStyle.iconBg} p-3 rounded-full`}>
+              <Ionicons name="flame" size={24} color={pointsStyle.iconColor} />
             </View>
           </View>
         </View>
@@ -503,36 +535,6 @@ export default function ProfileScreen() {
         ) : (
           /* Student Interface */
           <View className="space-y-6">
-            {/* Student Statistics */}
-            <View className="bg-white rounded-3xl p-6 shadow-lg">
-              <Text className="text-xl font-bold text-gray-800 mb-4">Activity Statistics</Text>
-              <View className="grid grid-cols-2 gap-4">
-                <View className="items-center p-4 bg-blue-50 rounded-xl">
-                  <Ionicons name="people" size={28} color="#3B82F6" />
-                  <Text className="text-2xl font-bold text-blue-600 mt-2">{userStats.clubsJoined}</Text>
-                  <Text className="text-sm text-gray-600">Clubs Joined</Text>
-                </View>
-                
-                <View className="items-center p-4 bg-green-50 rounded-xl">
-                  <Ionicons name="calendar" size={28} color="#10B981" />
-                  <Text className="text-2xl font-bold text-green-600 mt-2">{userStats.eventsAttended}</Text>
-                  <Text className="text-sm text-gray-600">Events Attended</Text>
-                </View>
-                
-                <View className="items-center p-4 bg-purple-50 rounded-xl">
-                  <Ionicons name="time" size={28} color="#8B5CF6" />
-                  <Text className="text-2xl font-bold text-purple-600 mt-2">{userStats.monthsActive}</Text>
-                  <Text className="text-sm text-gray-600">Months Active</Text>
-                </View>
-                
-                <View className="items-center p-4 bg-amber-50 rounded-xl">
-                  <Ionicons name="trophy" size={28} color="#F59E0B" />
-                  <Text className="text-2xl font-bold text-amber-600 mt-2">{userStats.achievements}</Text>
-                  <Text className="text-sm text-gray-600">Achievements</Text>
-                </View>
-              </View>
-            </View>
-
             {/* Student Profile Edit */}
             <View className="bg-white rounded-3xl p-6 shadow-lg">
               <View className="flex-row items-center justify-between mb-4">
@@ -649,19 +651,40 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Virtual Student Card */}
-            <TouchableOpacity className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl p-6 shadow-lg">
-              <View className="items-center">
-                <View className="bg-white/20 p-4 rounded-full mb-4">
-                  <Ionicons name="card" size={32} color="white" />
+            {/* Activity Statistics - Moved to bottom */}
+            <View className="bg-white rounded-3xl p-6 shadow-lg">
+              <Text className="text-xl font-bold text-gray-800 mb-4">Activity Statistics</Text>
+              <View className="grid grid-cols-2 gap-4">
+                <View className="items-center p-4 bg-blue-50 rounded-xl">
+                  <Ionicons name="people" size={28} color="#3B82F6" />
+                  <Text className="text-2xl font-bold text-blue-600 mt-2">{userStats.clubsJoined}</Text>
+                  <Text className="text-sm text-gray-600">Clubs Joined</Text>
                 </View>
-                <Text className="text-xl font-bold text-white mb-2">Virtual Student Card</Text>
-                <Text className="text-white/80 text-center">View your digital student ID</Text>
+                
+                <View className="items-center p-4 bg-green-50 rounded-xl">
+                  <Ionicons name="calendar" size={28} color="#10B981" />
+                  <Text className="text-2xl font-bold text-green-600 mt-2">{userStats.eventsAttended}</Text>
+                  <Text className="text-sm text-gray-600">Events Attended</Text>
+                </View>
+                
+                <View className="items-center p-4 bg-purple-50 rounded-xl">
+                  <Ionicons name="time" size={28} color="#8B5CF6" />
+                  <Text className="text-2xl font-bold text-purple-600 mt-2">{userStats.monthsActive}</Text>
+                  <Text className="text-sm text-gray-600">Months Active</Text>
+                </View>
+                
+                <View className="items-center p-4 bg-amber-50 rounded-xl">
+                  <Ionicons name="trophy" size={28} color="#F59E0B" />
+                  <Text className="text-2xl font-bold text-amber-600 mt-2">{userStats.achievements}</Text>
+                  <Text className="text-sm text-gray-600">Achievements</Text>
+                </View>
               </View>
-            </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
+
+      <NavigationBar role={user?.role} user={user || undefined} />
     </SafeAreaView>
   );
 }

@@ -1,31 +1,41 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import {
-    ClubApplication,
-    getClubApplications,
-    postClubApplication,
-    putClubApplicationStatus
+  ClubApplication,
+  getClubApplications,
+  postClubApplication,
+  putClubApplicationStatus
 } from '@services/clubApplication.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  Modal,
+  RefreshControl,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface UiClubRequest {
   id: string;
   applicationId?: number;
   clubName: string;
-  category: string;
+  category: string | null;
   description: string;
   requestedBy: string;
   requestedByEmail: string;
-  requestDate: string;
+  requestDate: string | null;
   status: string;
-  expectedMembers?: number;
-  faculty?: string;
-  reason?: string;
+  rejectReason?: string | null;
+  reviewedBy?: string;
+  reviewedAt?: string | null;
 }
 
 export default function UniStaffClubRequestsPage() {
@@ -35,35 +45,44 @@ export default function UniStaffClubRequestsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [requests, setRequests] = useState<UiClubRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [newClubName, setNewClubName] = useState<string>("");
   const [newDescription, setNewDescription] = useState<string>("");
+  const [newCategory, setNewCategory] = useState<string>("");
+  const [newProposerReason, setNewProposerReason] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("pending");
+
+  const fetchData = async () => {
+    try {
+      const data: ClubApplication[] = await getClubApplications();
+      const mapped: UiClubRequest[] = data.map((d) => ({
+        id: `req-${d.applicationId}`,
+        applicationId: d.applicationId,
+        clubName: d.clubName,
+        category: d.category,
+        description: d.description,
+        requestedBy: d.submittedBy?.fullName ?? "Unknown",
+        requestedByEmail: d.submittedBy?.email ?? "",
+        requestDate: d.submittedAt,
+        status: d.status,
+        rejectReason: d.rejectReason,
+        reviewedBy: d.reviewedBy?.fullName,
+        reviewedAt: d.reviewedAt,
+      }));
+      setRequests(mapped);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load club applications");
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    getClubApplications()
-      .then((data: ClubApplication[]) => {
-        if (!mounted) return;
-        const mapped: UiClubRequest[] = data.map((d) => ({
-          id: `req-${d.applicationId}`,
-          applicationId: d.applicationId,
-          clubName: d.clubName,
-          category: "Unknown",
-          description: d.description,
-          requestedBy: d.submittedBy?.fullName ?? "Unknown",
-          requestedByEmail: d.submittedBy?.email ?? "",
-          requestDate: d.submittedAt,
-          status: d.status,
-        }));
-        setRequests(mapped);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Failed to load club applications");
-      })
+    fetchData()
       .finally(() => mounted && setLoading(false));
 
     return () => {
@@ -71,33 +90,36 @@ export default function UniStaffClubRequestsPage() {
     };
   }, []);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
+
   async function handleSendNewApplication() {
+    if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
+      Alert.alert('Missing Information', 'Please fill in all fields.');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     try {
       const created = await postClubApplication({ 
         clubName: newClubName, 
-        description: newDescription 
+        description: newDescription,
+        category: newCategory,
+        proposerReason: newProposerReason,
       });
       Alert.alert('Success', `${created.clubName} application submitted`);
       
       // Reload list
-      const data = await getClubApplications();
-      const mapped: UiClubRequest[] = data.map((d) => ({
-        id: `req-${d.applicationId}`,
-        applicationId: d.applicationId,
-        clubName: d.clubName,
-        category: "Unknown",
-        description: d.description,
-        requestedBy: d.submittedBy?.fullName ?? "Unknown",
-        requestedByEmail: d.submittedBy?.email ?? "",
-        requestDate: d.submittedAt,
-        status: d.status,
-      }));
-      setRequests(mapped);
+      await fetchData();
       setIsModalOpen(false);
       setNewClubName("");
       setNewDescription("");
+      setNewCategory("");
+      setNewProposerReason("");
     } catch (err) {
       console.error(err);
       setError('Failed to create application');
@@ -111,21 +133,9 @@ export default function UniStaffClubRequestsPage() {
     if (!appId) return;
     setLoading(true);
     try {
-      const updated = await putClubApplicationStatus(appId, 'SUBMITTED');
-      const data = await getClubApplications();
-      const mapped: UiClubRequest[] = data.map((d) => ({
-        id: `req-${d.applicationId}`,
-        applicationId: d.applicationId,
-        clubName: d.clubName,
-        category: "Unknown",
-        description: d.description,
-        requestedBy: d.submittedBy?.fullName ?? "Unknown",
-        requestedByEmail: d.submittedBy?.email ?? "",
-        requestDate: d.submittedAt,
-        status: d.status,
-      }));
-      setRequests(mapped);
-      Alert.alert('Success', `Application ${updated.applicationId} approved`);
+      await putClubApplicationStatus(appId, true, '');
+      await fetchData();
+      Alert.alert('Success', `Application approved successfully`);
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to update status');
@@ -136,29 +146,35 @@ export default function UniStaffClubRequestsPage() {
 
   async function rejectApplication(appId?: number) {
     if (!appId) return;
-    setLoading(true);
-    try {
-      const updated = await putClubApplicationStatus(appId, 'REJECTED');
-      const data = await getClubApplications();
-      const mapped: UiClubRequest[] = data.map((d) => ({
-        id: `req-${d.applicationId}`,
-        applicationId: d.applicationId,
-        clubName: d.clubName,
-        category: "Unknown",
-        description: d.description,
-        requestedBy: d.submittedBy?.fullName ?? "Unknown",
-        requestedByEmail: d.submittedBy?.email ?? "",
-        requestDate: d.submittedAt,
-        status: d.status,
-      }));
-      setRequests(mapped);
-      Alert.alert('Success', `Application ${updated.applicationId} rejected`);
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to update status');
-    } finally {
-      setLoading(false);
-    }
+    
+    Alert.prompt(
+      'Reject Application',
+      'Please provide a reason for rejection:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async (reason) => {
+            setLoading(true);
+            try {
+              await putClubApplicationStatus(appId, false, reason || 'Rejected by staff');
+              await fetchData();
+              Alert.alert('Success', `Application rejected`);
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to update status');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ],
+      'plain-text'
+    );
   }
 
   const getFilteredRequests = (tabType: "pending" | "processed") => {
@@ -166,7 +182,7 @@ export default function UniStaffClubRequestsPage() {
       const matchSearch =
         req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        req.category.toLowerCase().includes(searchTerm.toLowerCase());
+        (req.category?.toLowerCase() || "").includes(searchTerm.toLowerCase());
 
       const matchCategory = categoryFilter === "all" ? true : req.category === categoryFilter;
 
@@ -222,29 +238,115 @@ export default function UniStaffClubRequestsPage() {
     router.replace('/login' as any);
   };
 
+  const renderRequestItem = ({ item: request }: { item: UiClubRequest }) => (
+    <View className="bg-white rounded-2xl p-6 shadow-lg mb-4">
+      <View className="flex-row items-start justify-between mb-4">
+        <View className="flex-1">
+          <View className="flex-row items-center mb-2 flex-wrap gap-2">
+            <Ionicons name="business" size={20} color="#6B7280" />
+            <Text className="text-lg font-semibold text-gray-800 flex-1">
+              {request.clubName}
+            </Text>
+            {getStatusBadge(request.status)}
+          </View>
+          
+          {request.category && (
+            <View className="bg-indigo-100 px-3 py-1 rounded-full self-start mb-2">
+              <Text className="text-indigo-700 text-xs font-medium">{request.category}</Text>
+            </View>
+          )}
+          
+          <Text className="text-gray-600 mb-3" numberOfLines={2}>
+            {request.description}
+          </Text>
+          
+          <View className="space-y-2">
+            {request.requestDate && (
+              <View className="flex-row items-center">
+                <Ionicons name="calendar" size={16} color="#6B7280" />
+                <Text className="ml-2 text-sm text-gray-500">
+                  {new Date(request.requestDate).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
+            
+            <View className="flex-row items-center">
+              <Ionicons name="person" size={16} color="#6B7280" />
+              <Text className="ml-2 text-sm text-gray-500">
+                by {request.requestedBy}
+              </Text>
+            </View>
+
+            {request.reviewedBy && request.reviewedAt && (
+              <View className="flex-row items-center">
+                <Ionicons name="checkmark-done" size={16} color="#6B7280" />
+                <Text className="ml-2 text-sm text-gray-500">
+                  Reviewed by {request.reviewedBy} on {new Date(request.reviewedAt).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
+
+            {request.rejectReason && (
+              <View className="flex-row items-start mt-2 bg-red-50 p-2 rounded-lg">
+                <Ionicons name="warning" size={16} color="#DC2626" />
+                <Text className="ml-2 text-sm text-red-700 flex-1">
+                  Reason: {request.rejectReason}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {activeTab === "pending" && (
+        <View className="flex-row justify-end gap-2 mt-2">
+          <TouchableOpacity
+            onPress={() => approveApplication(request.applicationId)}
+            disabled={loading}
+            className={`bg-green-500 px-4 py-2 rounded-xl flex-row items-center ${loading ? 'opacity-50' : ''}`}
+          >
+            <Ionicons name="checkmark" size={16} color="white" />
+            <Text className="text-white font-medium ml-1">Approve</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => rejectApplication(request.applicationId)}
+            disabled={loading}
+            className={`bg-red-500 px-4 py-2 rounded-xl flex-row items-center ${loading ? 'opacity-50' : ''}`}
+          >
+            <Ionicons name="close" size={16} color="white" />
+            <Text className="text-white font-medium ml-1">Reject</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+    <SafeAreaView className="flex-1 bg-emerald-50">
       <StatusBar style="dark" />
+      <Sidebar role={user?.role} />
       
       {/* Header */}
-      <View className="flex-row justify-between items-center px-6 py-4">
-        <Text className="text-2xl font-bold text-gray-800">Club Requests</Text>
+      <View className="flex-row justify-between items-center px-6 py-4 bg-white shadow-sm">
+        <View>
+          <Text className="text-2xl font-bold text-gray-800">Club Requests</Text>
+          <Text className="text-sm text-gray-500">Review and manage applications</Text>
+        </View>
         <TouchableOpacity
           onPress={handleLogout}
           className="flex-row items-center bg-red-500 px-4 py-2 rounded-xl"
         >
-          <Ionicons name="log-out" size={20} color="white" />
-          <Text className="text-white font-medium ml-2">Logout</Text>
+          <Ionicons name="log-out" size={18} color="white" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+      <View className="flex-1 px-6 pt-4">
         {/* Stats Cards */}
-        <View className="flex-row gap-3 mb-6">
-          <View className="flex-1 bg-white rounded-2xl p-4 shadow-lg">
+        <View className="flex-row gap-2 mb-4">
+          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
             <View className="flex-row items-center">
-              <View className="bg-yellow-500 p-2 rounded-lg mr-3">
-                <Ionicons name="time" size={20} color="white" />
+              <View className="bg-yellow-500 p-2 rounded-lg mr-2">
+                <Ionicons name="time" size={18} color="white" />
               </View>
               <View>
                 <Text className="text-lg font-bold text-yellow-900">{pendingCount}</Text>
@@ -253,22 +355,22 @@ export default function UniStaffClubRequestsPage() {
             </View>
           </View>
 
-          <View className="flex-1 bg-white rounded-2xl p-4 shadow-lg">
+          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
             <View className="flex-row items-center">
-              <View className="bg-green-500 p-2 rounded-lg mr-3">
-                <Ionicons name="checkmark-circle" size={20} color="white" />
+              <View className="bg-green-500 p-2 rounded-lg mr-2">
+                <Ionicons name="checkmark-circle" size={18} color="white" />
               </View>
               <View>
                 <Text className="text-lg font-bold text-green-900">{approvedCount}</Text>
-                <Text className="text-xs text-green-600">Approved</Text>
+                <Text className="text-xs text-green-600">Submitted</Text>
               </View>
             </View>
           </View>
 
-          <View className="flex-1 bg-white rounded-2xl p-4 shadow-lg">
+          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
             <View className="flex-row items-center">
-              <View className="bg-red-500 p-2 rounded-lg mr-3">
-                <Ionicons name="close-circle" size={20} color="white" />
+              <View className="bg-red-500 p-2 rounded-lg mr-2">
+                <Ionicons name="close-circle" size={18} color="white" />
               </View>
               <View>
                 <Text className="text-lg font-bold text-red-900">{rejectedCount}</Text>
@@ -279,25 +381,30 @@ export default function UniStaffClubRequestsPage() {
         </View>
 
         {/* Search */}
-        <View className="bg-white rounded-2xl p-4 shadow-lg mb-6">
+        <View className="bg-white rounded-xl p-3 shadow-sm mb-4">
           <View className="flex-row items-center">
-            <Ionicons name="search" size={20} color="#6B7280" />
+            <Ionicons name="search" size={18} color="#6B7280" />
             <TextInput
               placeholder="Search by club name or requester..."
               value={searchTerm}
               onChangeText={setSearchTerm}
               className="flex-1 ml-3 text-gray-700"
             />
+            {searchTerm.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchTerm("")}>
+                <Ionicons name="close-circle" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         {/* Tabs */}
-        <View className="bg-white rounded-2xl p-2 shadow-lg mb-6">
+        <View className="bg-white rounded-xl p-2 shadow-sm mb-4">
           <View className="flex-row">
             <TouchableOpacity
               onPress={() => setActiveTab("pending")}
-              className={`flex-1 py-3 px-4 rounded-xl ${
-                activeTab === "pending" ? "bg-blue-500" : "bg-transparent"
+              className={`flex-1 py-2 px-4 rounded-lg ${
+                activeTab === "pending" ? "bg-emerald-500" : "bg-transparent"
               }`}
             >
               <View className="flex-row items-center justify-center">
@@ -306,7 +413,7 @@ export default function UniStaffClubRequestsPage() {
                   size={16} 
                   color={activeTab === "pending" ? "white" : "#6B7280"} 
                 />
-                <Text className={`ml-2 font-medium ${
+                <Text className={`ml-2 font-medium text-sm ${
                   activeTab === "pending" ? "text-white" : "text-gray-600"
                 }`}>
                   Pending ({pendingRequests.length})
@@ -316,8 +423,8 @@ export default function UniStaffClubRequestsPage() {
 
             <TouchableOpacity
               onPress={() => setActiveTab("processed")}
-              className={`flex-1 py-3 px-4 rounded-xl ${
-                activeTab === "processed" ? "bg-blue-500" : "bg-transparent"
+              className={`flex-1 py-2 px-4 rounded-lg ${
+                activeTab === "processed" ? "bg-emerald-500" : "bg-transparent"
               }`}
             >
               <View className="flex-row items-center justify-center">
@@ -326,7 +433,7 @@ export default function UniStaffClubRequestsPage() {
                   size={16} 
                   color={activeTab === "processed" ? "white" : "#6B7280"} 
                 />
-                <Text className={`ml-2 font-medium ${
+                <Text className={`ml-2 font-medium text-sm ${
                   activeTab === "processed" ? "text-white" : "text-gray-600"
                 }`}>
                   Processed ({processedRequests.length})
@@ -336,119 +443,57 @@ export default function UniStaffClubRequestsPage() {
           </View>
         </View>
 
-        {/* Requests List */}
-        {loading ? (
-          <View className="bg-white rounded-2xl p-8 shadow-lg">
-            <Text className="text-center text-gray-500">Loading club applications...</Text>
-          </View>
-        ) : error ? (
-          <View className="bg-white rounded-2xl p-8 shadow-lg">
-            <Text className="text-center text-red-500">{error}</Text>
-          </View>
-        ) : activeTab === "pending" ? (
-          pendingRequests.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 shadow-lg">
-              <Text className="text-center text-gray-500">No pending club requests found</Text>
+        {/* Requests List with FlatList */}
+        <FlatList
+          data={activeTab === "pending" ? pendingRequests : processedRequests}
+          renderItem={renderRequestItem}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <View className="bg-white rounded-xl p-8 shadow-sm">
+              <Text className="text-center text-gray-500">
+                {loading 
+                  ? "Loading club applications..." 
+                  : error 
+                  ? error 
+                  : `No ${activeTab} club requests found`}
+              </Text>
             </View>
-          ) : (
-            pendingRequests.map((request) => (
-              <View key={request.id} className="bg-white rounded-2xl p-6 shadow-lg mb-4">
-                <View className="flex-row items-start justify-between mb-4">
-                  <View className="flex-1">
-                    <View className="flex-row items-center mb-2">
-                      <Ionicons name="business" size={20} color="#6B7280" />
-                      <Text className="text-lg font-semibold text-gray-800 ml-2">
-                        {request.clubName}
-                      </Text>
-                      {getStatusBadge(request.status)}
-                    </View>
-                    <Text className="text-gray-600 mb-3">{request.description}</Text>
-                    <View className="flex-row items-center gap-4 text-sm text-gray-500">
-                      <View className="flex-row items-center">
-                        <Ionicons name="calendar" size={16} />
-                        <Text className="ml-1">
-                          {new Date(request.requestDate).toLocaleDateString()}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center">
-                        <Ionicons name="person" size={16} />
-                        <Text className="ml-1">by {request.requestedBy}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
+          }
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
 
-                <View className="flex-row justify-end gap-2">
-                  <TouchableOpacity
-                    onPress={() => approveApplication(request.applicationId)}
-                    className="bg-green-500 px-4 py-2 rounded-xl flex-row items-center"
-                  >
-                    <Ionicons name="checkmark" size={16} color="white" />
-                    <Text className="text-white font-medium ml-1">Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => rejectApplication(request.applicationId)}
-                    className="bg-red-500 px-4 py-2 rounded-xl flex-row items-center"
-                  >
-                    <Ionicons name="close" size={16} color="white" />
-                    <Text className="text-white font-medium ml-1">Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )
-        ) : (
-          processedRequests.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 shadow-lg">
-              <Text className="text-center text-gray-500">No processed club requests found</Text>
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        onPress={() => setIsModalOpen(true)}
+        className="absolute bottom-24 right-6 bg-emerald-500 w-16 h-16 rounded-full items-center justify-center shadow-lg"
+        style={{ elevation: 5 }}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </TouchableOpacity>
+
+      {/* Create Application Modal */}
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalOpen(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-gray-800">Create Club Application</Text>
+              <TouchableOpacity onPress={() => setIsModalOpen(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
             </View>
-          ) : (
-            processedRequests.map((request) => (
-              <View key={request.id} className="bg-white rounded-2xl p-6 shadow-lg mb-4">
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1">
-                    <View className="flex-row items-center mb-2">
-                      <Ionicons name="business" size={20} color="#6B7280" />
-                      <Text className="text-lg font-semibold text-gray-800 ml-2">
-                        {request.clubName}
-                      </Text>
-                      {getStatusBadge(request.status)}
-                    </View>
-                    <Text className="text-gray-600 mb-3">{request.description}</Text>
-                    <View className="flex-row items-center gap-4 text-sm text-gray-500">
-                      <View className="flex-row items-center">
-                        <Ionicons name="calendar" size={16} />
-                        <Text className="ml-1">
-                          {new Date(request.requestDate).toLocaleDateString()}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center">
-                        <Ionicons name="person" size={16} />
-                        <Text className="ml-1">by {request.requestedBy}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ))
-          )
-        )}
-
-        {/* Floating Add Button */}
-        <TouchableOpacity
-          onPress={() => setIsModalOpen(true)}
-          className="absolute bottom-20 right-6 bg-blue-500 w-14 h-14 rounded-full items-center justify-center shadow-lg"
-        >
-          <Ionicons name="add" size={24} color="white" />
-        </TouchableOpacity>
-
-        {/* Modal */}
-        {isModalOpen && (
-          <View className="absolute inset-0 bg-black bg-opacity-50 items-center justify-center px-6">
-            <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
-              <Text className="text-xl font-bold text-gray-800 mb-4">Create Club Application</Text>
-              
-              <View className="mb-4">
+            
+            <View className="space-y-4">
+              <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">Club Name</Text>
                 <TextInput
                   value={newClubName}
@@ -458,36 +503,64 @@ export default function UniStaffClubRequestsPage() {
                 />
               </View>
               
-              <View className="mb-6">
-                <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
+              <View>
+                <Text className="text-sm font-medium text-gray-700 mb-2">Category</Text>
                 <TextInput
-                  value={newDescription}
-                  onChangeText={setNewDescription}
-                  placeholder="Enter description"
-                  multiline
-                  numberOfLines={3}
+                  value={newCategory}
+                  onChangeText={setNewCategory}
+                  placeholder="e.g., Technology, Sports, Arts"
                   className="border border-gray-300 rounded-xl px-4 py-3 text-gray-700"
                 />
               </View>
               
-              <View className="flex-row gap-3">
+              <View>
+                <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
+                <TextInput
+                  value={newDescription}
+                  onChangeText={setNewDescription}
+                  placeholder="Describe the club's purpose"
+                  multiline
+                  numberOfLines={3}
+                  className="border border-gray-300 rounded-xl px-4 py-3 text-gray-700"
+                  style={{ textAlignVertical: 'top' }}
+                />
+              </View>
+              
+              <View>
+                <Text className="text-sm font-medium text-gray-700 mb-2">Proposer Reason</Text>
+                <TextInput
+                  value={newProposerReason}
+                  onChangeText={setNewProposerReason}
+                  placeholder="Why do you want to create this club?"
+                  multiline
+                  numberOfLines={3}
+                  className="border border-gray-300 rounded-xl px-4 py-3 text-gray-700"
+                  style={{ textAlignVertical: 'top' }}
+                />
+              </View>
+              
+              <View className="flex-row gap-3 mt-4">
                 <TouchableOpacity
                   onPress={() => setIsModalOpen(false)}
-                  className="flex-1 bg-gray-500 py-3 rounded-xl"
+                  className="flex-1 bg-gray-300 py-3 rounded-xl"
+                  disabled={loading}
                 >
-                  <Text className="text-white text-center font-medium">Cancel</Text>
+                  <Text className="text-gray-700 text-center font-medium">Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleSendNewApplication}
-                  className="flex-1 bg-blue-500 py-3 rounded-xl"
+                  className={`flex-1 bg-emerald-500 py-3 rounded-xl ${loading ? 'opacity-50' : ''}`}
+                  disabled={loading}
                 >
-                  <Text className="text-white text-center font-medium">Send</Text>
+                  <Text className="text-white text-center font-medium">
+                    {loading ? 'Sending...' : 'Send Application'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </Modal>
 
       {/* Navigation Bar */}
       <NavigationBar role={user?.role} user={user || undefined} />

@@ -29,10 +29,22 @@ export default function RootLayout() {
             <Stack.Screen name="student" options={{ headerShown: false }} />
             <Stack.Screen name="student/clubs" options={{ headerShown: false }} />
             <Stack.Screen name="student/members" options={{ headerShown: false }} />
+            <Stack.Screen name="student/events" options={{ headerShown: false }} />
+            <Stack.Screen name="student/check-in" options={{ headerShown: false }} />
+            <Stack.Screen name="student/gift" options={{ headerShown: false }} />
+            <Stack.Screen name="student/wallet" options={{ headerShown: false }} />
+            <Stack.Screen name="student/history" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/manage" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/members" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/application" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/events" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/gift" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/points" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/attendances" options={{ headerShown: false }} />
             <Stack.Screen name="uni-staff" options={{ headerShown: false }} />
+            <Stack.Screen name="uni-staff/clubs" options={{ headerShown: false }} />
+            <Stack.Screen name="uni-staff/policies" options={{ headerShown: false }} />
             <Stack.Screen name="uni-staff/club-requests" options={{ headerShown: false }} />
             <Stack.Screen name="uni-staff/event-requests" options={{ headerShown: false }} />
             <Stack.Screen name="admin" options={{ headerShown: false }} />
