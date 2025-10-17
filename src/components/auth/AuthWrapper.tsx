@@ -12,22 +12,31 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   const { isAuthenticated, isLoading, initialize, user } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
+  const [isMounted, setIsMounted] = React.useState(false);
 
   useEffect(() => {
+    // Mark as mounted after first render
+    setIsMounted(true);
     initialize();
   }, [initialize]);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated && pathname !== '/login') {
-        router.replace('/login' as any);
-      } else if (isAuthenticated && pathname === '/login') {
-        // Redirect to role-specific page after successful authentication
-        const redirectPath = getRoleRoute(user?.role);
-        router.replace(redirectPath as any);
-      }
+    // Only navigate after component is mounted and loading is complete
+    if (!isLoading && isMounted) {
+      // Use setTimeout to ensure navigation happens after render cycle
+      const timeoutId = setTimeout(() => {
+        if (!isAuthenticated && pathname !== '/login') {
+          router.replace('/login' as any);
+        } else if (isAuthenticated && (pathname === '/login' || pathname === '/')) {
+          // Redirect to role-specific page after successful authentication
+          const redirectPath = getRoleRoute(user?.role);
+          router.replace(redirectPath as any);
+        }
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [isAuthenticated, isLoading, user?.role, router, pathname]);
+  }, [isAuthenticated, isLoading, user?.role, router, pathname, isMounted]);
 
   if (isLoading) {
     return (

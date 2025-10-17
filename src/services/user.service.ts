@@ -1,5 +1,20 @@
 import { axiosClient } from '@configs/axios';
 
+// Response from API (flat structure)
+export interface UserApiResponse {
+  id: number;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  status: string;
+  avatarUrl: string | null;
+  roleName: string;
+  studentCode: string | null;
+  majorName: string | null;
+  bio: string | null;
+}
+
+// Our internal type (nested structure for profile endpoint)
 export interface UserProfile {
   userId: number;
   email: string;
@@ -96,6 +111,54 @@ export class UserService {
       return body;
     } catch (error) {
       console.error('Error uploading avatar:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch all users (Admin only)
+   * Transform API response to match UserProfile interface
+   */
+  static async fetchUsers(): Promise<UserProfile[]> {
+    try {
+      const response = await axiosClient.get<{ content: UserApiResponse[] }>('/api/users');
+      const body = response.data;
+      console.log('Fetched users response:', body);
+
+      // If backend returns a paginated wrapper, return the `content` array.
+      if (body && typeof body === 'object' && 'content' in body && Array.isArray(body.content)) {
+        console.log('fetchUsers returning body.content (array)');
+        
+        // Transform API response to UserProfile format
+        return body.content.map((user) => ({
+          userId: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          phone: user.phone || '',
+          status: user.status,
+          avatarUrl: user.avatarUrl,
+          role: {
+            roleId: 0, // API doesn't provide roleId
+            roleName: user.roleName,
+            description: '',
+          },
+          wallet: null,
+          studentCode: user.studentCode,
+          majorName: user.majorName,
+          bio: user.bio,
+          memberships: [],
+        }));
+      }
+
+      // If the API already returns an array of users, return it directly.
+      if (Array.isArray(body)) {
+        return body;
+      }
+
+      // Fallback: return empty array to simplify caller logic
+      return [];
+    } catch (error) {
+      console.error('Error fetching users:', error);
       throw error;
     }
   }

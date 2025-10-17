@@ -22,8 +22,8 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Hiển thị navigation bar cho STUDENT, CLUB_LEADER và UNIVERSITY_STAFF
-  const shouldShowNavigation = role === 'student' || role === 'club_leader' || role === 'uni_staff';
+  // Hiển thị navigation bar cho STUDENT, CLUB_LEADER, UNIVERSITY_STAFF và ADMIN
+  const shouldShowNavigation = role === 'student' || role === 'club_leader' || role === 'uni_staff' || role === 'admin';
   
   if (!shouldShowNavigation) {
     return null;
@@ -31,6 +31,42 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
 
   // Định nghĩa các tab dựa trên role
   const getTabsForRole = (userRole?: string): TabItem[] => {
+    // Admin navigation
+    if (userRole === 'admin') {
+      return [
+        {
+          name: 'home',
+          icon: 'home',
+          route: '/admin',
+          label: 'Home'
+        },
+        {
+          name: 'users',
+          icon: 'people',
+          route: '/admin/users',
+          label: 'Users'
+        },
+        {
+          name: 'clubs',
+          icon: 'business',
+          route: '/admin/clubs',
+          label: 'Clubs'
+        },
+        {
+          name: 'events',
+          icon: 'calendar',
+          route: '/admin/events',
+          label: 'Events'
+        },
+        {
+          name: 'profile',
+          icon: 'person-circle',
+          route: '/profile',
+          label: 'Profile'
+        }
+      ];
+    }
+
     if (userRole === 'uni_staff') {
       return [
         {

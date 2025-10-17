@@ -1,3 +1,4 @@
+import NavigationBar from '@components/navigation/NavigationBar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
@@ -83,15 +84,39 @@ export default function AdminPage() {
           </View>
         </View>
 
-        {/* Profile Button */}
-        <TouchableOpacity 
-          onPress={() => router.push('/profile' as any)}
-          className="bg-teal-500 rounded-xl p-4 flex-row items-center justify-center mb-6"
-        >
-          <Ionicons name="person" size={24} color="white" />
-          <Text className="text-white font-medium ml-2">View Profile</Text>
-        </TouchableOpacity>
+        {/* Quick Navigation */}
+        <View className="bg-white rounded-3xl p-6 shadow-lg mb-6">
+          <Text className="text-xl font-bold text-gray-800 mb-4">Quick Navigation</Text>
+          <View className="space-y-3">
+            <TouchableOpacity 
+              onPress={() => router.push('/admin/users' as any)}
+              className="bg-teal-500 rounded-xl p-4 flex-row items-center"
+            >
+              <Ionicons name="people" size={24} color="white" />
+              <Text className="text-white font-medium ml-3">View All Users</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={() => router.push('/admin/clubs' as any)}
+              className="bg-blue-500 rounded-xl p-4 flex-row items-center"
+            >
+              <Ionicons name="business" size={24} color="white" />
+              <Text className="text-white font-medium ml-3">Manage Clubs</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={() => router.push('/profile' as any)}
+              className="bg-purple-500 rounded-xl p-4 flex-row items-center"
+            >
+              <Ionicons name="person" size={24} color="white" />
+              <Text className="text-white font-medium ml-3">View Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
+
+      {/* Navigation Bar */}
+      <NavigationBar role={user?.role} user={user || undefined} />
     </SafeAreaView>
   );
 }

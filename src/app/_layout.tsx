@@ -36,6 +36,9 @@ export default function RootLayout() {
             <Stack.Screen name="uni-staff/club-requests" options={{ headerShown: false }} />
             <Stack.Screen name="uni-staff/event-requests" options={{ headerShown: false }} />
             <Stack.Screen name="admin" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/users" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/clubs" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/events" options={{ headerShown: false }} />
             <Stack.Screen name="staff" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
