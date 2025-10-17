@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+    Alert,
     Animated,
     Dimensions,
     Modal,
@@ -28,6 +30,7 @@ interface MenuItem {
 export default function Sidebar({ role }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { logout } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-SIDEBAR_WIDTH));
 
@@ -183,6 +186,25 @@ export default function Sidebar({ role }: SidebarProps) {
     return pathname === route || pathname.startsWith(route);
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            toggleSidebar();
+            router.replace('/login' as any);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <>
       {/* Toggle Button - Always visible in top-left corner */}
@@ -274,14 +296,28 @@ export default function Sidebar({ role }: SidebarProps) {
               })}
             </ScrollView>
 
-            {/* Footer */}
-            <View className="border-t border-gray-200 p-4">
-              <Text className="text-xs text-gray-500 text-center">
-                UniClub Management System
-              </Text>
-              <Text className="text-xs text-gray-400 text-center mt-1">
-                Version 1.0.0
-              </Text>
+            {/* Footer with Logout */}
+            <View className="border-t border-gray-200">
+              <TouchableOpacity
+                onPress={handleLogout}
+                className="flex-row items-center px-6 py-4 bg-red-50"
+              >
+                <View className="w-10 h-10 rounded-full bg-red-500 items-center justify-center">
+                  <Ionicons name="log-out" size={20} color="white" />
+                </View>
+                <Text className="ml-4 text-base font-semibold text-red-600">
+                  Logout
+                </Text>
+              </TouchableOpacity>
+              
+              <View className="p-4">
+                <Text className="text-xs text-gray-500 text-center">
+                  UniClub Management System
+                </Text>
+                <Text className="text-xs text-gray-400 text-center mt-1">
+                  Version 1.0.0
+                </Text>
+              </View>
             </View>
           </Animated.View>
 

@@ -5,17 +5,12 @@ import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function StudentClubsPage() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const router = useRouter();
-
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/login' as any);
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
@@ -23,15 +18,8 @@ export default function StudentClubsPage() {
       <Sidebar role={user?.role} />
       
       {/* Header */}
-      <View className="flex-row justify-between items-center px-6 py-4">
+      <View className="px-6 py-4">
         <Text className="text-2xl font-bold text-gray-800">Clubs</Text>
-        <TouchableOpacity
-          onPress={handleLogout}
-          className="flex-row items-center bg-red-500 px-4 py-2 rounded-xl"
-        >
-          <Ionicons name="log-out" size={20} color="white" />
-          <Text className="text-white font-medium ml-2">Logout</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>

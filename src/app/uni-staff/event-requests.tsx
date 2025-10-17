@@ -156,11 +156,6 @@ export default function UniStaffEventRequestsPage() {
   const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length;
   const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length;
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/login' as any);
-  };
-
   const handleApproveEvent = async (eventId: string | number) => {
     if (processingId) return;
     setProcessingId(eventId);
@@ -319,17 +314,9 @@ export default function UniStaffEventRequestsPage() {
       <Sidebar role={user?.role} />
       
       {/* Header */}
-      <View className="flex-row justify-between items-center px-6 py-4 bg-white shadow-sm">
-        <View>
-          <Text className="text-2xl font-bold text-gray-800">Event Requests</Text>
-          <Text className="text-sm text-gray-500">{totalCount} total events</Text>
-        </View>
-        <TouchableOpacity
-          onPress={handleLogout}
-          className="bg-red-500 p-2 rounded-xl"
-        >
-          <Ionicons name="log-out" size={20} color="white" />
-        </TouchableOpacity>
+      <View className="px-6 py-4 bg-white shadow-sm">
+        <Text className="text-2xl font-bold text-gray-800">Event Requests</Text>
+        <Text className="text-sm text-gray-500">{totalCount} total events</Text>
       </View>
 
       <View className="flex-1 px-6 pt-4">

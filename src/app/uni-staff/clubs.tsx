@@ -60,20 +60,6 @@ export default function UniStaffClubsPage() {
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/login' as any);
-        },
-      },
-    ]);
-  };
-
   const fetchClubs = async (isRefresh = false) => {
     try {
       if (!isRefresh) setIsLoading(true);
@@ -300,16 +286,7 @@ export default function UniStaffClubsPage() {
 
       {/* Header */}
       <View className="bg-white px-6 py-4 border-b border-gray-200">
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-2xl font-bold text-gray-800">Clubs</Text>
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="flex-row items-center bg-red-500 px-3 py-2 rounded-xl"
-          >
-            <Ionicons name="log-out" size={18} color="white" />
-            <Text className="text-white font-medium ml-1 text-sm">Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <Text className="text-2xl font-bold text-gray-800 mb-4">Clubs</Text>
 
         {/* Stats Cards */}
         <View className="flex-row gap-2 mb-4">

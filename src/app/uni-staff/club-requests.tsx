@@ -233,11 +233,6 @@ export default function UniStaffClubRequestsPage() {
   const approvedCount = requests.filter((req) => req.status === "SUBMITTED").length;
   const rejectedCount = requests.filter((req) => req.status === "REJECTED").length;
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/login' as any);
-  };
-
   const renderRequestItem = ({ item: request }: { item: UiClubRequest }) => (
     <View className="bg-white rounded-2xl p-6 shadow-lg mb-4">
       <View className="flex-row items-start justify-between mb-4">
@@ -327,17 +322,9 @@ export default function UniStaffClubRequestsPage() {
       <Sidebar role={user?.role} />
       
       {/* Header */}
-      <View className="flex-row justify-between items-center px-6 py-4 bg-white shadow-sm">
-        <View>
-          <Text className="text-2xl font-bold text-gray-800">Club Requests</Text>
-          <Text className="text-sm text-gray-500">Review and manage applications</Text>
-        </View>
-        <TouchableOpacity
-          onPress={handleLogout}
-          className="flex-row items-center bg-red-500 px-4 py-2 rounded-xl"
-        >
-          <Ionicons name="log-out" size={18} color="white" />
-        </TouchableOpacity>
+      <View className="px-6 py-4 bg-white shadow-sm">
+        <Text className="text-2xl font-bold text-gray-800">Club Requests</Text>
+        <Text className="text-sm text-gray-500">Review and manage applications</Text>
       </View>
 
       <View className="flex-1 px-6 pt-4">

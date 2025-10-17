@@ -181,24 +181,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/login' as any);
-          },
-        },
-      ]
-    );
-  };
-
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -299,26 +281,17 @@ export default function ProfileScreen() {
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
       
-      {/* Header with logout and view card */}
+      {/* Header with view card */}
       <View className="flex-row justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
         <Text className="text-2xl font-bold text-gray-800">Profile</Text>
-        <View className="flex-row gap-2">
-          <TouchableOpacity
-            onPress={() => Alert.alert('Virtual Card', 'Virtual student card feature coming soon!')}
-            className="flex-row items-center bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 rounded-xl"
-            style={{ backgroundColor: '#3B82F6' }}
-          >
-            <Ionicons name="card" size={20} color="white" />
-            <Text className="text-white font-medium ml-2">View Card</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="flex-row items-center bg-red-500 px-4 py-2 rounded-xl"
-          >
-            <Ionicons name="log-out" size={20} color="white" />
-            <Text className="text-white font-medium ml-2">Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => Alert.alert('Virtual Card', 'Virtual student card feature coming soon!')}
+          className="flex-row items-center px-4 py-2 rounded-xl"
+          style={{ backgroundColor: '#3B82F6' }}
+        >
+          <Ionicons name="card" size={20} color="white" />
+          <Text className="text-white font-medium ml-2">View Card</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
