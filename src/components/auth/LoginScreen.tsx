@@ -3,21 +3,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { SignUpCredentials } from '@models/auth/auth.types';
 import AuthService from '@services/auth.service';
 import { useAuthStore } from '@stores/auth.store';
-import { testApiConnection, testLoginEndpoint } from '@utils/apiTest';
 import { getRoleRoute } from '@utils/roleRouting';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MajorSelector from './MajorSelector';
@@ -42,24 +41,6 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showLoginError, setShowLoginError] = useState(false);
   const [isLoadingForgotPassword, setIsLoadingForgotPassword] = useState(false);
-
-  // Test API connection when component mounts
-  useEffect(() => {
-    const testConnection = async () => {
-      console.log('🏃‍♂️ LoginScreen mounted, testing API connection...');
-      
-      const healthCheck = await testApiConnection();
-      const loginCheck = await testLoginEndpoint();
-      
-      console.log('📊 API Test Results:', {
-        healthEndpoint: healthCheck,
-        loginEndpoint: loginCheck,
-        apiUrl: ENV.API_URL
-      });
-    };
-    
-    testConnection();
-  }, []);
 
   const handleSubmit = async () => {
     if (isSignUpMode) {

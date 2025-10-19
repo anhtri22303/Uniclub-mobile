@@ -1,9 +1,7 @@
 // Environment configuration
 export const ENV = {
-  // API URLs - IMPORTANT: Backend does NOT have /api prefix!
-  // API_URL: process.env.EXPO_PUBLIC_API_URL || 'https://uniclub-qyn9a.ondigitalocean.app/api', // ❌ WRONG
-  API_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080', // ✅ For local development
-  // API_URL: process.env.EXPO_PUBLIC_API_URL || 'https://uniclub-qyn9a.ondigitalocean.app', // ✅ For production
+  // API URLs - Production backend URL (NO /api prefix!)
+  API_URL: process.env.EXPO_PUBLIC_API_URL || 'https://uniclub-qyn9a.ondigitalocean.app',
   
   // Development settings
   IS_DEV: process.env.EXPO_PUBLIC_ENV === 'development',
@@ -12,12 +10,9 @@ export const ENV = {
   REQUEST_TIMEOUT: 20000, // Increased timeout for network requests
 } as const;
 
-// You can switch between development and production URLs here
+// API Configuration reference (for documentation purposes)
 export const API_CONFIG = {
-  // Development - NO /api prefix
-  DEVELOPMENT: 'http://localhost:8080',
-  
-  // Production - NO /api prefix
+  // Production URL - NO /api prefix
   PRODUCTION: 'https://uniclub-qyn9a.ondigitalocean.app',
   
   // Current active URL

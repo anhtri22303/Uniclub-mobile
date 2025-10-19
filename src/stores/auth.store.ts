@@ -63,13 +63,24 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
       const normalizedRole = normalizeRole(loginResponse.role);
 
+      // Handle both clubId (singular) and clubIds (plural) from backend
+      // Some accounts return clubId, others return clubIds
+      let normalizedClubIds: number[] | undefined;
+      if (loginResponse.clubIds) {
+        // If clubIds exists (array), use it directly
+        normalizedClubIds = loginResponse.clubIds;
+      } else if (loginResponse.clubId !== undefined && loginResponse.clubId !== null) {
+        // If clubId exists (single number), convert to array
+        normalizedClubIds = [loginResponse.clubId];
+      }
+
       const user = {
         userId: loginResponse.userId,
         email: loginResponse.email,
         fullName: loginResponse.fullName || loginResponse.email.split('@')[0], // Fallback to email username
         role: normalizedRole || loginResponse.role,
         staff: loginResponse.staff || false,
-        clubIds: loginResponse.clubIds,
+        clubIds: normalizedClubIds, // Normalized to always be an array or undefined
       };
 
       set({ user, isAuthenticated: true });
@@ -124,13 +135,21 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
           const normalizedRole = normalizeRole(user.role);
 
+          // Handle both clubId (singular) and clubIds (plural) from stored data
+          let normalizedClubIds: number[] | undefined;
+          if (user.clubIds) {
+            normalizedClubIds = user.clubIds;
+          } else if (user.clubId !== undefined && user.clubId !== null) {
+            normalizedClubIds = [user.clubId];
+          }
+
           const normalizedUser = {
             userId: user.userId,
             email: user.email,
             fullName: user.fullName || user.email.split('@')[0], // Fallback to email username
             role: normalizedRole || user.role,
             staff: user.staff || false,
-            clubIds: user.clubIds,
+            clubIds: normalizedClubIds, // Normalized to always be an array or undefined
           };
 
           set({ user: normalizedUser, isAuthenticated: true });

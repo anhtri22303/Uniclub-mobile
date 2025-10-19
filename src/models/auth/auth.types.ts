@@ -10,10 +10,11 @@ export interface LoginResponse {
   userId: number;
   email: string;
   role: string;
-  // Optional fields that might be in the response
+  // Optional fields from backend response
   fullName?: string;
   staff?: boolean;
-  clubIds?: number[];
+  clubId?: number; // Club ID for club leaders (single club)
+  clubIds?: number[]; // Array of club IDs (for users with multiple clubs)
 }
 
 export interface SignUpCredentials {
