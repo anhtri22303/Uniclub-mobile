@@ -9,7 +9,7 @@ export const ENV = {
   IS_DEV: process.env.EXPO_PUBLIC_ENV === 'development',
   
   // Timeout settings
-  REQUEST_TIMEOUT: 15000, // Increased timeout for network requests
+  REQUEST_TIMEOUT: 20000, // Increased timeout for network requests
 } as const;
 
 // You can switch between development and production URLs here

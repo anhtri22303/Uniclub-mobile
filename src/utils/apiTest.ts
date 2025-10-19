@@ -46,8 +46,8 @@ export const testLoginEndpoint = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: 'test@example.com',
-        password: 'test123'
+        email: 'test001@gmail.com',
+        password: '123'
       }),
     });
     
