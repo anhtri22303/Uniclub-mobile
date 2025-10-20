@@ -8,15 +8,15 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MajorSelector from './MajorSelector';
@@ -73,9 +73,7 @@ export default function LoginScreen() {
       const { user: authUser } = useAuthStore.getState();
       const redirectPath = getRoleRoute(authUser?.role);
       
-      Alert.alert('Login Successful', 'Welcome back!', [
-        { text: 'OK', onPress: () => router.replace(redirectPath as any) }
-      ]);
+      router.replace(redirectPath as any);
     } catch (error: any) {
       console.error('Login failed:', error);
       setShowLoginError(true);

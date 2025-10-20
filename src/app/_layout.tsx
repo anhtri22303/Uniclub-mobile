@@ -35,7 +35,6 @@ export default function RootLayout() {
             <Stack.Screen name="student/wallet" options={{ headerShown: false }} />
             <Stack.Screen name="student/history" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader" options={{ headerShown: false }} />
-            <Stack.Screen name="club-leader/manage" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/members" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/application" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/events" options={{ headerShown: false }} />

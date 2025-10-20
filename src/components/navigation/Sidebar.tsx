@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
   Image,
@@ -48,7 +47,8 @@ export default function Sidebar({ role }: SidebarProps) {
   useEffect(() => {
     let mounted = true;
     const loadProfile = async () => {
-      if (!isOpen) return; // Only load when sidebar is opened
+      // Don't load if sidebar is closed or user is not logged in
+      if (!isOpen || !user) return;
       
       try {
         setLoadingProfile(true);
@@ -288,22 +288,9 @@ export default function Sidebar({ role }: SidebarProps) {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            toggleSidebar();
-            router.replace('/login' as any);
-          },
-        },
-      ]
-    );
+    await logout();
+    toggleSidebar();
+    router.replace('/login' as any);
   };
 
   return (
