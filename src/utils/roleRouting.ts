@@ -6,7 +6,7 @@ export const getRoleRoute = (role?: string): string => {
   
   switch (role) {
     case 'student':
-      return '/student';
+      return '/profile';
     case 'club_leader':
       return '/club-leader';
     case 'uni_staff':

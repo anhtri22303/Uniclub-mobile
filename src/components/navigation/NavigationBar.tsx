@@ -96,7 +96,7 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
       ];
     }
 
-    const baseRoute = userRole === 'student' ? '/student' : '/club-leader';
+    const baseRoute = userRole === 'student' ? '/profile' : '/club-leader';
     const tabs: TabItem[] = [
       {
         name: 'home',
