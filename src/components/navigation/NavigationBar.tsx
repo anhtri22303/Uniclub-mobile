@@ -107,8 +107,8 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
       {
         name: 'club',
         icon: 'people',
-        route: userRole === 'student' ? '/student/clubs' : '/club-leader/manage',
-        label: 'Club'
+        route: userRole === 'student' ? '/student/clubs' : '/club-leader/application',
+        label: userRole === 'club_leader' ? 'Apply' : 'Club'
       },
       {
         name: 'member',
