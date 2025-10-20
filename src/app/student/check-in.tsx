@@ -2,17 +2,18 @@ import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { fetchEvent, getEventByCode } from '@services/event.service';
 import { useAuthStore } from '@stores/auth.store';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,6 +33,7 @@ interface CheckInEvent {
 
 export default function StudentCheckInPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
 
   const [checkInCode, setCheckInCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -224,6 +226,24 @@ export default function StudentCheckInPage() {
                     </Text>
                   </View>
                 )}
+              </TouchableOpacity>
+
+              {/* OR Divider */}
+              <View className="flex-row items-center py-2">
+                <View className="flex-1 h-px bg-gray-300" />
+                <Text className="px-4 text-gray-500 font-medium">OR</Text>
+                <View className="flex-1 h-px bg-gray-300" />
+              </View>
+
+              {/* Scan QR Button */}
+              <TouchableOpacity
+                onPress={() => router.push('/student/scan-qr' as any)}
+                className="py-4 rounded-xl items-center bg-teal-500 flex-row justify-center"
+              >
+                <Text className="text-4xl mr-2">📷</Text>
+                <Text className="text-white text-lg font-semibold">
+                  Scan QR Code
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

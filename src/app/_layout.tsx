@@ -26,10 +26,13 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
+            <Stack.Screen name="virtual-card" options={{ headerShown: false }} />
             <Stack.Screen name="student/clubs" options={{ headerShown: false }} />
             <Stack.Screen name="student/members" options={{ headerShown: false }} />
             <Stack.Screen name="student/events" options={{ headerShown: false }} />
             <Stack.Screen name="student/check-in" options={{ headerShown: false }} />
+            <Stack.Screen name="student/scan-qr" options={{ headerShown: false }} />
+            <Stack.Screen name="student/checkin/[code]" options={{ headerShown: false }} />
             <Stack.Screen name="student/gift" options={{ headerShown: false }} />
             <Stack.Screen name="student/wallet" options={{ headerShown: false }} />
             <Stack.Screen name="student/history" options={{ headerShown: false }} />

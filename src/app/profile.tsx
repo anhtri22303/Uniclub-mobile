@@ -285,7 +285,7 @@ export default function ProfileScreen() {
       <View className="flex-row justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
         <Text className="text-2xl font-bold text-gray-800">Profile</Text>
         <TouchableOpacity
-          onPress={() => Alert.alert('Virtual Card', 'Virtual student card feature coming soon!')}
+          onPress={() => router.push('/virtual-card' as any)}
           className="flex-row items-center px-4 py-2 rounded-xl"
           style={{ backgroundColor: '#3B82F6' }}
         >
@@ -342,7 +342,7 @@ export default function ProfileScreen() {
               <Text className="text-2xl font-bold text-white mt-4">{profile.fullName}</Text>
               <Text className="text-white/90 text-base">{profile.email}</Text>
               <Text className="text-white font-medium mt-1 bg-white/20 px-3 py-1 rounded-full">
-                {formatRoleName(profile.role.roleName)}
+                {formatRoleName(profile.role?.roleName)}
               </Text>
             </View>
           </View>

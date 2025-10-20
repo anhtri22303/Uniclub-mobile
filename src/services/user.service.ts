@@ -26,7 +26,7 @@ export interface UserProfile {
     roleId: number;
     roleName: string;
     description: string;
-  };
+  } | null;
   wallet: {
     balancePoints: number;
   } | null;
