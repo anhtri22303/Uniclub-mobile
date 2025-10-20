@@ -155,4 +155,67 @@ export class ClubService {
       throw error;
     }
   }
+
+  /**
+   * Get club by ID with full response structure
+   */
+  static async getClubByIdFull(clubId: number): Promise<{ success: boolean; message: string; data: ClubApiResponse }> {
+    try {
+      const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApiResponse }>(
+        `/api/clubs/${clubId}`
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error fetching club ID ${clubId}:`, error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Could not load club data',
+        data: null as any,
+      };
+    }
+  }
+
+  /**
+   * Get club member count
+   */
+  static async getClubMemberCount(clubId: number): Promise<number> {
+    try {
+      const response = await axiosClient.get<{
+        success: boolean;
+        message: string;
+        data: { clubId: number; activeMemberCount: number };
+      }>(`/api/clubs/${clubId}/member-count`);
+      
+      return response.data?.data?.activeMemberCount ?? 0;
+    } catch (error) {
+      console.error(`Error fetching member count for club ${clubId}:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get club statistics
+   */
+  static async getClubStats(): Promise<any> {
+    try {
+      const response = await axiosClient.get<any>('/api/clubs/stats');
+      const body = response.data;
+      console.log('Fetched club stats response:', body);
+
+      // If backend uses { success, message, data }
+      if (body && typeof body === 'object' && 'data' in body && 'success' in body && body.success) {
+        return body.data;
+      }
+
+      // If the endpoint returns the stats object directly
+      if (body && typeof body === 'object') {
+        return body;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error fetching club stats:', error);
+      throw error;
+    }
+  }
 }

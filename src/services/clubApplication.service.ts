@@ -43,7 +43,7 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
 export async function postClubApplication(body: { 
   clubName: string; 
   description: string;
-  category: string;
+  category: string | number;
   proposerReason: string;
 }): Promise<ClubApplication> {
   try {
@@ -90,8 +90,41 @@ export async function putClubApplicationStatus(
   }
 }
 
+/**
+ * Get current user's club applications
+ * GET /api/club-applications/my
+ */
+export async function getMyClubApplications(): Promise<ClubApplication[]> {
+  try {
+    const response = await axiosClient.get<{
+      success: boolean;
+      message: string;
+      data: ClubApplication[];
+    }>('/api/club-applications/my');
+    
+    console.log('✅ My club applications:', response.data);
+    
+    // Response structure: { success, message, data }
+    if (response.data?.success && response.data?.data) {
+      return response.data.data;
+    }
+    
+    // Fallback to direct data if no wrapper
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    
+    return [];
+  } catch (error: any) {
+    console.error('❌ Error fetching my club applications:', error.response?.data || error.message);
+    // Return empty array instead of throwing to handle gracefully
+    return [];
+  }
+}
+
 export default {
   getClubApplications,
   postClubApplication,
-  putClubApplicationStatus
+  putClubApplicationStatus,
+  getMyClubApplications
 };

@@ -1,16 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
+import UserService from '@services/user.service';
 import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -30,14 +33,112 @@ interface MenuItem {
 export default function Sidebar({ role }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-SIDEBAR_WIDTH));
+  
+  // Profile widget state
+  const [userPoints, setUserPoints] = useState<number>(0);
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Load user profile data
+  useEffect(() => {
+    let mounted = true;
+    const loadProfile = async () => {
+      if (!isOpen) return; // Only load when sidebar is opened
+      
+      try {
+        setLoadingProfile(true);
+        const profileData = await UserService.fetchProfile();
+        
+        if (!mounted) return;
+        
+        setAvatarUrl(profileData?.avatarUrl || '');
+        setUserName(profileData?.fullName || user?.fullName || 'User');
+        setUserEmail(profileData?.email || user?.email || '');
+        
+        // Get wallet points from profile
+        if (profileData?.wallet?.balancePoints !== undefined) {
+          setUserPoints(profileData.wallet.balancePoints);
+        }
+      } catch (err) {
+        console.error('Failed to load profile in Sidebar:', err);
+        // Fallback to auth store data
+        if (mounted) {
+          setUserName(user?.fullName || 'User');
+          setUserEmail(user?.email || '');
+        }
+      } finally {
+        if (mounted) {
+          setLoadingProfile(false);
+        }
+      }
+    };
+    
+    loadProfile();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, user]);
+
+  // Helper functions for points card styling
+  const getPointsCardStyle = (points: number) => {
+    if (points >= 5000) {
+      return {
+        bgColor: 'bg-gradient-to-r from-purple-600 to-pink-600',
+        textColor: 'text-white',
+        subtitleColor: 'text-white/80',
+        iconBg: 'bg-white/20',
+        iconColor: 'text-white',
+      };
+    }
+    if (points >= 3000) {
+      return {
+        bgColor: 'bg-gradient-to-r from-sky-500 to-indigo-500',
+        textColor: 'text-white',
+        subtitleColor: 'text-white/80',
+        iconBg: 'bg-white/20',
+        iconColor: 'text-white',
+      };
+    }
+    if (points >= 1000) {
+      return {
+        bgColor: 'bg-amber-50',
+        textColor: 'text-amber-900',
+        subtitleColor: 'text-amber-700',
+        iconBg: 'bg-amber-200',
+        iconColor: 'text-amber-600',
+      };
+    }
+    return {
+      bgColor: 'bg-slate-100',
+      textColor: 'text-slate-800',
+      subtitleColor: 'text-slate-500',
+      iconBg: 'bg-slate-200',
+      iconColor: 'text-slate-600',
+    };
+  };
+
+  const getUserInitials = () => {
+    return (userName || 'User')
+      .split(' ')
+      .map((name) => name[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   // Only show sidebar for CLUB_LEADER, UNIVERSITY_STAFF, and STUDENT
   if (role !== 'club_leader' && role !== 'university_staff' && role !== 'student') {
     return null;
   }
+  
+  const shouldShowPoints = role === 'student' || role === 'club_leader';
+  const pointsStyle = getPointsCardStyle(userPoints);
 
   // Menu items based on role
   const getMenuItems = (): MenuItem[] => {
@@ -296,28 +397,83 @@ export default function Sidebar({ role }: SidebarProps) {
               })}
             </ScrollView>
 
-            {/* Footer with Logout */}
-            <View className="border-t border-gray-200">
-              <TouchableOpacity
-                onPress={handleLogout}
-                className="flex-row items-center px-6 py-4 bg-red-50"
-              >
-                <View className="w-10 h-10 rounded-full bg-red-500 items-center justify-center">
-                  <Ionicons name="log-out" size={20} color="white" />
+            {/* Profile Widget Footer */}
+            <View className="border-t border-gray-200 bg-gray-50">
+              {loadingProfile ? (
+                <View className="p-6 items-center">
+                  <ActivityIndicator size="small" color="#0D9488" />
                 </View>
-                <Text className="ml-4 text-base font-semibold text-red-600">
-                  Logout
-                </Text>
-              </TouchableOpacity>
-              
-              <View className="p-4">
-                <Text className="text-xs text-gray-500 text-center">
-                  UniClub Management System
-                </Text>
-                <Text className="text-xs text-gray-400 text-center mt-1">
-                  Version 1.0.0
-                </Text>
-              </View>
+              ) : (
+                <View className="p-4 space-y-3">
+                  {/* Points Card (for students and club leaders) */}
+                  {shouldShowPoints && (
+                    <View className={`rounded-lg overflow-hidden shadow-sm ${pointsStyle.bgColor}`}>
+                      <View className="p-3 flex-row items-center justify-between">
+                        <View className="flex-1">
+                          <Text className={`text-xs font-medium ${pointsStyle.subtitleColor}`}>
+                            Accumulated Points
+                          </Text>
+                          <Text className={`text-2xl font-bold ${pointsStyle.textColor}`}>
+                            {userPoints.toLocaleString()}
+                          </Text>
+                        </View>
+                        <View className={`p-2 rounded-full ${pointsStyle.iconBg}`}>
+                          <Ionicons name="flame" size={24} color={pointsStyle.iconColor.includes('white') ? 'white' : '#F59E0B'} />
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* User Info Card */}
+                  <View className="bg-white rounded-lg p-3 shadow-sm">
+                    <View className="flex-row items-center">
+                      {/* Avatar */}
+                      <View className="w-12 h-12 rounded-full overflow-hidden bg-teal-600 items-center justify-center">
+                        {avatarUrl ? (
+                          <Image
+                            source={{ uri: avatarUrl }}
+                            className="w-12 h-12 rounded-full"
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text className="text-white font-bold text-sm">{getUserInitials()}</Text>
+                        )}
+                      </View>
+                      
+                      {/* User Details */}
+                      <View className="flex-1 ml-3">
+                        <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                          {userName}
+                        </Text>
+                        <Text className="text-xs text-gray-500" numberOfLines={1}>
+                          {userEmail}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Logout Button */}
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                    className="bg-red-50 rounded-lg px-4 py-3 flex-row items-center justify-center space-x-2 border border-red-200"
+                  >
+                    <Ionicons name="log-out" size={20} color="#DC2626" />
+                    <Text className="text-base font-semibold text-red-600">
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Version Info */}
+                  <View className="pt-2">
+                    <Text className="text-xs text-gray-500 text-center">
+                      UniClub Management System
+                    </Text>
+                    <Text className="text-xs text-gray-400 text-center mt-1">
+                      Version 1.0.0
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           </Animated.View>
 
