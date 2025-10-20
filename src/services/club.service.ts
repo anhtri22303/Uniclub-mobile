@@ -218,4 +218,40 @@ export class ClubService {
       throw error;
     }
   }
+
+  /**
+   * Get all clubs without pagination (for simple listing)
+   */
+  static async getAllClubs(): Promise<Club[]> {
+    try {
+      const response = await axiosClient.get<ClubPageableResponse>('/api/clubs', {
+        params: {
+          page: 0,
+          size: 1000, // Large size to get all clubs
+          sort: ['name'],
+        },
+      });
+
+      const body = response.data;
+
+      if (body && typeof body === 'object' && 'content' in body && Array.isArray(body.content)) {
+        return body.content.map((club) => ({
+          id: club.id,
+          name: club.name,
+          category: club.majorName || '-',
+          leaderName: club.leaderName || '-',
+          members: club.memberCount || 0,
+          policy: club.majorPolicyName || '-',
+          events: club.eventCount || 0,
+          description: club.description,
+          status: club.status,
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Error fetching all clubs:', error);
+      return [];
+    }
+  }
 }
