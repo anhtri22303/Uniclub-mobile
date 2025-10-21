@@ -66,7 +66,8 @@ export default function LoginScreen() {
 
     try {
       console.log('Attempting login with API URL:', ENV.API_URL);
-      const loginResponse = await AuthService.login({ email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const loginResponse = await AuthService.login({ email: normalizedEmail, password });
       await login(loginResponse);
       
       // Get the normalized role from the auth store and redirect accordingly
@@ -194,7 +195,8 @@ export default function LoginScreen() {
     setIsLoadingForgotPassword(true);
 
     try {
-      const response = await AuthService.forgotPassword(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await AuthService.forgotPassword(normalizedEmail);
       if (response.success) {
         Alert.alert('Password Reset Email Sent', response.message);
         setShowLoginError(false);
