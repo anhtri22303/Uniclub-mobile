@@ -53,7 +53,7 @@ export class ClubService {
       });
 
       const body = response.data;
-      console.log('Fetched clubs response:', body);
+      console.log('fetchClubs response:', JSON.stringify(body, null, 2));
 
       if (body && typeof body === 'object' && 'content' in body && Array.isArray(body.content)) {
         // Transform API response to Club format
@@ -61,10 +61,10 @@ export class ClubService {
           id: club.id,
           name: club.name,
           category: club.majorName || '-',
-          leaderName: club.leaderName || '-',
-          members: club.memberCount || 0,
+          leaderName: club.leaderName || 'No Leader',
+          members: club.memberCount ?? 0,
           policy: club.majorPolicyName || '-',
-          events: club.eventCount || 0,
+          events: club.eventCount ?? 0,
           description: club.description,
           status: club.status,
         }));
@@ -75,10 +75,10 @@ export class ClubService {
           id: club.id,
           name: club.name,
           category: club.majorName || '-',
-          leaderName: club.leaderName || '-',
-          members: club.memberCount || 0,
+          leaderName: club.leaderName || 'No Leader',
+          members: club.memberCount ?? 0,
           policy: club.majorPolicyName || '-',
-          events: club.eventCount || 0,
+          events: club.eventCount ?? 0,
           description: club.description,
           status: club.status,
         }));
@@ -228,21 +228,22 @@ export class ClubService {
         params: {
           page: 0,
           size: 1000, // Large size to get all clubs
-          sort: ['name'],
+          sort: 'name',
         },
       });
 
       const body = response.data;
+      console.log('getAllClubs response:', JSON.stringify(body, null, 2));
 
       if (body && typeof body === 'object' && 'content' in body && Array.isArray(body.content)) {
         return body.content.map((club) => ({
           id: club.id,
           name: club.name,
           category: club.majorName || '-',
-          leaderName: club.leaderName || '-',
-          members: club.memberCount || 0,
+          leaderName: club.leaderName || 'No Leader',
+          members: club.memberCount ?? 0, // Use nullish coalescing for null values
           policy: club.majorPolicyName || '-',
-          events: club.eventCount || 0,
+          events: club.eventCount ?? 0, // Use nullish coalescing for null values
           description: club.description,
           status: club.status,
         }));
@@ -251,7 +252,7 @@ export class ClubService {
       return [];
     } catch (error) {
       console.error('Error fetching all clubs:', error);
-      return [];
+      throw error;
     }
   }
 }

@@ -299,111 +299,136 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* Profile Header with Gradient Background */}
-        <LinearGradient
-          colors={['#6366F1', '#EC4899']} // Indigo to Pink gradient like in the image
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          className="rounded-3xl shadow-lg mb-6 overflow-hidden"
-        >
-          <View className="p-6 pt-8 pb-8">
-            <View className="items-center">
-              <View className="relative">
-                <TouchableOpacity
-                  onPress={handleAvatarUpload}
-                  disabled={uploadingAvatar}
-                  className="relative"
-                >
-                  {avatarPreview ? (
-                    <Image
-                      source={{ uri: avatarPreview }}
-                      className="w-28 h-28 rounded-full border-4 border-white shadow-lg"
-                    />
-                  ) : (
-                    <View className="w-28 h-28 rounded-full bg-white/30 border-4 border-white shadow-lg items-center justify-center">
-                      <Text className="text-3xl font-bold text-white">
-                        {getInitials(profile.fullName || 'U')}
-                      </Text>
+        {/* Profile Header with Professional Background for Admin/Uni Staff or Gradient for Others */}
+        {isAdminRole ? (
+          // Professional solid color for Admin and University Staff
+          <View 
+            className="rounded-3xl shadow-lg mb-6 overflow-hidden"
+            style={{ backgroundColor: '#1E40AF' }} // Professional navy blue
+          >
+            <View className="p-6 pt-8 pb-8">
+              <View className="items-center">
+                <View className="relative">
+                  <TouchableOpacity
+                    onPress={handleAvatarUpload}
+                    disabled={uploadingAvatar}
+                    className="relative"
+                  >
+                    {avatarPreview ? (
+                      <Image
+                        source={{ uri: avatarPreview }}
+                        className="w-28 h-28 rounded-full border-4 border-white shadow-lg"
+                      />
+                    ) : (
+                      <View className="w-28 h-28 rounded-full bg-white/30 border-4 border-white shadow-lg items-center justify-center">
+                        <Text className="text-3xl font-bold text-white">
+                          {getInitials(profile.fullName || 'U')}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {uploadingAvatar && (
+                      <View className="absolute inset-0 bg-black/50 rounded-full items-center justify-center">
+                        <ActivityIndicator color="white" />
+                      </View>
+                    )}
+                    
+                    <View className="absolute bottom-0 right-0 bg-blue-600 rounded-full p-2 border-2 border-white shadow-lg">
+                      <Ionicons name="camera" size={18} color="white" />
                     </View>
-                  )}
-                  
-                  {uploadingAvatar && (
-                    <View className="absolute inset-0 bg-black/50 rounded-full items-center justify-center">
-                      <ActivityIndicator color="white" />
-                    </View>
-                  )}
-                  
-                  <View className="absolute bottom-0 right-0 bg-emerald-500 rounded-full p-2 border-2 border-white shadow-lg">
-                    <Ionicons name="camera" size={18} color="white" />
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </View>
+                
+                <Text className="text-2xl font-bold text-white mt-4">{profile.fullName}</Text>
+                <Text className="text-white/90 text-base">{profile.email}</Text>
+                <View className="flex-row items-center mt-2">
+                  <Ionicons name="shield-checkmark" size={16} color="white" />
+                  <Text className="text-white font-medium ml-1 bg-white/20 px-3 py-1 rounded-full">
+                    {formatRoleName(profile.role?.roleName)}
+                  </Text>
+                </View>
               </View>
-              
-              <Text className="text-2xl font-bold text-white mt-4">{profile.fullName}</Text>
-              <Text className="text-white/90 text-base">{profile.email}</Text>
-              <Text className="text-white font-medium mt-1 bg-white/20 px-3 py-1 rounded-full">
-                {formatRoleName(profile.role?.roleName)}
-              </Text>
             </View>
           </View>
-        </LinearGradient>
+        ) : (
+          // Gradient background for Students and Club Leaders
+          <LinearGradient
+            colors={['#6366F1', '#EC4899']} // Indigo to Pink gradient
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            className="rounded-3xl shadow-lg mb-6 overflow-hidden"
+          >
+            <View className="p-6 pt-8 pb-8">
+              <View className="items-center">
+                <View className="relative">
+                  <TouchableOpacity
+                    onPress={handleAvatarUpload}
+                    disabled={uploadingAvatar}
+                    className="relative"
+                  >
+                    {avatarPreview ? (
+                      <Image
+                        source={{ uri: avatarPreview }}
+                        className="w-28 h-28 rounded-full border-4 border-white shadow-lg"
+                      />
+                    ) : (
+                      <View className="w-28 h-28 rounded-full bg-white/30 border-4 border-white shadow-lg items-center justify-center">
+                        <Text className="text-3xl font-bold text-white">
+                          {getInitials(profile.fullName || 'U')}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {uploadingAvatar && (
+                      <View className="absolute inset-0 bg-black/50 rounded-full items-center justify-center">
+                        <ActivityIndicator color="white" />
+                      </View>
+                    )}
+                    
+                    <View className="absolute bottom-0 right-0 bg-emerald-500 rounded-full p-2 border-2 border-white shadow-lg">
+                      <Ionicons name="camera" size={18} color="white" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                
+                <Text className="text-2xl font-bold text-white mt-4">{profile.fullName}</Text>
+                <Text className="text-white/90 text-base">{profile.email}</Text>
+                <Text className="text-white font-medium mt-1 bg-white/20 px-3 py-1 rounded-full">
+                  {formatRoleName(profile.role?.roleName)}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        )}
 
-        {/* Points Card */}
-        <View 
-          className="rounded-3xl p-6 shadow-lg mb-6"
-          style={{
-            backgroundColor: pointsStyle.cardBgColors[0],
-          }}
-        >
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className={`text-sm font-medium ${pointsStyle.textColor}`}>
-                Accumulated Points
-              </Text>
-              <Text className={`text-3xl font-bold ${pointsStyle.textColor}`}>
-                {getUserPoints().toLocaleString()}
-              </Text>
-            </View>
-            <View className={`${pointsStyle.iconBg} p-3 rounded-full`}>
-              <Ionicons name="flame" size={24} color={pointsStyle.iconColor} />
+        {/* Points Card - Only for Students and Club Leaders */}
+        {!isAdminRole && (
+          <View 
+            className="rounded-3xl p-6 shadow-lg mb-6"
+            style={{
+              backgroundColor: pointsStyle.cardBgColors[0],
+            }}
+          >
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className={`text-sm font-medium ${pointsStyle.textColor}`}>
+                  Accumulated Points
+                </Text>
+                <Text className={`text-3xl font-bold ${pointsStyle.textColor}`}>
+                  {getUserPoints().toLocaleString()}
+                </Text>
+              </View>
+              <View className={`${pointsStyle.iconBg} p-3 rounded-full`}>
+                <Ionicons name="flame" size={24} color={pointsStyle.iconColor} />
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Admin Interface */}
         {isAdminRole ? (
           <View className="space-y-6">
-            {/* Admin Statistics */}
-            <View className="bg-white rounded-3xl p-6 shadow-lg">
-              <Text className="text-xl font-bold text-gray-800 mb-4">Quick Statistics</Text>
-              <View className="grid grid-cols-1 gap-4">
-                <View className="flex-row items-center justify-between p-4 bg-blue-50 rounded-xl">
-                  <View className="flex-row items-center">
-                    <Ionicons name="people" size={24} color="#3B82F6" />
-                    <Text className="text-gray-700 ml-3">Total Users</Text>
-                  </View>
-                  <Text className="text-xl font-bold text-blue-600">{adminStats.totalUsers}</Text>
-                </View>
-                
-                <View className="flex-row items-center justify-between p-4 bg-green-50 rounded-xl">
-                  <View className="flex-row items-center">
-                    <Ionicons name="calendar" size={24} color="#10B981" />
-                    <Text className="text-gray-700 ml-3">Active Events</Text>
-                  </View>
-                  <Text className="text-xl font-bold text-green-600">{adminStats.activeEvents}</Text>
-                </View>
-                
-                <View className="flex-row items-center justify-between p-4 bg-purple-50 rounded-xl">
-                  <View className="flex-row items-center">
-                    <Ionicons name="document-text" size={24} color="#8B5CF6" />
-                    <Text className="text-gray-700 ml-3">Reports Generated</Text>
-                  </View>
-                  <Text className="text-xl font-bold text-purple-600">{adminStats.reportsGenerated}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Admin Profile Edit */}
+            {/* Admin Profile Edit - Personal Information */}
             <View className="bg-white rounded-3xl p-6 shadow-lg">
               <View className="flex-row items-center justify-between mb-4">
                 <Text className="text-xl font-bold text-gray-800">Personal Information</Text>
@@ -497,12 +522,42 @@ export default function ProfileScreen() {
                   </View>
                   {profile.bio && (
                     <View className="flex-row items-start">
-                      <Ionicons name="document-text" size={20} color="#0D9488" />
+                      <Ionicons name="information-circle" size={20} color="#0D9488" />
                       <Text className="text-gray-700 ml-3 flex-1">Bio: {profile.bio}</Text>
                     </View>
                   )}
                 </View>
               )}
+            </View>
+
+            {/* Admin Statistics */}
+            <View className="bg-white rounded-3xl p-6 shadow-lg">
+              <Text className="text-xl font-bold text-gray-800 mb-4">Quick Statistics</Text>
+              <View className="grid grid-cols-1 gap-4">
+                <View className="flex-row items-center justify-between p-4 bg-blue-50 rounded-xl">
+                  <View className="flex-row items-center">
+                    <Ionicons name="people" size={24} color="#3B82F6" />
+                    <Text className="text-gray-700 ml-3">Total Users</Text>
+                  </View>
+                  <Text className="text-xl font-bold text-blue-600">{adminStats.totalUsers}</Text>
+                </View>
+                
+                <View className="flex-row items-center justify-between p-4 bg-green-50 rounded-xl">
+                  <View className="flex-row items-center">
+                    <Ionicons name="calendar" size={24} color="#10B981" />
+                    <Text className="text-gray-700 ml-3">Active Events</Text>
+                  </View>
+                  <Text className="text-xl font-bold text-green-600">{adminStats.activeEvents}</Text>
+                </View>
+                
+                <View className="flex-row items-center justify-between p-4 bg-purple-50 rounded-xl">
+                  <View className="flex-row items-center">
+                    <Ionicons name="document-text" size={24} color="#8B5CF6" />
+                    <Text className="text-gray-700 ml-3">Reports Generated</Text>
+                  </View>
+                  <Text className="text-xl font-bold text-purple-600">{adminStats.reportsGenerated}</Text>
+                </View>
+              </View>
             </View>
           </View>
         ) : (

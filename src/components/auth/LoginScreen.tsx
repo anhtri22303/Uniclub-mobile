@@ -9,7 +9,6 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,6 +18,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import MajorSelector from './MajorSelector';
 
 export default function LoginScreen() {
@@ -52,12 +52,24 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Missing Information', 'Please fill in all fields');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Information',
+        text2: 'Please fill in all fields',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
 
     if (!/^\S+@\S+\.\S+$/.test(email)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
 
@@ -89,7 +101,13 @@ export default function LoginScreen() {
         errorMessage = 'Cannot connect to server. Please try again later.';
       }
       
-      Alert.alert('Login Failed', errorMessage);
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: errorMessage,
+        visibilityTime: 3000,
+        autoHide: true,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -98,47 +116,113 @@ export default function LoginScreen() {
   const handleSignUp = async () => {
     // Validation
     if (!fullName) {
-      Alert.alert('Missing Full Name', 'Please enter your full name.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Full Name',
+        text2: 'Please enter your full name.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!studentCode) {
-      Alert.alert('Missing Student ID', 'Please enter your student ID.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Student ID',
+        text2: 'Please enter your student ID.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!/^[A-Z]{2}\d{6}$/.test(studentCode)) {
-      Alert.alert('Invalid Student ID', 'Student ID must start with 2 letters followed by 6 digits (e.g. SE123456).');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Student ID',
+        text2: 'Student ID must start with 2 letters followed by 6 digits (e.g. SE123456).',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!majorName) {
-      Alert.alert('Missing Major', 'Please enter your major name.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Major',
+        text2: 'Please enter your major name.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!email) {
-      Alert.alert('Missing Email', 'Please enter your email.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Email',
+        text2: 'Please enter your email.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!/^\S+@\S+\.\S+$/.test(email)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!phone) {
-      Alert.alert('Missing Phone', 'Please enter your phone number.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Phone',
+        text2: 'Please enter your phone number.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!/^\d{10}$/.test(phone)) {
-      Alert.alert('Invalid Phone Number', 'Phone number must be exactly 10 digits.');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Phone Number',
+        text2: 'Phone number must be exactly 10 digits.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!password) {
-      Alert.alert('Missing Password', 'Please enter your password.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Password',
+        text2: 'Please enter your password.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (!confirmPassword) {
-      Alert.alert('Missing Confirm Password', 'Please confirm your password.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Confirm Password',
+        text2: 'Please confirm your password.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Password Mismatch', 'Passwords do not match.');
+      Toast.show({
+        type: 'error',
+        text1: 'Password Mismatch',
+        text2: 'Passwords do not match.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
 
@@ -157,25 +241,26 @@ export default function LoginScreen() {
 
       const signUpResponse = await AuthService.signUp(signUpData);
       
-      Alert.alert(
-        'Registration Successful',
-        `Welcome ${signUpResponse.fullName}! You can now sign in.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setIsSignUpMode(false);
-              resetForm();
-            },
-          },
-        ]
-      );
+      Toast.show({
+        type: 'success',
+        text1: 'Registration Successful',
+        text2: `Welcome ${signUpResponse.fullName}! You can now sign in.`,
+        visibilityTime: 3000,
+        autoHide: true,
+        onHide: () => {
+          setIsSignUpMode(false);
+          resetForm();
+        },
+      });
     } catch (error: any) {
       console.error('Sign up failed:', error);
-      Alert.alert(
-        'Sign Up Failed',
-        error.response?.data?.message || 'Something went wrong'
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Sign Up Failed',
+        text2: error.response?.data?.message || 'Something went wrong',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -183,12 +268,24 @@ export default function LoginScreen() {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert('Email Required', 'Please enter your email address first');
+      Toast.show({
+        type: 'error',
+        text1: 'Email Required',
+        text2: 'Please enter your email address first',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
 
     if (!/^\S+@\S+\.\S+$/.test(email)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
 
@@ -198,14 +295,23 @@ export default function LoginScreen() {
       const normalizedEmail = email.trim().toLowerCase();
       const response = await AuthService.forgotPassword(normalizedEmail);
       if (response.success) {
-        Alert.alert('Password Reset Email Sent', response.message);
+        Toast.show({
+          type: 'success',
+          text1: 'Password Reset Email Sent',
+          text2: response.message,
+          visibilityTime: 3000,
+          autoHide: true,
+        });
         setShowLoginError(false);
       }
     } catch (error: any) {
-      Alert.alert(
-        'Failed to Send Reset Email',
-        error.response?.data?.message || 'Something went wrong'
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to Send Reset Email',
+        text2: error.response?.data?.message || 'Something went wrong',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
     } finally {
       setIsLoadingForgotPassword(false);
     }
@@ -228,7 +334,13 @@ export default function LoginScreen() {
   };
 
   const handleDownloadApp = () => {
-    Alert.alert('Download App', 'App download will be available soon!');
+    Toast.show({
+      type: 'info',
+      text1: 'Download App',
+      text2: 'App download will be available soon!',
+      visibilityTime: 3000,
+      autoHide: true,
+    });
   };
 
   return (

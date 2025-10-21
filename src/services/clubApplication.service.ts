@@ -4,22 +4,16 @@ export interface ClubApplication {
   applicationId: number;
   clubName: string;
   description: string;
-  category: string | null;
-  submittedBy: {
-    fullName: string;
-    email: string;
-  } | null;
-  reviewedBy: {
-    fullName: string;
-    email: string;
-  } | null;
+  majorId: number | null;
+  majorName: string | null;
+  vision: string | null;
+  proposerReason: string | null;
+  proposer: string | null;
+  reviewedBy: string | null;
   status: string;
-  sourceType: string | null;
   rejectReason: string | null;
   submittedAt: string | null;
   reviewedAt: string | null;
-  attachmentUrl: string | null;
-  internalNote: string | null;
 }
 
 /**
@@ -29,22 +23,24 @@ export interface ClubApplication {
 export async function getClubApplications(): Promise<ClubApplication[]> {
   try {
     const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApplication[] }>("/api/club-applications/all");
+    console.log('✅ Club applications response:', JSON.stringify(response.data, null, 2));
     return response.data.data;
   } catch (error) {
-    console.error("Error fetching club applications:", error);
+    console.error("❌ Error fetching club applications:", error);
     throw error;
   }
 }
 
 /**
  * Create a new club application.
- * The backend expects a JSON body with clubName, description, category, proposerReason
+ * The backend expects a JSON body with clubName, description, majorId, vision, proposerReason
  */
 export async function postClubApplication(body: { 
   clubName: string; 
   description: string;
-  category: string | number;
-  proposerReason: string;
+  majorId?: number | null;
+  vision?: string;
+  proposerReason?: string;
 }): Promise<ClubApplication> {
   try {
     const response = await axiosClient.post<ClubApplication>(
@@ -52,16 +48,18 @@ export async function postClubApplication(body: {
       {
         clubName: body.clubName,
         description: body.description,
-        category: body.category,
+        majorId: body.majorId,
+        vision: body.vision,
         proposerReason: body.proposerReason,
       },
       {
         headers: { 'Content-Type': 'application/json' }
       }
     );
+    console.log('✅ Club application created:', response.data);
     return response.data;
   } catch (error) {
-    console.error("Error creating club application:", error);
+    console.error("❌ Error creating club application:", error);
     throw error;
   }
 }

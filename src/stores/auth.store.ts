@@ -38,6 +38,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   login: async (loginResponse: LoginResponse) => {
     try {
+      console.log('=== LOGIN RESPONSE ===');
+      console.log('Raw login response:', JSON.stringify(loginResponse, null, 2));
+      
       // Save token and user data to secure storage
       await SecureStore.setItemAsync('token', loginResponse.token);
       await SecureStore.setItemAsync('user', JSON.stringify(loginResponse));
@@ -82,6 +85,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         staff: loginResponse.staff || false,
         clubIds: normalizedClubIds, // Normalized to always be an array or undefined
       };
+
+      console.log('Processed user object:', JSON.stringify(user, null, 2));
+      console.log('clubIds:', user.clubIds);
+      console.log('staff:', user.staff);
+      console.log('======================');
 
       set({ user, isAuthenticated: true });
     } catch (error) {

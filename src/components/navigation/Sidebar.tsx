@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import UserService from '@services/user.service';
 import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -132,11 +132,6 @@ export default function Sidebar({ role }: SidebarProps) {
       .slice(0, 2);
   };
 
-  // Only show sidebar for CLUB_LEADER, UNIVERSITY_STAFF, and STUDENT
-  if (role !== 'club_leader' && role !== 'university_staff' && role !== 'student') {
-    return null;
-  }
-  
   const shouldShowPoints = role === 'student' || role === 'club_leader';
   const pointsStyle = getPointsCardStyle(userPoints);
 
@@ -181,7 +176,7 @@ export default function Sidebar({ role }: SidebarProps) {
           label: 'Attendances'
         }
       ];
-    } else if (role === 'university_staff') {
+    } else if (role === 'uni_staff') {
       return [
         {
           name: 'clubs',
@@ -206,16 +201,45 @@ export default function Sidebar({ role }: SidebarProps) {
           icon: 'calendar',
           route: '/uni-staff/event-requests',
           label: 'Event Requests'
+        },
+        {
+          name: 'points',
+          icon: 'wallet',
+          route: '/uni-staff/points',
+          label: 'Points'
         }
       ];
     } else if (role === 'student') {
-      return [
+      const hasClub = user?.clubIds && user.clubIds.length > 0;
+      const isStaff = user?.staff === true;
+      
+      // Debug logging
+      console.log('=== SIDEBAR DEBUG ===');
+      console.log('User object:', JSON.stringify(user, null, 2));
+      console.log('clubIds:', user?.clubIds);
+      console.log('staff:', user?.staff);
+      console.log('hasClub:', hasClub);
+      console.log('isStaff:', isStaff);
+      console.log('====================');
+      
+      // Base menu items that are always shown
+      const baseItems: MenuItem[] = [
         {
           name: 'clubs',
           icon: 'business',
           route: '/student/clubs',
           label: 'Clubs'
         },
+        {
+          name: 'history',
+          icon: 'time',
+          route: '/student/history',
+          label: 'History'
+        }
+      ];
+      
+      // Items shown only if student has joined a club
+      const clubMemberItems: MenuItem[] = hasClub ? [
         {
           name: 'my-club',
           icon: 'people',
@@ -245,19 +269,40 @@ export default function Sidebar({ role }: SidebarProps) {
           icon: 'wallet',
           route: '/student/wallet',
           label: 'Wallet'
+        }
+      ] : [];
+      
+      // Items shown only if student is a staff member
+      const staffItems: MenuItem[] = isStaff ? [
+        {
+          name: 'staff-history',
+          icon: 'document-text',
+          route: '/student/staff-history',
+          label: 'Staff History'
         },
         {
-          name: 'history',
-          icon: 'time',
-          route: '/student/history',
-          label: 'History'
+          name: 'staff-gift',
+          icon: 'gift-outline',
+          route: '/student/staff-gift',
+          label: 'Staff Gift'
         }
-      ];
+      ] : [];
+      
+      console.log('Base items count:', baseItems.length);
+      console.log('Club member items count:', clubMemberItems.length);
+      console.log('Staff items count:', staffItems.length);
+      console.log('Total menu items:', [...baseItems, ...clubMemberItems, ...staffItems].length);
+      
+      return [...baseItems, ...clubMemberItems, ...staffItems];
     }
     return [];
   };
 
-  const menuItems = getMenuItems();
+  const menuItems = useMemo(() => {
+    const items = getMenuItems();
+    console.log('Menu items recalculated. Total items:', items.length);
+    return items;
+  }, [role, user?.clubIds, user?.staff]);
 
   const toggleSidebar = () => {
     if (isOpen) {
@@ -292,6 +337,13 @@ export default function Sidebar({ role }: SidebarProps) {
     toggleSidebar();
     router.replace('/login' as any);
   };
+
+  // Only show sidebar for CLUB_LEADER, UNIVERSITY_STAFF, and STUDENT
+  const shouldShowSidebar = role === 'club_leader' || role === 'uni_staff' || role === 'student';
+  
+  if (!shouldShowSidebar) {
+    return null;
+  }
 
   return (
     <>
@@ -335,7 +387,7 @@ export default function Sidebar({ role }: SidebarProps) {
               <Text className="text-teal-100 text-sm">
                 {role === 'club_leader' 
                   ? 'Club Leader Portal' 
-                  : role === 'university_staff' 
+                  : role === 'uni_staff' 
                   ? 'University Staff Portal' 
                   : 'Student Portal'}
               </Text>

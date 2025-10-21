@@ -3,12 +3,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -18,10 +17,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 // ✅ React Query Hooks
-import { useDeleteUser, useUpdateUser, useUsers } from '@hooks/useQueryHooks';
-import { UserProfile } from '@services/user.service';
+import { useUsers, useUpdateUser, useDeleteUser } from '@hooks/useQueryHooks';
+import { UserService, UserProfile } from '@services/user.service';
 
 export default function AdminUsersPage() {
   const { user, logout } = useAuthStore();
@@ -29,6 +29,7 @@ export default function AdminUsersPage() {
 
   // ✅ Use React Query for users data
   const { data: usersData = [], isLoading, refetch, isRefetching } = useUsers();
+  
   // ✅ Use mutations for update and delete
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
@@ -36,7 +37,7 @@ export default function AdminUsersPage() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('ACTIVE'); // Default to ACTIVE
+  const [statusFilter, setStatusFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
   const [majorFilter, setMajorFilter] = useState('all');
 
@@ -61,9 +62,45 @@ export default function AdminUsersPage() {
     ]);
   };
 
-  // Memoized filtered users
-  const filteredUsers = useMemo(() => {
-    let filtered = usersData;
+  const fetchUsers = async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setIsLoading(true);
+      const data = await UserService.fetchUsers();
+
+      // Sort by role, then major, then name
+      const sorted = data.sort((a, b) => {
+        const roleA = a.role.roleName.toUpperCase();
+        const roleB = b.role.roleName.toUpperCase();
+        if (roleA < roleB) return -1;
+        if (roleA > roleB) return 1;
+
+        const majorA = (a.majorName || '').toUpperCase();
+        const majorB = (b.majorName || '').toUpperCase();
+        if (majorA < majorB) return -1;
+        if (majorA > majorB) return 1;
+
+        return a.fullName.localeCompare(b.fullName);
+      });
+
+      setUsers(sorted);
+      setFilteredUsers(sorted);
+    } catch (error: any) {
+      console.error('Failed to fetch users:', error);
+      Alert.alert('Error', 'Failed to load users. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Apply filters
+  useEffect(() => {
+    let filtered = users;
+
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -71,27 +108,32 @@ export default function AdminUsersPage() {
         (u) =>
           u.fullName.toLowerCase().includes(query) ||
           u.email.toLowerCase().includes(query) ||
-          (u.role?.roleName?.toLowerCase() || '').includes(query) ||
+          u.role.roleName.toLowerCase().includes(query) ||
           (u.studentCode || '').toLowerCase().includes(query)
       );
     }
+
     // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter((u) => u.status === statusFilter);
     }
+
     // Role filter
     if (roleFilter !== 'all') {
-      filtered = filtered.filter((u) => (u.role?.roleName?.toUpperCase() || '') === roleFilter);
+      filtered = filtered.filter((u) => u.role.roleName.toUpperCase() === roleFilter);
     }
+
     // Major filter
     if (majorFilter !== 'all') {
       filtered = filtered.filter((u) => u.majorName === majorFilter);
     }
-    return filtered;
-  }, [usersData, searchQuery, statusFilter, roleFilter, majorFilter]);
+
+    setFilteredUsers(filtered);
+  }, [searchQuery, users, statusFilter, roleFilter, majorFilter]);
 
   const handleRefresh = () => {
-    refetch();
+    setIsRefreshing(true);
+    fetchUsers(true);
   };
 
   const clearFilters = () => {
@@ -120,40 +162,40 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleEditUser = (userItem: UserProfile) => {
-    setEditingUser(userItem);
-    setEditFullName(userItem.fullName);
-    setEditEmail(userItem.email);
-    setEditPhone(userItem.phone || '');
-    setIsEditModalOpen(true);
+  const handleEditUser = async (userItem: UserProfile) => {
+    try {
+      const details = await UserService.fetchUserById(userItem.userId);
+      setEditingUser(details);
+      setEditFullName(details.fullName);
+      setEditEmail(details.email);
+      setEditPhone(details.phone || '');
+      setIsEditModalOpen(true);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load user details');
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!editingUser) return;
-    updateUserMutation.mutate(
-      {
-        userId: editingUser.userId,
-        data: {
-          fullName: editFullName,
-          email: editEmail,
-          phone: editPhone || null,
-        },
-      },
-      {
-        onSuccess: () => {
-          Alert.alert('Success', 'User updated successfully');
-          setIsEditModalOpen(false);
-          setEditingUser(null);
-          refetch();
-        },
-        onError: (error: any) => {
-          Alert.alert('Error', error?.response?.data?.message || 'Failed to update user');
-        },
-      }
-    );
+
+    try {
+      const payload = {
+        fullName: editFullName,
+        email: editEmail,
+        phone: editPhone || null,
+      };
+
+      await UserService.updateUserById(editingUser.userId, payload);
+      Alert.alert('Success', 'User updated successfully');
+      setIsEditModalOpen(false);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to update user');
+    }
   };
 
-  const handleDeleteUser = (userItem: UserProfile) => {
+  const handleDeleteUser = async (userItem: UserProfile) => {
     Alert.alert(
       'Delete User',
       `Are you sure you want to delete ${userItem.fullName}?`,
@@ -162,19 +204,14 @@ export default function AdminUsersPage() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            deleteUserMutation.mutate(
-              userItem.userId,
-              {
-                onSuccess: () => {
-                  Alert.alert('Success', 'User deleted successfully');
-                  refetch();
-                },
-                onError: (error: any) => {
-                  Alert.alert('Error', error?.response?.data?.message || 'Failed to delete user');
-                },
-              }
-            );
+          onPress: async () => {
+            try {
+              await UserService.deleteUserById(userItem.userId);
+              Alert.alert('Success', 'User deleted successfully');
+              fetchUsers();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.message || 'Failed to delete user');
+            }
           },
         },
       ]
@@ -182,30 +219,31 @@ export default function AdminUsersPage() {
   };
 
   // Get unique roles and majors for filters
-  const uniqueRoles = useMemo(() => Array.from(new Set(usersData.map((u) => (u.role?.roleName?.toUpperCase() || ''))).values()).filter(Boolean).sort(), [usersData]);
-  const uniqueMajors = useMemo(() => Array.from(new Set(usersData.map((u) => u.majorName).filter(Boolean))).sort(), [usersData]);
+  const uniqueRoles = Array.from(new Set(users.map((u) => u.role.roleName.toUpperCase()))).sort();
+  const uniqueMajors = Array.from(new Set(users.map((u) => u.majorName).filter(Boolean))).sort();
 
   // Statistics
   const totalUsers = filteredUsers.length;
-  const activeStudents = filteredUsers.filter((u) => (u.role?.roleName?.toUpperCase() === 'STUDENT' || u.role?.roleName?.toUpperCase() === 'MEMBER')).length;
-  const clubLeaders = filteredUsers.filter((u) => u.role?.roleName?.toUpperCase() === 'CLUB_LEADER').length;
+  const activeStudents = filteredUsers.filter((u) => u.role.roleName.toUpperCase() === 'STUDENT' || u.role.roleName.toUpperCase() === 'MEMBER').length;
+  const clubLeaders = filteredUsers.filter((u) => u.role.roleName.toUpperCase() === 'CLUB_LEADER').length;
 
   const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || roleFilter !== 'all' || majorFilter !== 'all';
   const filterCount = [searchQuery.trim() !== '', statusFilter !== 'all', roleFilter !== 'all', majorFilter !== 'all'].filter(Boolean).length;
 
   const renderUserItem = ({ item }: { item: UserProfile }) => {
-    const roleColors = getRoleBadgeColor(item.role?.roleName || '');
-
+    const roleColors = getRoleBadgeColor(item.role.roleName);
+    
     return (
       <TouchableOpacity
         className="bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-100"
         onPress={() => {
           Alert.alert(
             item.fullName,
-            `Email: ${item.email}\nRole: ${(item.role?.roleName || '')}\nStatus: ${item.status}` +
-              (item.phone ? `\nPhone: ${item.phone}` : '') +
-              (item.studentCode ? `\nStudent Code: ${item.studentCode}` : '') +
-              (item.majorName ? `\nMajor: ${item.majorName}` : ''),
+            `Email: ${item.email}\nRole: ${item.role.roleName}\nStatus: ${item.status}${
+              item.phone ? `\nPhone: ${item.phone}` : ''
+            }${item.studentCode ? `\nStudent Code: ${item.studentCode}` : ''}${
+              item.majorName ? `\nMajor: ${item.majorName}` : ''
+            }`,
             [
               { text: 'Close', style: 'cancel' },
               { text: 'Edit', onPress: () => handleEditUser(item) },
@@ -215,29 +253,36 @@ export default function AdminUsersPage() {
       >
         <View className="flex-row items-start">
           {/* Avatar */}
-          <View className="bg-teal-100 w-12 h-12 rounded-full items-center justify-center mr-3 overflow-hidden">
+          <View className="bg-teal-100 w-12 h-12 rounded-full items-center justify-center mr-3">
             {item.avatarUrl ? (
-              <Image
-                source={{ uri: item.avatarUrl }}
-                style={{ width: 48, height: 48, borderRadius: 24 }}
-                resizeMode="cover"
-              />
+              <Text className="text-lg font-bold text-teal-700">
+                {item.fullName.charAt(0).toUpperCase()}
+              </Text>
             ) : (
               <Ionicons name="person" size={24} color="#0D9488" />
             )}
           </View>
+
           {/* User Info */}
           <View className="flex-1">
             <Text className="text-base font-bold text-gray-800">{item.fullName}</Text>
             <Text className="text-sm text-gray-600 mb-1">{item.email}</Text>
+            
             {/* Badges Row */}
             <View className="flex-row items-center flex-wrap gap-2 mb-2">
               <View className={`px-2 py-1 rounded-full border ${roleColors.bg} ${roleColors.border}`}>
                 <Text className={`text-xs font-medium ${roleColors.text}`}>
-                  {item.role?.roleName || ''}
+                  {item.role.roleName}
                 </Text>
               </View>
+              
+              {item.status === 'ACTIVE' && (
+                <View className="px-2 py-1 rounded-full border bg-green-100 border-green-300">
+                  <Text className="text-xs font-medium text-green-700">ACTIVE</Text>
+                </View>
+              )}
             </View>
+
             {/* Additional Info */}
             {(item.studentCode || item.majorName) && (
               <View className="flex-row items-center gap-2 flex-wrap">
@@ -250,6 +295,7 @@ export default function AdminUsersPage() {
               </View>
             )}
           </View>
+
           {/* Actions */}
           <View className="flex-row gap-1">
             <TouchableOpacity
@@ -258,6 +304,7 @@ export default function AdminUsersPage() {
             >
               <Ionicons name="create-outline" size={18} color="#3B82F6" />
             </TouchableOpacity>
+            
             <TouchableOpacity
               onPress={() => handleDeleteUser(item)}
               className="bg-red-50 p-2 rounded-lg"
@@ -373,12 +420,12 @@ export default function AdminUsersPage() {
         {showFilters && (
           <View className="mt-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
             <Text className="text-sm font-semibold text-gray-700 mb-3">Filter Options</Text>
-
+            
             {/* Status Filter */}
             <View className="mb-3">
               <Text className="text-xs text-gray-600 mb-2">Status</Text>
               <View className="flex-row gap-2">
-                {['ACTIVE', 'INACTIVE', 'all'].map((status) => (
+                {['all', 'ACTIVE', 'INACTIVE'].map((status) => (
                   <TouchableOpacity
                     key={status}
                     onPress={() => setStatusFilter(status)}
@@ -494,7 +541,7 @@ export default function AdminUsersPage() {
       </View>
 
       {/* Users List */}
-      {isLoading || isRefetching ? (
+      {isLoading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#0D9488" />
           <Text className="text-gray-600 mt-4">Loading users...</Text>
@@ -525,7 +572,7 @@ export default function AdminUsersPage() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 }}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
+              refreshing={isRefreshing}
               onRefresh={handleRefresh}
               colors={['#0D9488']}
               tintColor="#0D9488"

@@ -27,14 +27,15 @@ interface UiClubRequest {
   id: string;
   applicationId?: number;
   clubName: string;
-  category: string | null;
+  majorName: string | null;
   description: string;
-  requestedBy: string;
-  requestedByEmail: string;
+  vision: string | null;
+  proposerReason: string | null;
+  requestedBy: string | null;
   requestDate: string | null;
   status: string;
   rejectReason?: string | null;
-  reviewedBy?: string;
+  reviewedBy?: string | null;
   reviewedAt?: string | null;
 }
 
@@ -50,31 +51,47 @@ export default function UniStaffClubRequestsPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [newClubName, setNewClubName] = useState<string>("");
   const [newDescription, setNewDescription] = useState<string>("");
-  const [newCategory, setNewCategory] = useState<string>("");
+  const [newVision, setNewVision] = useState<string>("");
   const [newProposerReason, setNewProposerReason] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("pending");
 
   const fetchData = async () => {
     try {
       const data: ClubApplication[] = await getClubApplications();
-      const mapped: UiClubRequest[] = data.map((d) => ({
-        id: `req-${d.applicationId}`,
-        applicationId: d.applicationId,
-        clubName: d.clubName,
-        category: d.category,
-        description: d.description,
-        requestedBy: d.submittedBy?.fullName ?? "Unknown",
-        requestedByEmail: d.submittedBy?.email ?? "",
-        requestDate: d.submittedAt,
-        status: d.status,
-        rejectReason: d.rejectReason,
-        reviewedBy: d.reviewedBy?.fullName,
-        reviewedAt: d.reviewedAt,
-      }));
+      console.log('📋 Fetched club applications:', JSON.stringify(data, null, 2));
+      
+      const mapped: UiClubRequest[] = data.map((d: any) => {
+        // Handle both old format (nested objects) and new format (simple strings)
+        const proposer = typeof d.proposer === 'string' 
+          ? d.proposer 
+          : d.proposer?.fullName || d.submittedBy?.fullName || null;
+          
+        const reviewer = typeof d.reviewedBy === 'string'
+          ? d.reviewedBy
+          : d.reviewedBy?.fullName || null;
+        
+        return {
+          id: `req-${d.applicationId}`,
+          applicationId: d.applicationId,
+          clubName: d.clubName,
+          majorName: d.majorName || d.category || null,
+          description: d.description,
+          vision: d.vision,
+          proposerReason: d.proposerReason,
+          requestedBy: proposer,
+          requestDate: d.submittedAt,
+          status: d.status,
+          rejectReason: d.rejectReason,
+          reviewedBy: reviewer,
+          reviewedAt: d.reviewedAt,
+        };
+      });
+      
+      console.log('📋 Mapped UI requests:', JSON.stringify(mapped, null, 2));
       setRequests(mapped);
       setError(null);
     } catch (err) {
-      console.error(err);
+      console.error('❌ Error in fetchData:', err);
       setError("Failed to load club applications");
     }
   };
@@ -97,8 +114,8 @@ export default function UniStaffClubRequestsPage() {
   };
 
   async function handleSendNewApplication() {
-    if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
-      Alert.alert('Missing Information', 'Please fill in all fields.');
+    if (!newClubName.trim() || !newDescription.trim() || !newProposerReason.trim()) {
+      Alert.alert('Missing Information', 'Please fill in all required fields.');
       return;
     }
     
@@ -108,7 +125,7 @@ export default function UniStaffClubRequestsPage() {
       const created = await postClubApplication({ 
         clubName: newClubName, 
         description: newDescription,
-        category: newCategory,
+        vision: newVision || undefined,
         proposerReason: newProposerReason,
       });
       Alert.alert('Success', `${created.clubName} application submitted`);
@@ -118,10 +135,10 @@ export default function UniStaffClubRequestsPage() {
       setIsModalOpen(false);
       setNewClubName("");
       setNewDescription("");
-      setNewCategory("");
+      setNewVision("");
       setNewProposerReason("");
     } catch (err) {
-      console.error(err);
+      console.error('❌ Error creating application:', err);
       setError('Failed to create application');
       Alert.alert('Error', 'Failed to send application');
     } finally {
@@ -181,10 +198,10 @@ export default function UniStaffClubRequestsPage() {
     return requests.filter((req) => {
       const matchSearch =
         req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (req.category?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+        (req.requestedBy?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (req.majorName?.toLowerCase() || "").includes(searchTerm.toLowerCase());
 
-      const matchCategory = categoryFilter === "all" ? true : req.category === categoryFilter;
+      const matchCategory = categoryFilter === "all" ? true : req.majorName === categoryFilter;
 
       let matchStatus = false;
       if (tabType === "pending") {
@@ -245,15 +262,35 @@ export default function UniStaffClubRequestsPage() {
             {getStatusBadge(request.status)}
           </View>
           
-          {request.category && (
+          {request.majorName && (
             <View className="bg-indigo-100 px-3 py-1 rounded-full self-start mb-2">
-              <Text className="text-indigo-700 text-xs font-medium">{request.category}</Text>
+              <Text className="text-indigo-700 text-xs font-medium">
+                Major: {request.majorName}
+              </Text>
             </View>
           )}
           
-          <Text className="text-gray-600 mb-3" numberOfLines={2}>
+          <Text className="text-gray-600 mb-2" numberOfLines={2}>
             {request.description}
           </Text>
+          
+          {request.vision && (
+            <View className="bg-blue-50 p-2 rounded-lg mb-2">
+              <Text className="text-xs text-blue-700 font-medium mb-1">Vision:</Text>
+              <Text className="text-sm text-blue-600" numberOfLines={2}>
+                {request.vision}
+              </Text>
+            </View>
+          )}
+          
+          {request.proposerReason && (
+            <View className="bg-amber-50 p-2 rounded-lg mb-2">
+              <Text className="text-xs text-amber-700 font-medium mb-1">Proposer Reason:</Text>
+              <Text className="text-sm text-amber-600" numberOfLines={2}>
+                {request.proposerReason}
+              </Text>
+            </View>
+          )}
           
           <View className="space-y-2">
             {request.requestDate && (
@@ -265,18 +302,20 @@ export default function UniStaffClubRequestsPage() {
               </View>
             )}
             
-            <View className="flex-row items-center">
-              <Ionicons name="person" size={16} color="#6B7280" />
-              <Text className="ml-2 text-sm text-gray-500">
-                by {request.requestedBy}
-              </Text>
-            </View>
+            {request.requestedBy && (
+              <View className="flex-row items-center">
+                <Ionicons name="person" size={16} color="#6B7280" />
+                <Text className="ml-2 text-sm text-gray-500">
+                  by {String(request.requestedBy)}
+                </Text>
+              </View>
+            )}
 
             {request.reviewedBy && request.reviewedAt && (
               <View className="flex-row items-center">
                 <Ionicons name="checkmark-done" size={16} color="#6B7280" />
                 <Text className="ml-2 text-sm text-gray-500">
-                  Reviewed by {request.reviewedBy} on {new Date(request.reviewedAt).toLocaleDateString()}
+                  Reviewed by {String(request.reviewedBy)} on {new Date(request.reviewedAt).toLocaleDateString()}
                 </Text>
               </View>
             )}
@@ -491,12 +530,15 @@ export default function UniStaffClubRequestsPage() {
               </View>
               
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">Category</Text>
+                <Text className="text-sm font-medium text-gray-700 mb-2">Vision (Optional)</Text>
                 <TextInput
-                  value={newCategory}
-                  onChangeText={setNewCategory}
-                  placeholder="e.g., Technology, Sports, Arts"
+                  value={newVision}
+                  onChangeText={setNewVision}
+                  placeholder="Vision for the club"
+                  multiline
+                  numberOfLines={2}
                   className="border border-gray-300 rounded-xl px-4 py-3 text-gray-700"
+                  style={{ textAlignVertical: 'top' }}
                 />
               </View>
               
