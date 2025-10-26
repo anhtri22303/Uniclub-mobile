@@ -3,6 +3,7 @@ import { getRoleRoute } from '@utils/roleRouting';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import PasswordChangeBanner from './PasswordChangeBanner';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -47,5 +48,15 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   }
 
   // Always render children to allow navigation to login screen
-  return <>{children}</>;
+  // Add PasswordChangeBanner as fixed overlay at top for all authenticated pages
+  return (
+    <View style={{ flex: 1 }}>
+      {children}
+      {isAuthenticated && pathname !== '/login' && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999 }}>
+          <PasswordChangeBanner />
+        </View>
+      )}
+    </View>
+  );
 }

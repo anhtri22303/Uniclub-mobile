@@ -13,12 +13,14 @@ interface AuthState {
   } | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  needsPasswordChange: boolean;
 }
 
 interface AuthActions {
   setUser: (user: AuthState['user']) => void;
   setLoading: (loading: boolean) => void;
-  login: (loginResponse: LoginResponse) => Promise<void>;
+  setNeedsPasswordChange: (needsPasswordChange: boolean) => void;
+  login: (loginResponse: LoginResponse, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -30,13 +32,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  needsPasswordChange: false,
 
   // Actions
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   
   setLoading: (isLoading) => set({ isLoading }),
 
-  login: async (loginResponse: LoginResponse) => {
+  setNeedsPasswordChange: (needsPasswordChange) => set({ needsPasswordChange }),
+
+  login: async (loginResponse: LoginResponse, password?: string) => {
     try {
       console.log('=== LOGIN RESPONSE ===');
       console.log('Raw login response:', JSON.stringify(loginResponse, null, 2));
@@ -91,7 +96,21 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       console.log('staff:', user.staff);
       console.log('======================');
 
-      set({ user, isAuthenticated: true });
+      // Check if password is "123" and role is club_leader
+      const needsChange = password === '123' && normalizedRole === 'club_leader';
+      if (needsChange) {
+        await SecureStore.setItemAsync('needsPasswordChange', 'true');
+        console.log('⚠️ Password change required for club leader with password "123"');
+      } else {
+        // Clear the flag if it was set before
+        try {
+          await SecureStore.deleteItemAsync('needsPasswordChange');
+        } catch (e) {
+          // Ignore if key doesn't exist
+        }
+      }
+
+      set({ user, isAuthenticated: true, needsPasswordChange: needsChange });
     } catch (error) {
       console.error('Error during login:', error);
       throw error;
@@ -103,8 +122,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       // Clear secure storage
       await SecureStore.deleteItemAsync('token');
       await SecureStore.deleteItemAsync('user');
+      await SecureStore.deleteItemAsync('needsPasswordChange');
       
-      set({ user: null, isAuthenticated: false });
+      set({ user: null, isAuthenticated: false, needsPasswordChange: false });
     } catch (error) {
       console.error('Error during logout:', error);
     }
@@ -117,6 +137,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       // Check if user is already logged in
       const token = await SecureStore.getItemAsync('token');
       const userData = await SecureStore.getItemAsync('user');
+      const needsPasswordChangeFlag = await SecureStore.getItemAsync('needsPasswordChange');
 
       if (token && userData) {
         try {
@@ -160,12 +181,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             clubIds: normalizedClubIds, // Normalized to always be an array or undefined
           };
 
-          set({ user: normalizedUser, isAuthenticated: true });
+          set({ 
+            user: normalizedUser, 
+            isAuthenticated: true,
+            needsPasswordChange: needsPasswordChangeFlag === 'true'
+          });
         } catch (parseError) {
           console.error('Error parsing stored user data:', parseError);
           // Clear invalid data
           await SecureStore.deleteItemAsync('token');
           await SecureStore.deleteItemAsync('user');
+          await SecureStore.deleteItemAsync('needsPasswordChange');
         }
       }
     } catch (error) {

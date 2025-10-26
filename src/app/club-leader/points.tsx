@@ -3,20 +3,19 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubApiResponse, ClubService } from '@services/club.service';
 import { ApiMembership, MembershipsService } from '@services/memberships.service';
-import { UserService } from '@services/user.service';
 import WalletService from '@services/wallet.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -106,38 +105,23 @@ export default function ClubLeaderPointsPage() {
         setWalletLoading(false);
       }
 
-      // Load members using getMembersByClubId (like web version)
+      // Load members using getMembersByClubId
       const members = await MembershipsService.getMembersByClubId(clubId);
       console.log('=== POINTS PAGE: Loaded members ===');
       console.log('Total members:', members.length);
       
-      // Load user details for each member (like web version)
-      const membersWithUserData = await Promise.all(
-        members.map(async (m: ApiMembership) => {
-          try {
-            const userInfo = await UserService.fetchUserById(m.userId);
-            return { ...m, userInfo };
-          } catch {
-            return { ...m, userInfo: null };
-          }
-        })
-      );
-      
       // Transform to ClubMember format and filter active members only
-      const transformedMembers: ClubMember[] = membersWithUserData
-        .filter((m: any) => m.state === 'ACTIVE')
-        .map((m: any) => {
-          const u = m.userInfo || {};
-          return {
-            id: String(m.membershipId),
-            userId: m.userId,
-            fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
-            studentCode: m.studentCode ?? '—',
-            avatarUrl: m.avatarUrl || null,
-            role: m.clubRole ?? 'MEMBER',
-            isStaff: m.staff ?? false,
-          };
-        });
+      const transformedMembers: ClubMember[] = members
+        .filter((m: ApiMembership) => m.state === 'ACTIVE')
+        .map((m: ApiMembership) => ({
+          id: String(m.membershipId),
+          userId: m.userId,
+          fullName: m.fullName ?? `User ${m.userId}`,
+          studentCode: m.studentCode ?? '—',
+          avatarUrl: m.avatarUrl || null,
+          role: m.clubRole ?? 'MEMBER',
+          isStaff: m.staff ?? false,
+        }));
       
       setClubMembers(transformedMembers);
       
@@ -432,31 +416,23 @@ export default function ClubLeaderPointsPage() {
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
         {/* Club Wallet Balance Card */}
-        <View className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl p-6 shadow-lg mt-6 mb-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="w-14 h-14 rounded-full bg-white/20 items-center justify-center mr-4">
-                <Ionicons name="wallet" size={28} color="white" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-white/80 mb-1">Club Balance</Text>
-                {walletLoading ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : clubWallet ? (
-                  <Text className="text-3xl font-bold text-white">
-                    {clubWallet.balancePoints.toLocaleString()} pts
-                  </Text>
-                ) : (
-                  <Text className="text-3xl font-bold text-white/60">N/A</Text>
-                )}
-              </View>
+        <View className="bg-blue-600 rounded-3xl p-6 shadow-xl mt-6 mb-4 border-2 border-blue-700">
+          <View className="flex-row items-center">
+            <View className="w-14 h-14 rounded-full bg-blue-500 items-center justify-center mr-4 border-2 border-white/30">
+              <Ionicons name="wallet" size={28} color="white" />
             </View>
-            {clubWallet && (
-              <View className="items-end">
-                <Text className="text-xs text-white/60">Wallet ID</Text>
-                <Text className="text-sm font-medium text-white">#{clubWallet.walletId}</Text>
-              </View>
-            )}
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-white/90 mb-1">Club Balance</Text>
+              {walletLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : clubWallet ? (
+                <Text className="text-3xl font-bold text-white">
+                  {clubWallet.balancePoints.toLocaleString()} pts
+                </Text>
+              ) : (
+                <Text className="text-3xl font-bold text-white/70">N/A</Text>
+              )}
+            </View>
           </View>
         </View>
 

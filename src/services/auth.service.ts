@@ -1,12 +1,14 @@
-import { axiosPublic } from '@configs/axios';
+import { axiosPrivate, axiosPublic } from '@configs/axios';
 import {
-  ForgotPasswordRequest,
-  ForgotPasswordResponse,
-  GoogleLoginRequest,
-  LoginCredentials,
-  LoginResponse,
-  SignUpCredentials,
-  SignUpResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    GoogleLoginRequest,
+    LoginCredentials,
+    LoginResponse,
+    SignUpCredentials,
+    SignUpResponse,
 } from '@models/auth/auth.types';
 
 export class AuthService {
@@ -141,6 +143,51 @@ export class AuthService {
   }
 
   /**
+   * Change password - USE axiosPrivate (requires JWT token)
+   */
+  static async changePassword(
+    oldPassword: string,
+    newPassword: string
+  ): Promise<ChangePasswordResponse> {
+    try {
+      const request: ChangePasswordRequest = {
+        oldPassword,
+        newPassword
+      };
+      const response = await axiosPrivate.post<ChangePasswordResponse>('/auth/change-password', request);
+      console.log('Change password response:', response.data);
+      
+      // Handle both wrapped and direct response formats
+      if (response.data && typeof response.data === 'object') {
+        // If response is wrapped in standard format { success, message, data }
+        if ('success' in response.data && 'message' in response.data) {
+          return response.data as ChangePasswordResponse;
+        }
+        // If response is direct message string or other format
+        return {
+          success: true,
+          message: (response.data as any).message || 'Password changed successfully. Please re-login.',
+          data: null
+        };
+      }
+      
+      // Fallback for unexpected response format
+      return {
+        success: true,
+        message: 'Password changed successfully. Please re-login.',
+        data: null
+      };
+    } catch (error: any) {
+      console.error('Change password error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Logout user
    */
   static async logout(): Promise<void> {
@@ -148,6 +195,7 @@ export class AuthService {
     const { deleteItemAsync } = await import('expo-secure-store');
     await deleteItemAsync('token');
     await deleteItemAsync('user');
+    await deleteItemAsync('needsPasswordChange');
   }
 }
 

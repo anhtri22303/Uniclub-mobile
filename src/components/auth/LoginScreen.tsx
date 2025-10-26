@@ -8,14 +8,14 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -80,7 +80,7 @@ export default function LoginScreen() {
       console.log('Attempting login with API URL:', ENV.API_URL);
       const normalizedEmail = email.trim().toLowerCase();
       const loginResponse = await AuthService.login({ email: normalizedEmail, password });
-      await login(loginResponse);
+      await login(loginResponse, password); // Pass password to detect "123"
       
       // Get the normalized role from the auth store and redirect accordingly
       const { user: authUser } = useAuthStore.getState();

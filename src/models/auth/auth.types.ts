@@ -48,3 +48,14 @@ export interface ForgotPasswordResponse {
 export interface GoogleLoginRequest {
   token: string;
 }
+
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+  data: null;
+}

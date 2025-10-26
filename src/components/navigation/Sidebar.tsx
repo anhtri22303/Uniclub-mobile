@@ -351,7 +351,7 @@ export default function Sidebar({ role }: SidebarProps) {
       <TouchableOpacity
         onPress={toggleSidebar}
         className="absolute top-4 left-4 z-50 bg-teal-600 p-3 rounded-full shadow-lg"
-        style={{ elevation: 5, opacity: 0.3 }}
+        style={{ elevation: 5, opacity: 0.7 }}
       >
         <Ionicons name="menu" size={24} color="white" />
       </TouchableOpacity>
