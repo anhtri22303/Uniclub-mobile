@@ -25,6 +25,16 @@ export interface RewardPointsRequest {
   reason?: string;
 }
 
+export interface ClubWallet {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string;
+  clubId: number;
+  clubName: string;
+  userId: number | null;
+  userFullName: string | null;
+}
+
 export class WalletService {
   /**
    * Get current user's wallet
@@ -102,6 +112,49 @@ export class WalletService {
         success: false,
         message: error.response?.data?.message || 'Failed to distribute points',
       };
+    }
+  }
+
+  /**
+   * Top up points to a specific club wallet
+   */
+  static async topupClubWallet(
+    clubId: string | number,
+    points: number,
+    reason?: string
+  ): Promise<ClubWallet> {
+    try {
+      const response = await axiosClient.post<ClubWallet>(
+        `/api/wallets/club/${clubId}/topup`,
+        null,
+        {
+          params: {
+            points,
+            reason,
+          },
+        }
+      );
+      console.log('topupClubWallet:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to topup club wallet for clubId ${clubId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get club wallet information
+   */
+  static async getClubWallet(clubId: string | number): Promise<ClubWallet> {
+    try {
+      const response = await axiosClient.get<ClubWallet>(
+        `/api/wallets/club/${clubId}`
+      );
+      console.log('getClubWallet:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to get club wallet for clubId ${clubId}:`, error);
+      throw error;
     }
   }
 

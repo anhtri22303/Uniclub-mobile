@@ -2,21 +2,51 @@ import { axiosClient } from '@configs/axios';
 
 export interface Event {
   id: number;
-  clubId: number;
   name: string;
   description: string;
-  type: string;
-  category?: string;
+  type: "PUBLIC" | "PRIVATE" | string;
   date: string;
+  startTime: string;
+  endTime: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | string;
+  checkInCode: string;
+  locationName: string;
+  maxCheckInCount: number;
+  currentCheckInCount: number;
+  hostClub: {
+    id: number;
+    name: string;
+  };
+  coHostClubs?: Array<{
+    id: number;
+    name: string;
+  }>;
+  points?: number;
+  // Legacy fields for backward compatibility
+  clubId?: number;
+  clubName?: string;
   time?: string;
-  locationId: number;
-  status: string;
+  locationId?: number;
+  category?: string;
   expectedAttendees?: number;
   venue?: string;
   eventDate?: string;
   eventName?: string;
   eventType?: string;
   requestedBy?: string;
+}
+
+export interface CreateEventPayload {
+  hostClubId: number;
+  name: string;
+  description: string;
+  type: "PUBLIC" | "PRIVATE";
+  date: string;
+  startTime: string;
+  endTime: string;
+  locationId: number;
+  maxCheckInCount: number;
+  coHostClubIds?: number[];
 }
 
 export interface Location {
@@ -53,10 +83,14 @@ export const fetchEvent = async (): Promise<Event[]> => {
 /**
  * Create a new event.
  */
-export const createEvent = async (payload: any): Promise<Event> => {
+export const createEvent = async (payload: CreateEventPayload): Promise<Event> => {
   try {
     const response = await axiosClient.post("api/events", payload);
-    return response.data;
+    const data: any = response.data;
+    console.log("Create event response:", data);
+    // Response structure: { success: true, message: "success", data: {...event} }
+    if (data?.data) return data.data;
+    return data;
   } catch (error) {
     console.error("Error creating event:", error);
     throw error;
@@ -165,6 +199,36 @@ export const fetchClub = async (): Promise<Club[]> => {
   }
 };
 
+/**
+ * Update an existing event.
+ */
+export const updateEvent = async (id: string | number, payload: Partial<CreateEventPayload>): Promise<Event> => {
+  try {
+    const response = await axiosClient.put(`api/events/${id}`, payload);
+    const data: any = response.data;
+    console.log(`Updated event ${id}:`, data);
+    // Response structure: { success: true, message: "success", data: {...event} }
+    if (data?.data) return data.data;
+    return data;
+  } catch (error) {
+    console.error(`Error updating event ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Delete an event.
+ */
+export const deleteEvent = async (id: string | number): Promise<void> => {
+  try {
+    await axiosClient.delete(`api/events/${id}`);
+    console.log(`Deleted event ${id}`);
+  } catch (error) {
+    console.error(`Error deleting event ${id}:`, error);
+    throw error;
+  }
+};
+
 export default {
   fetchEvent,
   createEvent,
@@ -173,5 +237,7 @@ export default {
   getEventByCode,
   getEventByClubId,
   fetchLocation,
-  fetchClub
+  fetchClub,
+  updateEvent,
+  deleteEvent
 };

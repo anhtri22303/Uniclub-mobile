@@ -19,16 +19,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CheckInEvent {
   id: number;
-  clubId: number;
+  clubId?: number;
   name: string;
   description: string;
   type: string;
   date: string;
   time?: string;
-  locationId: number;
+  startTime?: string;
+  endTime?: string;
+  locationId?: number;
   status: string;
   venue?: string;
   checkInCode?: string;
+  hostClub?: {
+    id: number;
+    name: string;
+  };
 }
 
 export default function StudentCheckInPage() {
@@ -78,11 +84,19 @@ export default function StudentCheckInPage() {
       const filtered = allEvents.filter((event: any) => {
         const eventDate = new Date(event.date).toISOString().split('T')[0];
         const isToday = eventDate === today;
-        const isUserClub = userClubIds.length === 0 || userClubIds.includes(Number(event.clubId));
+        const eventClubId = event.hostClub?.id || event.clubId;
+        const isUserClub = userClubIds.length === 0 || userClubIds.includes(Number(eventClubId));
         return isToday && isUserClub;
       });
 
-      setTodayEvents(filtered);
+      // Normalize events
+      const normalized = filtered.map((e: any) => ({
+        ...e,
+        clubId: e.hostClub?.id || e.clubId,
+        time: e.startTime || e.time,
+      }));
+
+      setTodayEvents(normalized);
     } catch (error) {
       console.error('Failed to load today events:', error);
     } finally {

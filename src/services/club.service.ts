@@ -157,14 +157,26 @@ export class ClubService {
   }
 
   /**
-   * Get club by ID with full response structure
+   * Get club by ID with full response structure (with success wrapper)
    */
   static async getClubByIdFull(clubId: number): Promise<{ success: boolean; message: string; data: ClubApiResponse }> {
     try {
-      const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApiResponse }>(
-        `/api/clubs/${clubId}`
-      );
-      return response.data;
+      const response = await axiosClient.get(`/api/clubs/${clubId}`);
+      const body: any = response.data;
+      
+      console.log('getClubByIdFull response:', body);
+      
+      // If backend returns wrapped response { success, message, data }
+      if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
+        return body as { success: boolean; message: string; data: ClubApiResponse };
+      }
+      
+      // If backend returns club data directly, wrap it
+      return {
+        success: true,
+        message: 'Club fetched successfully',
+        data: body as ClubApiResponse,
+      };
     } catch (error: any) {
       console.error(`Error fetching club ID ${clubId}:`, error);
       return {
@@ -178,18 +190,21 @@ export class ClubService {
   /**
    * Get club member count
    */
-  static async getClubMemberCount(clubId: number): Promise<number> {
+  static async getClubMemberCount(clubId: number): Promise<{ activeMemberCount: number; approvedEvents: number }> {
     try {
       const response = await axiosClient.get<{
         success: boolean;
         message: string;
-        data: { clubId: number; activeMemberCount: number };
+        data: { clubId: number; activeMemberCount: number; approvedEvents: number };
       }>(`/api/clubs/${clubId}/member-count`);
       
-      return response.data?.data?.activeMemberCount ?? 0;
+      return {
+        activeMemberCount: response.data?.data?.activeMemberCount ?? 0,
+        approvedEvents: response.data?.data?.approvedEvents ?? 0,
+      };
     } catch (error) {
       console.error(`Error fetching member count for club ${clubId}:`, error);
-      return 0;
+      return { activeMemberCount: 0, approvedEvents: 0 };
     }
   }
 

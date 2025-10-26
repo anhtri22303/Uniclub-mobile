@@ -36,7 +36,7 @@ export default function UniStaffPointsPage() {
   // State management
   const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedClubs, setSelectedClubs] = useState<Record<number, boolean>>({});
+  const [selectedClubId, setSelectedClubId] = useState<number | null>(null);
   const [rewardAmount, setRewardAmount] = useState('');
   const [isDistributing, setIsDistributing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,13 +56,6 @@ export default function UniStaffPointsPage() {
       console.log('First club sample:', clubs[0]);
       console.log('================================');
       setAllClubs(clubs);
-      
-      // Initialize selection state
-      const initialSelected: Record<number, boolean> = {};
-      clubs.forEach(club => {
-        initialSelected[club.id] = false;
-      });
-      setSelectedClubs(initialSelected);
     } catch (error: any) {
       console.error('Error loading clubs:', error);
       Toast.show({
@@ -77,36 +70,15 @@ export default function UniStaffPointsPage() {
     }
   };
 
-  // Toggle club selection
-  const handleToggleSelectClub = (clubId: number) => {
-    setSelectedClubs(prev => ({
-      ...prev,
-      [clubId]: !prev[clubId]
-    }));
+  // Toggle club selection (single select)
+  const handleSelectClub = (clubId: number) => {
+    setSelectedClubId(clubId);
   };
 
-  // Select all clubs
-  const handleSelectAll = () => {
-    const allSelected: Record<number, boolean> = {};
-    allClubs.forEach(club => {
-      allSelected[club.id] = true;
-    });
-    setSelectedClubs(allSelected);
-  };
-
-  // Deselect all clubs
-  const handleDeselectAll = () => {
-    const allDeselected: Record<number, boolean> = {};
-    allClubs.forEach(club => {
-      allDeselected[club.id] = false;
-    });
-    setSelectedClubs(allDeselected);
-  };
-
-  // Count selected clubs
-  const selectedClubCount = useMemo(() => {
-    return Object.values(selectedClubs).filter(Boolean).length;
-  }, [selectedClubs]);
+  // Get selected club details
+  const selectedClub = useMemo(() => {
+    return allClubs.find(club => club.id === selectedClubId) || null;
+  }, [allClubs, selectedClubId]);
 
   // Pagination
   const totalPages = Math.ceil(allClubs.length / itemsPerPage);
@@ -139,15 +111,11 @@ export default function UniStaffPointsPage() {
       return;
     }
 
-    const selectedClubIds = Object.keys(selectedClubs)
-      .filter(clubId => selectedClubs[parseInt(clubId)])
-      .map(id => parseInt(id));
-
-    if (selectedClubIds.length === 0) {
+    if (!selectedClubId) {
       Toast.show({
         type: 'error',
-        text1: 'No Clubs Selected',
-        text2: 'Please select at least one club.',
+        text1: 'No Club Selected',
+        text2: 'Please select a club.',
         visibilityTime: 3000,
         autoHide: true,
       });
@@ -157,7 +125,7 @@ export default function UniStaffPointsPage() {
     // Confirmation alert
     Alert.alert(
       'Confirm Distribution',
-      `Distribute ${amount} points to ${selectedClubIds.length} club(s)?`,
+      `Distribute ${amount} points to ${selectedClub?.name}?`,
       [
         {
           text: 'Cancel',
@@ -168,27 +136,23 @@ export default function UniStaffPointsPage() {
           onPress: async () => {
             setIsDistributing(true);
             try {
-              const result = await WalletService.distributePointsToClubs(
-                selectedClubIds,
+              const result = await WalletService.topupClubWallet(
+                selectedClubId,
                 amount,
                 'Reward from University Staff'
               );
 
-              if (result.success) {
-                Toast.show({
-                  type: 'success',
-                  text1: 'Success',
-                  text2: `Successfully distributed ${amount} points to ${selectedClubIds.length} club(s).`,
-                  visibilityTime: 3000,
-                  autoHide: true,
-                });
-                
-                // Reset form
-                setRewardAmount('');
-                handleDeselectAll();
-              } else {
-                throw new Error(result.message || 'Failed to distribute rewards');
-              }
+              Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: `Successfully distributed ${amount} points to ${selectedClub?.name}. New balance: ${result.balancePoints} points.`,
+                visibilityTime: 3000,
+                autoHide: true,
+              });
+              
+              // Reset form
+              setRewardAmount('');
+              setSelectedClubId(null);
             } catch (error: any) {
               console.error('Distribution error:', error);
               Toast.show({
@@ -258,36 +222,14 @@ export default function UniStaffPointsPage() {
             </View>
           </View>
 
-          {/* Selected Count */}
+          {/* Selected Club Info */}
           <View className="bg-blue-50 rounded-xl p-4 mb-4">
             <View className="flex-row items-center justify-between">
-              <Text className="text-gray-700 font-medium">Selected Clubs:</Text>
-              <Text className="text-blue-600 font-bold text-lg">{selectedClubCount}</Text>
-            </View>
-            <View className="flex-row items-center justify-between mt-2">
-              <Text className="text-gray-700 font-medium">Total Points:</Text>
-              <Text className="text-blue-600 font-bold text-lg">
-                {(parseInt(rewardAmount) || 0) * selectedClubCount}
+              <Text className="text-gray-700 font-medium">Selected Club:</Text>
+              <Text className="text-blue-600 font-bold text-base">
+                {selectedClub?.name || 'None'}
               </Text>
             </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View className="flex-row gap-2 mb-4">
-            <TouchableOpacity
-              onPress={handleSelectAll}
-              className="flex-1 bg-gray-100 rounded-xl py-3 items-center"
-              disabled={isDistributing}
-            >
-              <Text className="text-gray-700 font-medium">Select All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleDeselectAll}
-              className="flex-1 bg-gray-100 rounded-xl py-3 items-center"
-              disabled={isDistributing}
-            >
-              <Text className="text-gray-700 font-medium">Deselect All</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Distribute Button */}
@@ -297,13 +239,13 @@ export default function UniStaffPointsPage() {
               isDistributing ||
               !rewardAmount ||
               parseInt(rewardAmount) <= 0 ||
-              selectedClubCount === 0
+              !selectedClubId
             }
             className={`rounded-xl py-4 items-center ${
               isDistributing ||
               !rewardAmount ||
               parseInt(rewardAmount) <= 0 ||
-              selectedClubCount === 0
+              !selectedClubId
                 ? 'bg-gray-300'
                 : 'bg-blue-600'
             }`}
@@ -314,7 +256,7 @@ export default function UniStaffPointsPage() {
               <View className="flex-row items-center">
                 <Ionicons name="send" size={20} color="white" />
                 <Text className="text-white font-bold ml-2">
-                  Distribute {rewardAmount || 0} pts to {selectedClubCount} club(s)
+                  Distribute {rewardAmount || 0} pts to {selectedClub?.name || 'selected club'}
                 </Text>
               </View>
             )}
@@ -337,11 +279,11 @@ export default function UniStaffPointsPage() {
           ) : (
             <>
               {paginatedClubs.map((club) => {
-                const isSelected = selectedClubs[club.id] || false;
+                const isSelected = selectedClubId === club.id;
                 return (
                   <TouchableOpacity
                     key={club.id}
-                    onPress={() => handleToggleSelectClub(club.id)}
+                    onPress={() => handleSelectClub(club.id)}
                     className={`mb-3 p-4 rounded-2xl border-2 ${
                       isSelected
                         ? 'bg-blue-50 border-blue-500'
@@ -386,10 +328,10 @@ export default function UniStaffPointsPage() {
                           }`}
                         >
                           {isSelected && (
-                            <Ionicons name="checkmark" size={16} color="white" />
+                            <Ionicons name="radio-button-on" size={16} color="white" />
                           )}
                         </View>
-                        {rewardAmount && parseInt(rewardAmount) > 0 && (
+                        {isSelected && rewardAmount && parseInt(rewardAmount) > 0 && (
                           <Text className="text-xs text-blue-600 font-bold mt-1">
                             +{rewardAmount} pts
                           </Text>

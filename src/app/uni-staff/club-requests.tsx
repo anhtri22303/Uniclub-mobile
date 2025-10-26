@@ -2,24 +2,24 @@ import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  ClubApplication,
-  getClubApplications,
-  postClubApplication,
-  putClubApplicationStatus
-} from '@services/clubApplication.service';
+    useClubApplications,
+    useCreateClubApplication,
+    useUpdateClubApplicationStatus,
+} from '@hooks/useQueryHooks';
+import { ClubApplication } from '@services/clubApplication.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Modal,
-  RefreshControl,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    FlatList,
+    Modal,
+    RefreshControl,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -44,10 +44,6 @@ export default function UniStaffClubRequestsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [requests, setRequests] = useState<UiClubRequest[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [newClubName, setNewClubName] = useState<string>("");
   const [newDescription, setNewDescription] = useState<string>("");
@@ -55,63 +51,50 @@ export default function UniStaffClubRequestsPage() {
   const [newProposerReason, setNewProposerReason] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("pending");
 
-  const fetchData = async () => {
-    try {
-      const data: ClubApplication[] = await getClubApplications();
-      console.log('📋 Fetched club applications:', JSON.stringify(data, null, 2));
-      
-      const mapped: UiClubRequest[] = data.map((d: any) => {
-        // Handle both old format (nested objects) and new format (simple strings)
-        const proposer = typeof d.proposer === 'string' 
-          ? d.proposer 
-          : d.proposer?.fullName || d.submittedBy?.fullName || null;
-          
-        const reviewer = typeof d.reviewedBy === 'string'
-          ? d.reviewedBy
-          : d.reviewedBy?.fullName || null;
+  // ✅ USE TANSTACK QUERY for data fetching
+  const {
+    data: clubApplicationsData = [],
+    isLoading,
+    isError,
+    error: queryError,
+    refetch,
+    isRefetching,
+  } = useClubApplications();
+
+  const createApplicationMutation = useCreateClubApplication();
+  const updateStatusMutation = useUpdateClubApplicationStatus();
+
+  // Transform API data to UI format
+  const requests: UiClubRequest[] = useMemo(() => {
+    console.log('📋 Fetched club applications:', JSON.stringify(clubApplicationsData, null, 2));
+    
+    return clubApplicationsData.map((d: ClubApplication) => {
+      // Handle both old format (nested objects) and new format (simple strings)
+      const proposer = typeof d.proposer === 'string' 
+        ? d.proposer 
+        : d.proposer?.fullName || d.submittedBy?.fullName || null;
         
-        return {
-          id: `req-${d.applicationId}`,
-          applicationId: d.applicationId,
-          clubName: d.clubName,
-          majorName: d.majorName || d.category || null,
-          description: d.description,
-          vision: d.vision,
-          proposerReason: d.proposerReason,
-          requestedBy: proposer,
-          requestDate: d.submittedAt,
-          status: d.status,
-          rejectReason: d.rejectReason,
-          reviewedBy: reviewer,
-          reviewedAt: d.reviewedAt,
-        };
-      });
+      const reviewer = typeof d.reviewedBy === 'string'
+        ? d.reviewedBy
+        : d.reviewedBy?.fullName || null;
       
-      console.log('📋 Mapped UI requests:', JSON.stringify(mapped, null, 2));
-      setRequests(mapped);
-      setError(null);
-    } catch (err) {
-      console.error('❌ Error in fetchData:', err);
-      setError("Failed to load club applications");
-    }
-  };
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    fetchData()
-      .finally(() => mounted && setLoading(false));
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
-  };
+      return {
+        id: `req-${d.applicationId}`,
+        applicationId: d.applicationId,
+        clubName: d.clubName,
+        majorName: d.majorName || null,
+        description: d.description,
+        vision: d.vision,
+        proposerReason: d.proposerReason,
+        requestedBy: proposer,
+        requestDate: d.submittedAt,
+        status: d.status,
+        rejectReason: d.rejectReason,
+        reviewedBy: reviewer,
+        reviewedAt: d.reviewedAt,
+      };
+    });
+  }, [clubApplicationsData]);
 
   async function handleSendNewApplication() {
     if (!newClubName.trim() || !newDescription.trim() || !newProposerReason.trim()) {
@@ -119,19 +102,16 @@ export default function UniStaffClubRequestsPage() {
       return;
     }
     
-    setLoading(true);
-    setError(null);
     try {
-      const created = await postClubApplication({ 
+      const created = await createApplicationMutation.mutateAsync({
         clubName: newClubName, 
         description: newDescription,
         vision: newVision || undefined,
         proposerReason: newProposerReason,
       });
+      
       Alert.alert('Success', `${created.clubName} application submitted`);
       
-      // Reload list
-      await fetchData();
       setIsModalOpen(false);
       setNewClubName("");
       setNewDescription("");
@@ -139,25 +119,23 @@ export default function UniStaffClubRequestsPage() {
       setNewProposerReason("");
     } catch (err) {
       console.error('❌ Error creating application:', err);
-      setError('Failed to create application');
       Alert.alert('Error', 'Failed to send application');
-    } finally {
-      setLoading(false);
     }
   }
 
   async function approveApplication(appId?: number) {
     if (!appId) return;
-    setLoading(true);
+    
     try {
-      await putClubApplicationStatus(appId, true, '');
-      await fetchData();
+      await updateStatusMutation.mutateAsync({
+        applicationId: appId,
+        approve: true,
+        rejectReason: '',
+      });
       Alert.alert('Success', `Application approved successfully`);
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to update status');
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -176,16 +154,16 @@ export default function UniStaffClubRequestsPage() {
           text: 'Reject',
           style: 'destructive',
           onPress: async (reason) => {
-            setLoading(true);
             try {
-              await putClubApplicationStatus(appId, false, reason || 'Rejected by staff');
-              await fetchData();
+              await updateStatusMutation.mutateAsync({
+                applicationId: appId,
+                approve: false,
+                rejectReason: reason || 'Rejected by staff',
+              });
               Alert.alert('Success', `Application rejected`);
             } catch (err) {
               console.error(err);
               Alert.alert('Error', 'Failed to update status');
-            } finally {
-              setLoading(false);
             }
           }
         }
@@ -336,16 +314,16 @@ export default function UniStaffClubRequestsPage() {
         <View className="flex-row justify-end gap-2 mt-2">
           <TouchableOpacity
             onPress={() => approveApplication(request.applicationId)}
-            disabled={loading}
-            className={`bg-green-500 px-4 py-2 rounded-xl flex-row items-center ${loading ? 'opacity-50' : ''}`}
+            disabled={updateStatusMutation.isPending}
+            className={`bg-green-500 px-4 py-2 rounded-xl flex-row items-center ${updateStatusMutation.isPending ? 'opacity-50' : ''}`}
           >
             <Ionicons name="checkmark" size={16} color="white" />
             <Text className="text-white font-medium ml-1">Approve</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => rejectApplication(request.applicationId)}
-            disabled={loading}
-            className={`bg-red-500 px-4 py-2 rounded-xl flex-row items-center ${loading ? 'opacity-50' : ''}`}
+            disabled={updateStatusMutation.isPending}
+            className={`bg-red-500 px-4 py-2 rounded-xl flex-row items-center ${updateStatusMutation.isPending ? 'opacity-50' : ''}`}
           >
             <Ionicons name="close" size={16} color="white" />
             <Text className="text-white font-medium ml-1">Reject</Text>
@@ -475,15 +453,15 @@ export default function UniStaffClubRequestsPage() {
           renderItem={renderRequestItem}
           keyExtractor={(item) => item.id}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
           }
           ListEmptyComponent={
             <View className="bg-white rounded-xl p-8 shadow-sm">
               <Text className="text-center text-gray-500">
-                {loading 
+                {isLoading 
                   ? "Loading club applications..." 
-                  : error 
-                  ? error 
+                  : isError 
+                  ? `Error: ${queryError?.message || 'Failed to load applications'}` 
                   : `No ${activeTab} club requests found`}
               </Text>
             </View>
@@ -572,17 +550,17 @@ export default function UniStaffClubRequestsPage() {
                 <TouchableOpacity
                   onPress={() => setIsModalOpen(false)}
                   className="flex-1 bg-gray-300 py-3 rounded-xl"
-                  disabled={loading}
+                  disabled={createApplicationMutation.isPending}
                 >
                   <Text className="text-gray-700 text-center font-medium">Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleSendNewApplication}
-                  className={`flex-1 bg-emerald-500 py-3 rounded-xl ${loading ? 'opacity-50' : ''}`}
-                  disabled={loading}
+                  className={`flex-1 bg-emerald-500 py-3 rounded-xl ${createApplicationMutation.isPending ? 'opacity-50' : ''}`}
+                  disabled={createApplicationMutation.isPending}
                 >
                   <Text className="text-white text-center font-medium">
-                    {loading ? 'Sending...' : 'Send Application'}
+                    {createApplicationMutation.isPending ? 'Sending...' : 'Send Application'}
                   </Text>
                 </TouchableOpacity>
               </View>

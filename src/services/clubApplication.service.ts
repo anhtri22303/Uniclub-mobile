@@ -2,18 +2,44 @@ import { axiosClient } from '@configs/axios';
 
 export interface ClubApplication {
   applicationId: number;
+  clubId?: number | null;
   clubName: string;
   description: string;
-  majorId: number | null;
-  majorName: string | null;
-  vision: string | null;
-  proposerReason: string | null;
-  proposer: string | null;
-  reviewedBy: string | null;
+  majorId?: number;
+  majorName?: string;
+  vision?: string;
+  proposerReason?: string;
+  proposer?: {
+    fullName: string;
+    email: string;
+  };
+  submittedBy?: {
+    fullName: string;
+    email: string;
+  };
+  reviewedBy?: {
+    fullName: string;
+    email: string;
+  } | null;
   status: string;
-  rejectReason: string | null;
-  submittedAt: string | null;
-  reviewedAt: string | null;
+  rejectReason?: string | null;
+  submittedAt: string;
+  reviewedAt?: string | null;
+}
+
+export interface ProcessApplicationBody {
+  approve: boolean;
+  rejectReason?: string;
+}
+
+export interface CreateClubAccountBody {
+  applicationId: number;
+  clubId: number;
+  leaderFullName: string;
+  leaderEmail: string;
+  viceFullName: string;
+  viceEmail: string;
+  defaultPassword: string;
 }
 
 /**
@@ -120,9 +146,76 @@ export async function getMyClubApplications(): Promise<ClubApplication[]> {
   }
 }
 
+/**
+ * Process club application (approve/reject)
+ * PUT /api/club-applications/{id}/approve
+ */
+export async function processClubApplication(
+  applicationId: number,
+  body: ProcessApplicationBody
+): Promise<ClubApplication> {
+  try {
+    const response = await axiosClient.put(
+      `/api/club-applications/${applicationId}/approve`,
+      body,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    // API response structure: { success, message, data }
+    const result = response.data as {
+      success: boolean;
+      message: string;
+      data: ClubApplication;
+    };
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to process application');
+    }
+
+    console.log('✅ Application processed successfully:', result.data);
+    return result.data;
+  } catch (error: any) {
+    console.error('❌ Error processing club application:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+/**
+ * Create club account from approved application
+ * POST /api/club-applications/create-club-accounts
+ */
+export async function createClubAccount(body: CreateClubAccountBody): Promise<string> {
+  try {
+    const response = await axiosClient.post(
+      `/api/club-applications/create-club-accounts`,
+      body,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    // API response: { success, message, data: "string" }
+    const result = response.data as {
+      success: boolean;
+      message: string;
+      data: string;
+    };
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to create club account');
+    }
+
+    console.log('✅ Club account created successfully:', result.data);
+    return result.data;
+  } catch (error: any) {
+    console.error('❌ Error creating club account:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 export default {
   getClubApplications,
   postClubApplication,
   putClubApplicationStatus,
-  getMyClubApplications
+  getMyClubApplications,
+  processClubApplication,
+  createClubAccount,
 };

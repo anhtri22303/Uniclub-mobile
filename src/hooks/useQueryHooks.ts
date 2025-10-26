@@ -4,6 +4,7 @@
  */
 
 import { ClubService } from '@services/club.service';
+import { getClubApplications } from '@services/clubApplication.service';
 import { fetchEvent } from '@services/event.service';
 import { MajorService } from '@services/major.service';
 import { PolicyService } from '@services/policy.service';
@@ -29,6 +30,12 @@ export const queryKeys = {
   events: ['events'] as const,
   eventsList: () => [...queryKeys.events, 'list'] as const,
   eventDetail: (id: number) => [...queryKeys.events, 'detail', id] as const,
+  eventsByClub: (clubId: number) => [...queryKeys.events, 'club', clubId] as const,
+
+  // Locations
+  locations: ['locations'] as const,
+  locationsList: () => [...queryKeys.locations, 'list'] as const,
+  locationDetail: (id: number) => [...queryKeys.locations, 'detail', id] as const,
 
   // Majors
   majors: ['majors'] as const,
@@ -38,6 +45,11 @@ export const queryKeys = {
   policies: ['policies'] as const,
   policiesList: () => [...queryKeys.policies, 'list'] as const,
   policyDetail: (id: number) => [...queryKeys.policies, 'detail', id] as const,
+
+  // Club Applications
+  clubApplications: ['clubApplications'] as const,
+  clubApplicationsList: () => [...queryKeys.clubApplications, 'list'] as const,
+  clubApplicationDetail: (id: number) => [...queryKeys.clubApplications, 'detail', id] as const,
 };
 
 // ============================================
@@ -290,4 +302,276 @@ export function usePrefetchClubs() {
       staleTime: 5 * 60 * 1000,
     });
   };
+}
+
+// ============================================
+// EVENTS BY CLUB QUERY
+// ============================================
+
+/**
+ * Hook to fetch events by club ID
+ */
+export function useEventsByClub(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventsByClub(clubId),
+    queryFn: async () => {
+      const { getEventByClubId } = await import('@services/event.service');
+      const events = await getEventByClubId(clubId);
+      // Normalize events - ensure backward compatibility
+      return events.map((e: any) => ({
+        ...e,
+        title: e.name || e.title,
+        time: e.startTime || e.time,
+        clubId: e.hostClub?.id || e.clubId,
+        clubName: e.hostClub?.name || e.clubName,
+      }));
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 3 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+// ============================================
+// LOCATIONS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch all locations
+ */
+export function useLocations(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.locationsList(),
+    queryFn: async () => {
+      const { fetchLocation } = await import('@services/event.service');
+      const locations = await fetchLocation();
+      return locations;
+    },
+    enabled,
+    staleTime: 10 * 60 * 1000, // 10 minutes - locations rarely change
+    gcTime: 20 * 60 * 1000,
+  });
+}
+
+// ============================================
+// EVENT MUTATIONS
+// ============================================
+
+/**
+ * Mutation hook to create event
+ */
+export function useCreateEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const { createEvent } = await import('@services/event.service');
+      return await createEvent(payload);
+    },
+    onSuccess: () => {
+      // Invalidate events list to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to update event
+ */
+export function useUpdateEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ eventId, data }: { eventId: number | string; data: any }) => {
+      const { updateEvent } = await import('@services/event.service');
+      return await updateEvent(eventId, data);
+    },
+    onSuccess: (_data: any, variables: any) => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventDetail(Number(variables.eventId)) });
+    },
+  });
+}
+
+/**
+ * Mutation hook to delete event
+ */
+export function useDeleteEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventId: number | string) => {
+      const { deleteEvent } = await import('@services/event.service');
+      return await deleteEvent(eventId);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch events list
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
+  });
+}
+
+// ============================================
+// CLUB APPLICATIONS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch all club applications
+ */
+export function useClubApplications() {
+  return useQuery({
+    queryKey: queryKeys.clubApplicationsList(),
+    queryFn: async () => {
+      const applications = await getClubApplications();
+      return applications;
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes - applications may change frequently
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to create club application
+ */
+export function useCreateClubApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      clubName: string;
+      description: string;
+      majorId?: number | null;
+      vision?: string;
+      proposerReason?: string;
+    }) => {
+      const { postClubApplication } = await import('@services/clubApplication.service');
+      return await postClubApplication(payload);
+    },
+    onSuccess: () => {
+      // Invalidate club applications list to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubApplicationsList() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to update club application status
+ */
+export function useUpdateClubApplicationStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      applicationId,
+      approve,
+      rejectReason,
+    }: {
+      applicationId: number;
+      approve: boolean;
+      rejectReason: string;
+    }) => {
+      const { putClubApplicationStatus } = await import('@services/clubApplication.service');
+      return await putClubApplicationStatus(applicationId, approve, rejectReason);
+    },
+    onSuccess: () => {
+      // Invalidate club applications list to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubApplicationsList() });
+    },
+  });
+}
+
+// ============================================
+// STATISTICS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch user statistics (Admin only)
+ */
+export function useUserStats(enabled = true) {
+  return useQuery({
+    queryKey: ['users', 'stats'],
+    queryFn: async () => {
+      const stats = await UserService.getUserStats();
+      return stats;
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+/**
+ * Hook to fetch club statistics (Admin only)
+ */
+export function useClubStats(enabled = true) {
+  return useQuery({
+    queryKey: ['clubs', 'stats'],
+    queryFn: async () => {
+      const stats = await ClubService.getClubStats();
+      return stats;
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+/**
+ * Hook to fetch club member count
+ * @param clubId - Club ID
+ */
+export function useClubMemberCount(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['clubs', clubId, 'member-count'],
+    queryFn: async () => {
+      const count = await ClubService.getClubMemberCount(clubId);
+      return count;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to prefetch multiple club member counts
+ * Useful for lists where we need counts for many clubs
+ * ✅ OPTIMIZED: Returns both activeMemberCount and approvedEvents
+ */
+export function useClubMemberCounts(clubIds: number[]) {
+  return useQuery({
+    queryKey: ['clubs', 'member-counts', clubIds],
+    queryFn: async () => {
+      // Fetch all counts in parallel for better performance
+      const counts = await Promise.all(
+        clubIds.map(async (id) => {
+          try {
+            const countData = await ClubService.getClubMemberCount(id);
+            return {
+              clubId: id,
+              activeMemberCount: countData.activeMemberCount ?? 0,
+              approvedEvents: countData.approvedEvents ?? 0,
+            };
+          } catch (error) {
+            console.error(`Failed to fetch member count for club ${id}:`, error);
+            return {
+              clubId: id,
+              activeMemberCount: 0,
+              approvedEvents: 0,
+            };
+          }
+        })
+      );
+      // Convert array to object for easy lookup
+      return counts.reduce((acc, data) => {
+        acc[data.clubId] = {
+          activeMemberCount: data.activeMemberCount,
+          approvedEvents: data.approvedEvents,
+        };
+        return acc;
+      }, {} as Record<number, { activeMemberCount: number; approvedEvents: number }>);
+    },
+    enabled: clubIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    // Don't show errors for member counts - just use 0 as fallback
+    retry: 1,
+  });
 }

@@ -1,5 +1,20 @@
+/**
+ * Admin Clubs Management Page (Mobile)
+ * 
+ * ✅ Matches web version functionality:
+ * - Uses React Query (useClubs hook) for data fetching
+ * - Fetches activeMemberCount and approvedEvents for each club
+ * - Displays member count and approved events in UI
+ * - Category colors match web version exactly
+ * - Filters: Category, Leader, Policy
+ * - Search functionality
+ * - Edit and Delete club actions
+ * - Mobile-optimized responsive design
+ */
+
 import NavigationBar from '@components/navigation/NavigationBar';
 import { Ionicons } from '@expo/vector-icons';
+import { useClubs } from '@hooks/useQueryHooks';
 import { Club, ClubService } from '@services/club.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
@@ -36,14 +51,26 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Korean Language': '#5DADEC',
 };
 
+// Extended club type with member count and approved events
+type ClubWithData = Club & {
+  memberCount?: number;
+  approvedEvents?: number;
+};
+
 export default function AdminClubsPage() {
   const { user, logout } = useAuthStore();
   const router = useRouter();
 
+  // ✅ USE REACT QUERY for clubs (matching web version)
+  const { data: clubs = [], isLoading, error: queryError, refetch } = useClubs({
+    page: 0,
+    size: 1000,
+    sort: ['name']
+  });
+
   // Data states
-  const [clubs, setClubs] = useState<Club[]>([]);
-  const [filteredClubs, setFilteredClubs] = useState<Club[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [clubsWithData, setClubsWithData] = useState<ClubWithData[]>([]);
+  const [filteredClubs, setFilteredClubs] = useState<ClubWithData[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filter states
@@ -73,32 +100,43 @@ export default function AdminClubsPage() {
     ]);
   };
 
-  const fetchClubs = async (isRefresh = false) => {
-    try {
-      if (!isRefresh) setIsLoading(true);
-      const data = await ClubService.fetchClubs(0, 100);
-
-      // Sort by name
-      const sorted = data.sort((a, b) => a.name.localeCompare(b.name));
-
-      setClubs(sorted);
-      setFilteredClubs(sorted);
-    } catch (error: any) {
-      console.error('Failed to fetch clubs:', error);
-      Alert.alert('Error', 'Failed to load clubs. Please try again.');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
+  // Fetch member count and approved events for each club (matching web version)
   useEffect(() => {
-    fetchClubs();
-  }, []);
+    const fetchClubData = async () => {
+      if (clubs.length === 0) {
+        setClubsWithData([]);
+        return;
+      }
+      
+      const clubsWithMemberCount = await Promise.all(
+        clubs.map(async (club: any) => {
+          try {
+            const clubData = await ClubService.getClubMemberCount(club.id);
+            return {
+              ...club,
+              memberCount: clubData.activeMemberCount,
+              approvedEvents: clubData.approvedEvents
+            };
+          } catch (error) {
+            console.error(`Failed to fetch data for club ${club.id}:`, error);
+            return {
+              ...club,
+              memberCount: 0,
+              approvedEvents: 0
+            };
+          }
+        })
+      );
+      
+      setClubsWithData(clubsWithMemberCount);
+    }
+    
+    fetchClubData();
+  }, [clubs]);
 
   // Apply filters
   useEffect(() => {
-    let filtered = clubs;
+    let filtered = clubsWithData;
 
     // Search filter
     if (searchQuery.trim()) {
@@ -127,11 +165,12 @@ export default function AdminClubsPage() {
     }
 
     setFilteredClubs(filtered);
-  }, [searchQuery, clubs, categoryFilter, leaderFilter, policyFilter]);
+  }, [searchQuery, clubsWithData, categoryFilter, leaderFilter, policyFilter]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    fetchClubs(true);
+    await refetch();
+    setIsRefreshing(false);
   };
 
   const clearFilters = () => {
@@ -168,13 +207,13 @@ export default function AdminClubsPage() {
       Alert.alert('Success', 'Club updated successfully');
       setIsEditModalOpen(false);
       setEditingClub(null);
-      fetchClubs();
+      refetch(); // Use React Query refetch
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to update club');
     }
   };
 
-  const handleDeleteClub = async (club: Club) => {
+  const handleDeleteClub = async (club: ClubWithData) => {
     Alert.alert(
       'Delete Club',
       `Are you sure you want to delete "${club.name}"?\n\nThis action cannot be undone. Please ensure all members and events are removed first.`,
@@ -187,7 +226,7 @@ export default function AdminClubsPage() {
             try {
               await ClubService.deleteClub(club.id);
               Alert.alert('Success', 'Club deleted successfully');
-              fetchClubs();
+              refetch(); // Use React Query refetch
             } catch (error: any) {
               Alert.alert(
                 'Delete Failed',
@@ -200,15 +239,15 @@ export default function AdminClubsPage() {
     );
   };
 
-  // Get unique values for filters
-  const uniqueCategories = Array.from(new Set(clubs.map((c) => c.category).filter((c) => c !== '-'))).sort();
-  const uniqueLeaders = Array.from(new Set(clubs.map((c) => c.leaderName).filter((l) => l !== '-'))).sort();
-  const uniquePolicies = Array.from(new Set(clubs.map((c) => c.policy).filter((p) => p !== '-'))).sort();
+  // Get unique values for filters (matching web version)
+  const uniqueCategories = Array.from(new Set(clubsWithData.map((c) => c.category).filter((c) => c !== '-'))).sort();
+  const uniqueLeaders = Array.from(new Set(clubsWithData.map((c) => c.leaderName).filter((l) => l !== '-'))).sort();
+  const uniquePolicies = Array.from(new Set(clubsWithData.map((c) => c.policy).filter((p) => p !== '-'))).sort();
 
-  // Statistics
+  // Statistics (use memberCount and approvedEvents from API, matching web version)
   const totalClubs = filteredClubs.length;
-  const totalMembers = filteredClubs.reduce((sum, c) => sum + c.members, 0);
-  const totalEvents = filteredClubs.reduce((sum, c) => sum + c.events, 0);
+  const totalMembers = filteredClubs.reduce((sum, c) => sum + (c.memberCount ?? c.members ?? 0), 0);
+  const totalEvents = filteredClubs.reduce((sum, c) => sum + (c.approvedEvents ?? c.events ?? 0), 0);
 
   const hasActiveFilters =
     searchQuery.trim() !== '' || categoryFilter !== 'all' || leaderFilter !== 'all' || policyFilter !== 'all';
@@ -219,8 +258,10 @@ export default function AdminClubsPage() {
     policyFilter !== 'all',
   ].filter(Boolean).length;
 
-  const renderClubItem = ({ item }: { item: Club }) => {
+  const renderClubItem = ({ item }: { item: ClubWithData }) => {
     const categoryColor = getCategoryColor(item.category);
+    const memberCount = item.memberCount ?? item.members ?? 0;
+    const eventCount = item.approvedEvents ?? item.events ?? 0;
 
     return (
       <TouchableOpacity
@@ -228,7 +269,7 @@ export default function AdminClubsPage() {
         onPress={() => {
           Alert.alert(
             item.name,
-            `Category: ${item.category}\nLeader: ${item.leaderName}\nMembers: ${item.members}\nEvents: ${item.events}\nPolicy: ${item.policy}${
+            `Category: ${item.category}\nLeader: ${item.leaderName}\nMembers: ${memberCount}\nApproved Events: ${eventCount}\nPolicy: ${item.policy}${
               item.description ? `\n\nDescription: ${item.description}` : ''
             }`,
             [
@@ -263,11 +304,11 @@ export default function AdminClubsPage() {
             <View className="flex-row items-center gap-3 flex-wrap">
               <View className="flex-row items-center">
                 <Ionicons name="people" size={14} color="#6B7280" />
-                <Text className="text-xs text-gray-600 ml-1">{item.members} members</Text>
+                <Text className="text-xs text-gray-600 ml-1">{memberCount} members</Text>
               </View>
               <View className="flex-row items-center">
                 <Ionicons name="calendar" size={14} color="#6B7280" />
-                <Text className="text-xs text-gray-600 ml-1">{item.events} events</Text>
+                <Text className="text-xs text-gray-600 ml-1">{eventCount} events</Text>
               </View>
             </View>
 
@@ -538,10 +579,25 @@ export default function AdminClubsPage() {
       </View>
 
       {/* Clubs List */}
-      {isLoading ? (
+      {isLoading || (clubs.length > 0 && clubsWithData.length === 0) ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#0D9488" />
-          <Text className="text-gray-600 mt-4">Loading clubs...</Text>
+          <Text className="text-gray-600 mt-4">
+            {isLoading ? 'Loading clubs...' : 'Loading club data...'}
+          </Text>
+        </View>
+      ) : queryError ? (
+        <View className="flex-1 justify-center items-center px-6">
+          <View className="bg-red-100 p-6 rounded-full mb-4">
+            <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          </View>
+          <Text className="text-xl font-bold text-gray-800 mb-2">Error Loading Clubs</Text>
+          <Text className="text-gray-600 text-center mb-4">
+            {String(queryError)}
+          </Text>
+          <TouchableOpacity onPress={() => refetch()} className="bg-teal-500 px-6 py-3 rounded-xl">
+            <Text className="text-white font-medium">Try Again</Text>
+          </TouchableOpacity>
         </View>
       ) : filteredClubs.length === 0 ? (
         <View className="flex-1 justify-center items-center px-6">

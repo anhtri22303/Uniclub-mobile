@@ -39,13 +39,15 @@ export default function AdminEventsPage() {
   // Create modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    clubId: 1,
+    hostClubId: 1,
     name: '',
     description: '',
-    type: 'PUBLIC',
+    type: 'PUBLIC' as 'PUBLIC' | 'PRIVATE',
     date: '',
-    time: '13:30',
+    startTime: '09:00:00',
+    endTime: '11:00:00',
     locationId: 1,
+    maxCheckInCount: 100,
   });
 
   const handleLogout = async () => {
@@ -174,13 +176,15 @@ export default function AdminEventsPage() {
 
   const resetForm = () => {
     setFormData({
-      clubId: 1,
+      hostClubId: 1,
       name: '',
       description: '',
-      type: 'PUBLIC',
+      type: 'PUBLIC' as 'PUBLIC' | 'PRIVATE',
       date: '',
-      time: '13:30',
+      startTime: '09:00:00',
+      endTime: '11:00:00',
       locationId: 1,
+      maxCheckInCount: 100,
     });
   };
 
@@ -191,17 +195,7 @@ export default function AdminEventsPage() {
     }
 
     try {
-      const payload = {
-        clubId: formData.clubId,
-        name: formData.name,
-        description: formData.description,
-        type: formData.type,
-        date: formData.date,
-        time: formData.time,
-        locationId: formData.locationId,
-      };
-
-      await createEvent(payload);
+      await createEvent(formData);
       Alert.alert('Success', 'Event created successfully');
       setIsCreateModalOpen(false);
       resetForm();
@@ -623,12 +617,12 @@ export default function AdminEventsPage() {
                     />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Time</Text>
+                    <Text className="text-sm font-medium text-gray-700 mb-2">Start Time</Text>
                     <TextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
-                      value={formData.time}
-                      onChangeText={(text) => setFormData({ ...formData, time: text })}
-                      placeholder="HH:MM"
+                      value={formData.startTime}
+                      onChangeText={(text) => setFormData({ ...formData, startTime: text })}
+                      placeholder="HH:MM:SS"
                     />
                   </View>
                 </View>
@@ -638,7 +632,7 @@ export default function AdminEventsPage() {
                   <View className="flex-1">
                     <Text className="text-sm font-medium text-gray-700 mb-2">Type</Text>
                     <View className="flex-row gap-2">
-                      {['PUBLIC', 'PRIVATE'].map((type) => (
+                      {(['PUBLIC', 'PRIVATE'] as const).map((type) => (
                         <TouchableOpacity
                           key={type}
                           onPress={() => setFormData({ ...formData, type })}

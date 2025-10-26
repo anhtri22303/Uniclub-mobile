@@ -164,18 +164,21 @@ export class UserService {
   }
 
   /**
-   * Fetch user by ID
+   * Fetch user by ID (returns user data, unwraps if needed)
    */
   static async fetchUserById(id: string | number): Promise<any> {
     try {
       const response = await axiosClient.get(`/api/users/${id}`);
-      const body = response.data;
+      const body: any = response.data;
       console.log('fetchUserById:', body);
       
+      // If backend wraps payload in { success, message, data }, unwrap it
       if (body && typeof body === 'object' && 'data' in body) {
+        console.log('fetchUserById unwrapped data:', body.data);
         return body.data;
       }
       
+      console.log('fetchUserById returned raw body:', body);
       return body;
     } catch (error) {
       console.error(`Error fetching user ${id}:`, error);
@@ -205,6 +208,32 @@ export class UserService {
       return response.data;
     } catch (error) {
       console.error(`Error deleting user ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user statistics (Admin only)
+   */
+  static async getUserStats(): Promise<any> {
+    try {
+      const response = await axiosClient.get<any>('/api/users/stats');
+      const body = response.data;
+      console.log('Fetched user stats response:', body);
+
+      // If backend uses { success, message, data }
+      if (body && typeof body === 'object' && 'data' in body && 'success' in body && body.success) {
+        return body.data;
+      }
+
+      // If the endpoint returns the stats object directly
+      if (body && typeof body === 'object') {
+        return body;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
       throw error;
     }
   }

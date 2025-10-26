@@ -1,136 +1,238 @@
+import EventCreateModal, { EventFormData } from '@components/EventCreateModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import QRModal from '@components/QRModal';
 import { Ionicons } from '@expo/vector-icons';
+import { useClub, useClubs, useCreateEvent, useEventsByClub, useLocations } from '@hooks/useQueryHooks';
 import { generateCode } from '@services/checkin.service';
-import { createEvent, getEventByClubId } from '@services/event.service';
 import { useAuthStore } from '@stores/auth.store';
-import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ClubLeaderEvent = {
   id: number;
-  clubId: number;
   name: string;
   description: string;
   type: string;
   date: string;
+  startTime?: string;
+  endTime?: string;
   time?: string;
   status: string;
-  locationId: number;
+  locationId?: number;
   locationName?: string;
   checkInCode?: string;
   points?: number;
+  hostClub?: {
+    id: number;
+    name: string;
+  };
+  coHostClubs?: Array<{
+    id: number;
+    name: string;
+  }>;
+  clubId?: number;
+  clubName?: string;
+  maxCheckInCount?: number;
+  currentCheckInCount?: number;
 };
 
+// Helper function to check if event has expired (past endTime)
+function isEventExpired(event: ClubLeaderEvent): boolean {
+  if (!event.date || !event.endTime) return false;
+
+  try {
+    // Get current date/time in Vietnam timezone (UTC+7)
+    const now = new Date();
+    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+
+    // Parse event date (format: YYYY-MM-DD)
+    const [year, month, day] = event.date.split('-').map(Number);
+    
+    // Parse endTime (format: HH:MM:SS or HH:MM)
+    const [hours, minutes] = event.endTime.split(':').map(Number);
+
+    // Create event end datetime in Vietnam timezone
+    const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+    // Event is expired if current VN time is past the end time
+    return vnTime > eventEndDateTime;
+  } catch (error) {
+    console.error('Error checking event expiration:', error);
+    return false;
+  }
+}
+
+// Helper function to check if event is active (APPROVED and within date/time range)
+function isEventActive(event: ClubLeaderEvent): boolean {
+  // Must be APPROVED
+  if (event.status !== "APPROVED") return false;
+
+  // Must not be expired
+  if (isEventExpired(event)) return false;
+
+  // Check if date and endTime are present
+  if (!event.date || !event.endTime) return false;
+
+  return true;
+}
+
+// Helper function to get event status based on date and time
 function getEventStatus(eventDate: string, eventTime: string): string {
   if (!eventDate) return 'Finished';
+  
+  // Get current time in Vietnam timezone (UTC+7)
   const now = new Date();
+  const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  
+  // Parse event date and time
   const [hour = '00', minute = '00'] = (eventTime || '00:00').split(':');
-  const event = new Date(eventDate);
-  event.setHours(Number(hour), Number(minute), 0, 0);
+  const [year, month, day] = eventDate.split('-').map(Number);
+  const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0);
+
+  // Event duration: assume 2 hours for "Now" window
   const EVENT_DURATION_MS = 2 * 60 * 60 * 1000;
   const start = event.getTime();
   const end = start + EVENT_DURATION_MS;
-  if (now.getTime() < start) {
-    if (start - now.getTime() < 7 * 24 * 60 * 60 * 1000) return 'Soon';
+
+  if (vnTime.getTime() < start) {
+    // If event starts within next 7 days, it's "Soon"
+    if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return 'Soon';
     return 'Future';
   }
-  if (now.getTime() >= start && now.getTime() <= end) return 'Now';
+  if (vnTime.getTime() >= start && vnTime.getTime() <= end) return 'Now';
   return 'Finished';
 }
 
+// Helper function to sort events by date and time (newest to oldest)
+function sortEventsByDateTime(eventList: ClubLeaderEvent[]): ClubLeaderEvent[] {
+  return eventList.sort((a, b) => {
+    // Parse dates for comparison
+    const dateA = new Date(a.date || '1970-01-01');
+    const dateB = new Date(b.date || '1970-01-01');
+
+    // Compare dates first (newest first)
+    if (dateA.getTime() !== dateB.getTime()) {
+      return dateB.getTime() - dateA.getTime();
+    }
+
+    // If dates are equal, compare times (latest startTime first)
+    const timeA = a.startTime || a.time || '00:00';
+    const timeB = b.startTime || b.time || '00:00';
+
+    // Convert time strings to comparable format
+    const parseTime = (timeStr: string) => {
+      const parts = timeStr.split(':').map(Number);
+      const hours = parts[0] || 0;
+      const minutes = parts[1] || 0;
+      return hours * 60 + minutes;
+    };
+
+    return parseTime(timeB) - parseTime(timeA);
+  });
+}
+
 export default function Events() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const clubId = user?.clubIds?.[0] || null;
-  const [events, setEvents] = useState<ClubLeaderEvent[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  
+  // Fetch data using React Query hooks
+  const { data: managedClub, isLoading: clubLoading } = useClub(clubId || 0, !!clubId);
+  const { data: rawEvents = [], isLoading: eventsLoading, refetch: refetchEvents } = useEventsByClub(clubId || 0, !!clubId);
+  const { data: locations = [], isLoading: locationsLoading } = useLocations();
+  const { data: allClubs = [], isLoading: clubsLoading } = useClubs();
+  const createEventMutation = useCreateEvent();
+  
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [selectedEvent, setSelectedEvent] = useState<ClubLeaderEvent | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    type: 'PUBLIC',
-    date: '',
-    time: '13:30',
-    locationId: '',
-  });
+  const [showExpiredEvents, setShowExpiredEvents] = useState<boolean>(false);
 
-  // QR modal states
-  const [qrUrl, setQrUrl] = useState<string>('');
-  const [qrLoading, setQrLoading] = useState<boolean>(false);
-  const [qrToken, setQrToken] = useState<string>('');
+  // Process and sort events - matching web version normalization
+  const events = useMemo(() => {
+    // Normalize events with both new and legacy field support
+    const normalized = rawEvents.map((e: any) => ({
+      ...e,
+      title: e.name || e.title, // Map name to title for consistency
+      time: e.startTime || e.time, // Map startTime to time for legacy compatibility
+      clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
+      clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
+    }));
+    return sortEventsByDateTime(normalized);
+  }, [rawEvents]);
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    if (!clubId) {
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
-    getEventByClubId(clubId)
-      .then((data) => {
-        if (!mounted) return;
-        setEvents(Array.isArray(data) ? data : []);
-      })
-      .catch(() => setEvents([]))
-      .finally(() => setLoading(false));
-    return () => { mounted = false; };
-  }, [clubId, showCreateModal]);
-
-  // Filter events by search term
-  const filteredEvents = events.filter((event: ClubLeaderEvent) => {
-    const v = String(event.name || '').toLowerCase();
-    return v.includes(searchTerm.toLowerCase());
-  });
+  // Filter events by search term and expiration status
+  const filteredEvents = useMemo(() => {
+    return events.filter((event) => {
+      // Search term filter
+      const matchesSearch = String(event.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Expiration filter
+      const expired = isEventExpired(event);
+      const matchesExpirationFilter = showExpiredEvents || !expired;
+      
+      return matchesSearch && matchesExpirationFilter;
+    });
+  }, [events, searchTerm, showExpiredEvents]);
 
   // Create event handler
-  const handleCreateEvent = async () => {
-    if (!formData.name || !formData.date) return;
+  const handleCreateEvent = async (formData: EventFormData) => {
     try {
-      setLoading(true);
-      await createEvent({
-        clubId,
-        ...formData,
-        locationId: formData.locationId ? Number(formData.locationId) : undefined,
-      });
-      setShowCreateModal(false);
-      setFormData({ name: '', description: '', type: 'PUBLIC', date: '', time: '13:30', locationId: '' });
-    } catch (e) {
-      // handle error
-    } finally {
-      setLoading(false);
+      await createEventMutation.mutateAsync(formData);
+      Alert.alert('Success', 'Event created successfully');
+      refetchEvents();
+    } catch (error: any) {
+      throw error;
     }
   };
 
-  // QR modal logic using new API
+  // QR modal logic using new API - matching web version
   const handleShowQrModal = async (event: ClubLeaderEvent) => {
     setSelectedEvent(event);
-    setQrLoading(true);
     try {
+      // Generate fresh token and qrUrl using the new API
+      console.log('Generating check-in token for event:', event.id);
       const { token, qrUrl } = await generateCode(event.id);
-      setQrToken(token);
-      setQrUrl(qrUrl);
+      console.log('Generated token:', token);
+      console.log('Generated qrUrl:', qrUrl);
+      
       setShowQrModal(true);
+      
+      // Show success alert
+      Alert.alert(
+        'QR Code Generated',
+        'Check-in QR code has been generated successfully',
+        [{ text: 'OK' }]
+      );
     } catch (err: any) {
+      console.error('Failed to generate QR', err);
       Alert.alert('QR Error', err?.message || 'Could not generate QR code');
-    } finally {
-      setQrLoading(false);
     }
   };
+
+  const loading = eventsLoading || clubLoading;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <Sidebar role={user?.role} />
       <View className="flex-1">
+        {/* Header */}
         <View className="px-4 pt-4 pb-2">
           <Text className="text-2xl font-bold text-gray-800">Events</Text>
-          <Text className="text-gray-500 mt-1">Manage your club's events</Text>
+          {clubLoading ? (
+            <View className="h-5 w-48 bg-gray-200 rounded mt-1" />
+          ) : (
+            <Text className="text-gray-500 mt-1">
+              Event management for "{managedClub?.name || 'Club'}"
+            </Text>
+          )}
         </View>
+
+        {/* Search and Create Button */}
         <View className="px-4 pb-2 flex-row items-center gap-2">
           <TextInput
             className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 text-gray-800"
@@ -139,87 +241,250 @@ export default function Events() {
             onChangeText={setSearchTerm}
           />
           <TouchableOpacity
-            className="bg-teal-600 rounded-lg px-4 py-2 ml-2"
+            className="bg-teal-600 rounded-lg px-4 py-2"
             onPress={() => setShowCreateModal(true)}
           >
             <Ionicons name="add" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
+
+        {/* Filter Toggle */}
+        <View className="px-4 pb-3">
+          <TouchableOpacity
+            className={`flex-row items-center justify-center px-4 py-2 rounded-lg border ${
+              showExpiredEvents
+                ? 'bg-gray-100 border-gray-300'
+                : 'bg-teal-50 border-teal-300'
+            }`}
+            onPress={() => setShowExpiredEvents(!showExpiredEvents)}
+          >
+            <Ionicons
+              name={showExpiredEvents ? 'eye-off' : 'eye'}
+              size={18}
+              color={showExpiredEvents ? '#6B7280' : '#0D9488'}
+            />
+            <Text
+              className={`ml-2 font-medium ${
+                showExpiredEvents ? 'text-gray-600' : 'text-teal-700'
+              }`}
+            >
+              {showExpiredEvents ? 'Showing All Events' : 'Hiding Expired Events'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Content */}
         {loading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#0D9488" />
           </View>
         ) : filteredEvents.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
+          <View className="flex-1 items-center justify-center px-4">
             <Ionicons name="calendar" size={48} color="#94A3B8" />
             <Text className="mt-4 text-lg text-gray-500">No events found</Text>
-            <TouchableOpacity
-              className="mt-4 bg-teal-600 rounded-lg px-6 py-2"
-              onPress={() => setShowCreateModal(true)}
-            >
-              <Text className="text-white font-semibold">Create Event</Text>
-            </TouchableOpacity>
+            {searchTerm ? (
+              <Text className="mt-2 text-sm text-gray-400">Try a different search term</Text>
+            ) : (
+              <TouchableOpacity
+                className="mt-4 bg-teal-600 rounded-lg px-6 py-2"
+                onPress={() => setShowCreateModal(true)}
+              >
+                <Text className="text-white font-semibold">Create Event</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: 80 }}>
             {filteredEvents.map((event) => {
-              const status = getEventStatus(event.date, event.time ?? '');
+              const expired = isEventExpired(event);
+              const status = expired ? 'Finished' : getEventStatus(event.date, event.time ?? '');
+              
+              // Border color logic - expired events override approval status
               let borderColor = '#e5e7eb';
-              if (event.status === 'APPROVED') borderColor = '#0D9488';
-              else if (event.status === 'REJECTED') borderColor = '#ef4444';
-              else if (status === 'Soon') borderColor = '#fde68a';
-              else if (status === 'Now') borderColor = '#f87171';
+              if (expired) {
+                borderColor = '#9CA3AF'; // gray-400
+              } else if (event.status === 'APPROVED') {
+                borderColor = '#10B981'; // green-500
+              } else if (event.status === 'REJECTED') {
+                borderColor = '#EF4444'; // red-500
+              } else if (event.status === 'PENDING') {
+                borderColor = '#F59E0B'; // amber-500
+              }
+
               return (
                 <View
                   key={event.id}
-                  className="mb-4 bg-white rounded-xl shadow-sm border"
-                  style={{ borderColor, borderWidth: 2 }}
+                  className="mb-4 bg-white rounded-xl shadow-sm"
+                  style={{ borderColor, borderWidth: 2, opacity: expired ? 0.6 : 1 }}
                 >
                   <View className="p-4">
-                    <View className="flex-row justify-between items-center">
+                    {/* Title and Status Badge */}
+                    <View className="flex-row justify-between items-start mb-2">
                       <View style={{ flex: 1 }}>
-                        <Text className="text-lg font-bold text-gray-800" numberOfLines={1}>{event.name}</Text>
+                        <Text className="text-lg font-bold text-gray-800" numberOfLines={2}>
+                          {event.name}
+                        </Text>
                         {event.description ? (
-                          <Text className="text-gray-500 mt-1" numberOfLines={2}>{event.description}</Text>
+                          <Text className="text-gray-500 mt-1 text-sm" numberOfLines={2}>
+                            {event.description}
+                          </Text>
                         ) : null}
                       </View>
                       <View className="ml-2">
-                        <Text className={`px-2 py-1 rounded-full text-xs font-semibold ${status === 'Finished' ? 'bg-gray-200 text-gray-600' : status === 'Soon' ? 'bg-yellow-100 text-yellow-700' : status === 'Now' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>{status}</Text>
+                        <View
+                          className={`px-2 py-1 rounded-full ${
+                            status === 'Finished'
+                              ? 'bg-gray-200'
+                              : status === 'Soon'
+                              ? 'bg-yellow-100'
+                              : status === 'Now'
+                              ? 'bg-red-100'
+                              : 'bg-gray-100'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold ${
+                              status === 'Finished'
+                                ? 'text-gray-600'
+                                : status === 'Soon'
+                                ? 'text-yellow-700'
+                                : status === 'Now'
+                                ? 'text-red-600'
+                                : 'text-gray-600'
+                            }`}
+                          >
+                            {status}
+                          </Text>
+                        </View>
                       </View>
                     </View>
-                    <View className="flex-row items-center mt-2 gap-3">
-                      <Ionicons name="calendar" size={16} color="#0D9488" />
-                      <Text className="text-sm text-gray-600">{event.date} {event.time}</Text>
-                      {event.locationName ? (
-                        <View className="flex-row items-center ml-2">
-                          <Ionicons name="location" size={16} color="#0D9488" />
-                          <Text className="text-sm text-gray-600 ml-1">{event.locationName}</Text>
+
+                    {/* Approval Status Badge */}
+                    <View className="mb-3">
+                      {expired ? (
+                        <View className="bg-gray-400 px-2 py-1 rounded-full self-start">
+                          <Text className="text-xs font-semibold text-white">Expired</Text>
                         </View>
-                      ) : null}
+                      ) : (
+                        <>
+                          {event.status === 'APPROVED' && (
+                            <View className="bg-green-500 px-2 py-1 rounded-full self-start">
+                              <Text className="text-xs font-semibold text-white">Approved</Text>
+                            </View>
+                          )}
+                          {event.status === 'PENDING' && (
+                            <View className="bg-amber-500 px-2 py-1 rounded-full self-start">
+                              <Text className="text-xs font-semibold text-white">Pending</Text>
+                            </View>
+                          )}
+                          {event.status === 'REJECTED' && (
+                            <View className="bg-red-500 px-2 py-1 rounded-full self-start">
+                              <Text className="text-xs font-semibold text-white">Rejected</Text>
+                            </View>
+                          )}
+                        </>
+                      )}
                     </View>
-                    <View className="flex-row gap-2 mt-4">
+
+                    {/* Event Details */}
+                    <View className="space-y-2 mb-4">
+                      {/* Date */}
+                      <View className="flex-row items-center">
+                        <Ionicons name="calendar" size={16} color="#0D9488" />
+                        <Text className="text-sm text-gray-600 ml-2">
+                          {new Date(event.date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </Text>
+                      </View>
+
+                      {/* Time */}
+                      {event.time && (
+                        <View className="flex-row items-center">
+                          <Ionicons name="time" size={16} color="#0D9488" />
+                          <Text className="text-sm text-gray-600 ml-2">
+                            {event.time}
+                            {event.endTime && ` - ${event.endTime}`}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Location */}
+                      {event.locationName && (
+                        <View className="flex-row items-center">
+                          <Ionicons name="location" size={16} color="#0D9488" />
+                          <Text className="text-sm text-gray-600 ml-2">{event.locationName}</Text>
+                        </View>
+                      )}
+
+                      {/* Points */}
+                      {event.points && (
+                        <View className="flex-row items-center">
+                          <Ionicons name="trophy" size={16} color="#0D9488" />
+                          <Text className="text-sm text-gray-600 ml-2">{event.points} loyalty points</Text>
+                        </View>
+                      )}
+
+                      {/* Check-in Count */}
+                      {event.maxCheckInCount && (
+                        <View className="flex-row items-center">
+                          <Ionicons name="people" size={16} color="#0D9488" />
+                          <Text className="text-sm text-gray-600 ml-2">
+                            {event.currentCheckInCount || 0} / {event.maxCheckInCount} checked in
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Co-hosts */}
+                      {event.coHostClubs && event.coHostClubs.length > 0 && (
+                        <View className="flex-row items-start">
+                          <Ionicons name="people-circle" size={16} color="#0D9488" style={{ marginTop: 2 }} />
+                          <View className="ml-2 flex-1">
+                            <Text className="text-xs text-gray-500 mb-1">Co-hosts:</Text>
+                            <View className="flex-row flex-wrap gap-1">
+                              {event.coHostClubs.map((coHost) => (
+                                <View key={coHost.id} className="bg-blue-100 px-2 py-1 rounded">
+                                  <Text className="text-xs text-blue-700">{coHost.name}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View className="flex-row gap-2">
                       <TouchableOpacity
                         className="flex-1 bg-gray-100 rounded-lg py-2 items-center"
-                        onPress={() => {/* TODO: navigate to event detail */}}
+                        onPress={() => router.push(`/club-leader/events/${event.id}` as any)}
                       >
-                        <Text className="text-gray-700 font-medium">View Detail</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        className="flex-1 bg-gray-100 rounded-lg py-2 items-center"
-                        onPress={() => {/* TODO: implement edit modal */}}
-                      >
-                        <Text className="text-gray-700 font-medium">Edit</Text>
+                        <View className="flex-row items-center">
+                          <Ionicons name="eye" size={16} color="#374151" />
+                          <Text className="text-gray-700 font-medium ml-1">View Detail</Text>
+                        </View>
                       </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                      className={`mt-4 w-full flex-row items-center justify-center rounded-2xl py-3 shadow-xl ${event.status === 'APPROVED' ? 'bg-teal-500' : 'bg-gray-100'} ${event.status !== 'APPROVED' ? 'opacity-60 grayscale' : ''}`}
-                      activeOpacity={event.status === 'APPROVED' ? 0.85 : 1}
-                      onPress={event.status === 'APPROVED' ? () => handleShowQrModal(event) : undefined}
-                      disabled={event.status !== 'APPROVED'}
-                    >
-                      <Ionicons name="qr-code" size={24} color={event.status === 'APPROVED' ? '#fff' : '#d1d5db'} style={{ marginRight: 10 }} />
-                      <Text className={`font-extrabold text-base tracking-wide drop-shadow ${event.status === 'APPROVED' ? 'text-white' : 'text-gray-400'}`}>Generate QR Code</Text>
-                    </TouchableOpacity>
+
+                    {/* QR Code Button - Only show if APPROVED and event is still active */}
+                    {isEventActive(event) && (
+                      <TouchableOpacity
+                        className="mt-3 w-full flex-row items-center justify-center rounded-2xl py-3 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600"
+                        style={{
+                          backgroundColor: '#0D9488',
+                        }}
+                        activeOpacity={0.85}
+                        onPress={() => handleShowQrModal(event)}
+                      >
+                        <Ionicons name="qr-code" size={24} color="#fff" style={{ marginRight: 10 }} />
+                        <Text className="font-extrabold text-base tracking-wide text-white">
+                          Generate QR Code
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               );
@@ -228,10 +493,18 @@ export default function Events() {
         )}
 
         {/* Create Event Modal */}
-        {/* Create Event Modal */}
-        {/* You can refactor this to a separate component if needed. */}
+        <EventCreateModal
+          visible={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateEvent}
+          clubId={clubId || 0}
+          locations={locations}
+          clubs={allClubs}
+          locationsLoading={locationsLoading}
+          clubsLoading={clubsLoading}
+        />
 
-        {/* QR Modal component */}
+        {/* QR Modal */}
         <QRModal
           open={showQrModal}
           onOpenChange={setShowQrModal}

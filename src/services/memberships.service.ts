@@ -1,5 +1,11 @@
 import { axiosClient } from '@configs/axios';
 
+// Club type
+export interface ApiClub {
+  id: number;
+  name: string;
+}
+
 // Member types
 export interface ApiMembership {
   membershipId: number;
@@ -14,52 +20,48 @@ export interface ApiMembership {
   studentCode: string;
   clubName: string;
   email?: string;
-  phone?: string;
   avatarUrl?: string;
   major?: string;
 }
 
 export class MembershipsService {
   /**
-   * Get members by club ID
+   * Get current user's club members (my club members)
+   * This is used by club leaders to see their club's members
    */
-  static async getMembersByClubId(clubId: number): Promise<ApiMembership[]> {
+  static async getMyClubMembers(): Promise<ApiMembership[]> {
     try {
-      const response = await axiosClient.get<{ success: boolean; message: string; data: ApiMembership[] }>(
-        `/api/clubs/${clubId}/members`
-      );
+      const response = await axiosClient.get('/api/memberships/my-club');
+      const body: any = response.data;
       
-      console.log('Fetched club members:', response.data);
+      console.log('Fetched my club members:', body);
 
-      if (!response.data?.success) {
-        throw new Error(response.data?.message || 'Failed to fetch club members');
-      }
-
-      return response.data.data || [];
+      // Backend returns { success, message, data }
+      return body?.data || [];
     } catch (error) {
-      console.error('Error fetching club members:', error);
+      console.error('Error fetching my club members:', error);
       throw error;
     }
   }
 
   /**
-   * Get current user's club members (my club members)
+   * Get members by club ID
+   * This is used to fetch members of a specific club
    */
-  static async getMyClubMembers(): Promise<ApiMembership[]> {
+  static async getMembersByClubId(clubId: number): Promise<ApiMembership[]> {
     try {
-      const response = await axiosClient.get<{ success: boolean; message: string; data: ApiMembership[] }>(
-        '/api/memberships/my-club'
-      );
+      const response = await axiosClient.get(`/api/clubs/${clubId}/members`);
+      const body: any = response.data;
       
-      console.log('Fetched my club members:', response.data);
+      console.log('Fetched all club members:', body);
 
-      if (!response.data?.success) {
-        throw new Error(response.data?.message || 'Failed to fetch my club members');
+      if (!body?.success) {
+        throw new Error(body?.message || 'Failed to fetch club members');
       }
 
-      return response.data.data || [];
+      return body.data || [];
     } catch (error) {
-      console.error('Error fetching my club members:', error);
+      console.error('Error fetching club members:', error);
       throw error;
     }
   }
@@ -69,20 +71,19 @@ export class MembershipsService {
    */
   static async getMyMemberships(): Promise<ApiMembership[]> {
     try {
-      const response = await axiosClient.get<{ success: boolean; message: string; data: ApiMembership[] }>(
-        '/api/memberships/my-memberships'
-      );
+      const response = await axiosClient.get('/api/memberships/my-memberships');
+      const body: any = response.data;
       
-      console.log('Fetched my memberships:', response.data);
+      console.log('Fetched my memberships:', body);
 
       // Handle different response formats
-      if (response.data?.success && response.data?.data) {
-        return response.data.data;
+      if (body?.success && body?.data) {
+        return body.data;
       }
 
       // If response is direct array
-      if (Array.isArray(response.data)) {
-        return response.data;
+      if (Array.isArray(body)) {
+        return body;
       }
 
       return [];
@@ -98,7 +99,7 @@ export class MembershipsService {
    */
   static async applyToClub(clubId: number, message: string): Promise<any> {
     try {
-      const response = await axiosClient.post<any>(
+      const response = await axiosClient.post(
         '/api/membership-applications',
         {
           clubId: clubId,
@@ -117,3 +118,11 @@ export class MembershipsService {
     }
   }
 }
+
+// Default export for convenience
+export default {
+  getMyClubMembers: MembershipsService.getMyClubMembers,
+  getMembersByClubId: MembershipsService.getMembersByClubId,
+  getMyMemberships: MembershipsService.getMyMemberships,
+  applyToClub: MembershipsService.applyToClub,
+};

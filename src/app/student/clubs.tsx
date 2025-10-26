@@ -219,7 +219,7 @@ export default function StudentClubsPage() {
       await postClubApplication({
         clubName: newClubName.trim(),
         description: newDescription.trim(),
-        category: selectedMajorId,
+        majorId: selectedMajorId,
         proposerReason: newProposerReason.trim(),
       });
 
