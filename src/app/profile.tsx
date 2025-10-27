@@ -1,3 +1,4 @@
+import { AvatarCropModal } from '@components/AvatarCropModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,16 +8,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Image,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,6 +44,14 @@ export default function ProfileScreen() {
   // Avatar states
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  
+  // Crop modal states
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string>('');
+
+  // Animation for flame icon
+  const flameAnimation = useRef(new Animated.Value(1)).current;
+  const glowAnimation = useRef(new Animated.Value(0)).current;
 
   // Static data for user stats
   const userStats = {
@@ -110,6 +120,65 @@ export default function ProfileScreen() {
     loadProfile();
   }, [user?.userId]);
 
+  // Start flame animation based on points
+  useEffect(() => {
+    if (!profile?.wallet?.balancePoints) return;
+
+    const points = profile.wallet.balancePoints;
+    let animationDuration = 0;
+    let scaleRange = [1, 1];
+
+    // Different animations based on points level
+    if (points >= 5000) {
+      // Strong pulse for 5000+ points
+      animationDuration = 800;
+      scaleRange = [1, 1.3];
+    } else if (points >= 3000) {
+      // Medium pulse for 3000+ points
+      animationDuration = 1200;
+      scaleRange = [1, 1.2];
+    } else if (points >= 1000) {
+      // Gentle pulse for 1000+ points
+      animationDuration = 2000;
+      scaleRange = [1, 1.15];
+    } else {
+      // No animation for < 1000 points
+      return;
+    }
+
+    // Create pulsing animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(flameAnimation, {
+          toValue: scaleRange[1],
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+        Animated.timing(flameAnimation, {
+          toValue: scaleRange[0],
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Create glow animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnimation, {
+          toValue: 1,
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnimation, {
+          toValue: 0,
+          duration: animationDuration,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [profile?.wallet?.balancePoints]);
+
   // Handle profile update
   const handleSave = async () => {
     if (!profile) return;
@@ -141,44 +210,81 @@ export default function ProfileScreen() {
     }
   };
 
-  // Handle avatar upload
+  // Handle avatar selection - show crop modal
   const handleAvatarUpload = async () => {
     try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera roll permissions to upload an avatar.');
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
+        allowsEditing: false, // We'll handle cropping ourselves
+        quality: 1,
       });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        setUploadingAvatar(true);
-
-        // Create FormData for upload
-        const formData = new FormData();
-        formData.append('file', {
-          uri: asset.uri,
-          type: 'image/jpeg',
-          name: 'avatar.jpg',
-        } as any);
-
-        const response = await UserService.uploadAvatar(formData);
         
-        if (response && response.success) {
-          Alert.alert('Success', 'Your avatar has been updated successfully!');
-          setAvatarPreview(response.data?.avatarUrl || asset.uri);
-          await loadProfile(); // Reload profile data
-        } else {
-          throw new Error(response?.message || 'Unable to update avatar');
+        // Validate file size (max 5MB)
+        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+          Alert.alert('Error', 'File size must be smaller than 5MB');
+          return;
         }
+
+        // Show crop modal
+        setImageToCrop(asset.uri);
+        setShowCropModal(true);
+      }
+    } catch (err) {
+      console.error('Image picker error:', err);
+      Alert.alert('Error', err instanceof Error ? err.message : 'An error occurred while selecting image');
+    }
+  };
+
+  // Handle crop complete - upload the cropped image
+  const handleCropComplete = async (croppedImage: { uri: string; base64?: string }) => {
+    try {
+      setUploadingAvatar(true);
+      
+      Alert.alert('Uploading...', 'Uploading image, please wait...');
+
+      // Create FormData for upload
+      const formData = new FormData();
+      formData.append('file', {
+        uri: croppedImage.uri,
+        type: 'image/jpeg',
+        name: 'cropped-avatar.jpg',
+      } as any);
+
+      const response = await UserService.uploadAvatar(formData);
+      
+      if (response && response.success) {
+        Alert.alert('Success', 'Your avatar has been updated successfully!');
+        // Clear states
+        setImageToCrop('');
+        setShowCropModal(false);
+        // Reload profile data to get updated avatar
+        await loadProfile();
+      } else {
+        throw new Error(response?.message || 'Unable to update avatar');
       }
     } catch (err) {
       console.error('Upload avatar failed:', err);
-      Alert.alert('Error', err instanceof Error ? err.message : 'An error occurred while uploading avatar');
+      Alert.alert('Error', err instanceof Error ? err.message : 'An error occurred while updating profile picture');
+      throw err; // Re-throw to let modal know upload failed
     } finally {
       setUploadingAvatar(false);
     }
+  };
+
+  // Handle crop cancel
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setImageToCrop('');
   };
 
   const getInitials = (name: string) => {
@@ -418,9 +524,15 @@ export default function ProfileScreen() {
                   {getUserPoints().toLocaleString()}
                 </Text>
               </View>
-              <View className={`${pointsStyle.iconBg} p-3 rounded-full`}>
+              <Animated.View 
+                className={`${pointsStyle.iconBg} p-3 rounded-full`}
+                style={{
+                  transform: [{ scale: flameAnimation }],
+                  opacity: Animated.add(0.7, Animated.multiply(glowAnimation, 0.3)),
+                }}
+              >
                 <Ionicons name="flame" size={24} color={pointsStyle.iconColor} />
-              </View>
+              </Animated.View>
             </View>
           </View>
         )}
@@ -713,6 +825,14 @@ export default function ProfileScreen() {
       </ScrollView>
 
       <NavigationBar role={user?.role} user={user || undefined} />
+      
+      {/* Avatar Crop Modal */}
+      <AvatarCropModal
+        visible={showCropModal}
+        onClose={handleCropCancel}
+        imageUri={imageToCrop}
+        onCropComplete={handleCropComplete}
+      />
     </SafeAreaView>
   );
 }

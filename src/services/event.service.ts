@@ -20,6 +20,7 @@ export interface Event {
   coHostClubs?: Array<{
     id: number;
     name: string;
+    coHostStatus?: string;
   }>;
   points?: number;
   // Legacy fields for backward compatibility

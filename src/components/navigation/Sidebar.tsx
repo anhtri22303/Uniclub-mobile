@@ -4,15 +4,15 @@ import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -350,8 +350,11 @@ export default function Sidebar({ role }: SidebarProps) {
       {/* Toggle Button - Always visible in top-left corner */}
       <TouchableOpacity
         onPress={toggleSidebar}
-        className="absolute top-4 left-4 z-50 bg-teal-600 p-3 rounded-full shadow-lg"
-        style={{ elevation: 5, opacity: 0.7 }}
+        className="absolute top-4 left-4 bg-teal-600 p-3 rounded-full shadow-lg"
+        style={{ 
+          zIndex: 9999,
+          elevation: 10
+        }}
       >
         <Ionicons name="menu" size={24} color="white" />
       </TouchableOpacity>

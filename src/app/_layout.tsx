@@ -36,6 +36,7 @@ export default function RootLayout() {
             <Stack.Screen name="student/clubs" options={{ headerShown: false }} />
             <Stack.Screen name="student/members" options={{ headerShown: false }} />
             <Stack.Screen name="student/events" options={{ headerShown: false }} />
+            <Stack.Screen name="student/events/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="student/check-in" options={{ headerShown: false }} />
             <Stack.Screen name="student/scan-qr" options={{ headerShown: false }} />
             <Stack.Screen name="student/checkin/[code]" options={{ headerShown: false }} />
@@ -48,6 +49,7 @@ export default function RootLayout() {
             <Stack.Screen name="club-leader/members" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/application" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/events" options={{ headerShown: false }} />
+            <Stack.Screen name="club-leader/events/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/gift" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/points" options={{ headerShown: false }} />
             <Stack.Screen name="club-leader/attendances" options={{ headerShown: false }} />
@@ -61,6 +63,7 @@ export default function RootLayout() {
             <Stack.Screen name="admin/users" options={{ headerShown: false }} />
             <Stack.Screen name="admin/clubs" options={{ headerShown: false }} />
             <Stack.Screen name="admin/events" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/events/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="staff" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
