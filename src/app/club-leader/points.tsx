@@ -3,7 +3,8 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubApiResponse, ClubService } from '@services/club.service';
 import { ApiMembership, MembershipsService } from '@services/memberships.service';
-import WalletService from '@services/wallet.service';
+import PointRequestService from '@services/pointReq.service';
+import WalletService, { ClubToMemberTransaction } from '@services/wallet.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -11,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -60,6 +62,17 @@ export default function ClubLeaderPointsPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  // Transaction history modal
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [transactions, setTransactions] = useState<ClubToMemberTransaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+
+  // Point request modal
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestPoints, setRequestPoints] = useState('');
+  const [requestReason, setRequestReason] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   // Load members and wallet on mount
   useEffect(() => {
@@ -234,7 +247,121 @@ export default function ClubLeaderPointsPage() {
     setCurrentPage(1);
   };
 
-  // Distribute rewards
+  // Format date for transaction history
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Format number with commas
+  const formatNumber = (num: number | string): string => {
+    const value = typeof num === 'string' ? parseInt(num, 10) : num;
+    if (isNaN(value)) return '0';
+    return new Intl.NumberFormat('en-US').format(value);
+  };
+
+  // Load transaction history
+  const loadTransactionHistory = async () => {
+    setTransactionsLoading(true);
+    try {
+      const data = await WalletService.getClubToMemberTransactions();
+      setTransactions(data);
+    } catch (err: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load transaction history',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
+
+  // Handle opening history modal
+  const handleOpenHistoryModal = () => {
+    setShowHistoryModal(true);
+    loadTransactionHistory();
+  };
+
+  // Handle point request submission
+  const handleCreatePointRequest = async () => {
+    const clubId = managedClub?.id;
+    if (!clubId) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Club information is not loaded.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      return;
+    }
+
+    const points = parseInt(requestPoints);
+    if (!requestPoints || points <= 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Points',
+        text2: 'Please enter a positive number of points.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      return;
+    }
+
+    if (!requestReason.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Reason Required',
+        text2: 'Please provide a reason for the request.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+    try {
+      await PointRequestService.createPointRequest({
+        clubId,
+        requestedPoints: points,
+        reason: requestReason,
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Request Submitted',
+        text2: 'Your request for points has been sent to the university staff for review.',
+        visibilityTime: 4000,
+        autoHide: true,
+      });
+
+      // Reset form and close modal
+      setShowRequestModal(false);
+      setRequestPoints('');
+      setRequestReason('');
+    } catch (err: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Submission Error',
+        text2: err?.response?.data?.message || 'Failed to submit point request.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
+  // Distribute rewards using batch API
   const handleDistributeRewards = async () => {
     const amount = parseInt(rewardAmount);
 
@@ -263,7 +390,7 @@ export default function ClubLeaderPointsPage() {
     // Confirmation alert
     Alert.alert(
       'Confirm Distribution',
-      `Distribute ${amount} points to ${selectedMembersList.length} selected member(s)?`,
+      `Distribute ${formatNumber(amount)} points to ${selectedMembersList.length} selected member(s)?`,
       [
         {
           text: 'Cancel',
@@ -273,31 +400,26 @@ export default function ClubLeaderPointsPage() {
           text: 'Confirm',
           onPress: async () => {
             setIsDistributing(true);
-            let successCount = 0;
-            let failCount = 0;
 
             try {
-              // Distribute to each selected member
-              for (const member of selectedMembersList) {
-                try {
-                  await WalletService.rewardPointsToMember(
-                    member.id,
-                    amount,
-                    'Reward from Club Leader'
-                  );
-                  successCount++;
-                } catch (error: any) {
-                  console.error(`Failed to reward member ${member.id}:`, error);
-                  failCount++;
-                }
-              }
+              // Collect all membershipIds as numbers
+              const targetIds = selectedMembersList.map((member) => Number(member.id));
 
-              if (successCount > 0) {
+              // Call the batch reward API
+              const response = await WalletService.rewardPointsToMembers(
+                targetIds,
+                amount,
+                'Reward from Club Leader'
+              );
+
+              if (response.success) {
                 Toast.show({
                   type: 'success',
                   text1: 'Success',
-                  text2: `Successfully distributed ${amount} points to ${successCount} member(s).${failCount > 0 ? ` ${failCount} failed.` : ''}`,
-                  visibilityTime: 3000,
+                  text2:
+                    response.message ||
+                    `Distributed ${formatNumber(amount)} points to ${selectedMembersList.length} member(s).`,
+                  visibilityTime: 4000,
                   autoHide: true,
                 });
 
@@ -323,20 +445,14 @@ export default function ClubLeaderPointsPage() {
                   }
                 }
               } else {
-                Toast.show({
-                  type: 'error',
-                  text1: 'Distribution Failed',
-                  text2: 'Failed to distribute points to any members.',
-                  visibilityTime: 3000,
-                  autoHide: true,
-                });
+                throw new Error(response.message || 'Failed to distribute points');
               }
             } catch (error: any) {
               console.error('Distribution error:', error);
               Toast.show({
                 type: 'error',
                 text1: 'Distribution Failed',
-                text2: error.message || 'An error occurred',
+                text2: error?.response?.data?.message || error.message || 'An error occurred',
                 visibilityTime: 3000,
                 autoHide: true,
               });
@@ -417,22 +533,70 @@ export default function ClubLeaderPointsPage() {
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
         {/* Club Wallet Balance Card */}
         <View className="bg-blue-600 rounded-3xl p-6 shadow-xl mt-6 mb-4 border-2 border-blue-700">
-          <View className="flex-row items-center">
-            <View className="w-14 h-14 rounded-full bg-blue-500 items-center justify-center mr-4 border-2 border-white/30">
-              <Ionicons name="wallet" size={28} color="white" />
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center flex-1">
+              <View className="w-14 h-14 rounded-full bg-blue-500 items-center justify-center mr-4 border-2 border-white/30">
+                <Ionicons name="wallet" size={28} color="white" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-white/90 mb-1">Club Balance</Text>
+                {walletLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : clubWallet ? (
+                  <Text className="text-3xl font-bold text-white">
+                    {formatNumber(clubWallet.balancePoints || 0)} pts
+                  </Text>
+                ) : (
+                  <Text className="text-3xl font-bold text-white/70">0 pts</Text>
+                )}
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-white/90 mb-1">Club Balance</Text>
-              {walletLoading ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : clubWallet ? (
-                <Text className="text-3xl font-bold text-white">
-                  {clubWallet.balancePoints.toLocaleString()} pts
-                </Text>
-              ) : (
-                <Text className="text-3xl font-bold text-white/70">N/A</Text>
-              )}
-            </View>
+            <TouchableOpacity
+              onPress={async () => {
+                const clubId = user?.clubIds?.[0];
+                if (clubId) {
+                  setWalletLoading(true);
+                  try {
+                    const updatedWallet = await WalletService.getClubWallet(clubId);
+                    setClubWallet(updatedWallet);
+                    Toast.show({
+                      type: 'success',
+                      text1: 'Refreshed',
+                      text2: 'Wallet balance updated',
+                      visibilityTime: 2000,
+                      autoHide: true,
+                    });
+                  } catch (err) {
+                    console.error('Failed to refresh wallet:', err);
+                  } finally {
+                    setWalletLoading(false);
+                  }
+                }
+              }}
+              disabled={walletLoading}
+              className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+            >
+              <Ionicons name="refresh" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Action Buttons Row */}
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={handleOpenHistoryModal}
+              className="flex-1 bg-white/20 rounded-xl py-3 px-4 flex-row items-center justify-center"
+            >
+              <Ionicons name="time-outline" size={18} color="white" />
+              <Text className="text-white font-semibold ml-2 text-sm">History</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={() => setShowRequestModal(true)}
+              className="flex-1 bg-white/20 rounded-xl py-3 px-4 flex-row items-center justify-center"
+            >
+              <Ionicons name="add-circle-outline" size={18} color="white" />
+              <Text className="text-white font-semibold ml-2 text-sm">Request</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -449,10 +613,14 @@ export default function ClubLeaderPointsPage() {
               <Ionicons name="gift-outline" size={20} color="#6B7280" />
               <TextInput
                 className="flex-1 ml-3 text-base text-gray-800"
-                placeholder="Enter reward points..."
+                placeholder="e.g., 1,000"
                 keyboardType="numeric"
-                value={rewardAmount}
-                onChangeText={setRewardAmount}
+                value={rewardAmount ? formatNumber(rewardAmount) : ''}
+                onChangeText={(text) => {
+                  // Remove all non-numeric characters
+                  const unformatted = text.replace(/[^0-9]/g, '');
+                  setRewardAmount(unformatted);
+                }}
                 editable={!isDistributing}
               />
             </View>
@@ -492,7 +660,7 @@ export default function ClubLeaderPointsPage() {
               <View className="flex-row items-center">
                 <Ionicons name="send" size={20} color="white" />
                 <Text className="text-white font-bold ml-2">
-                  Distribute {rewardAmount || 0} pts to {selectedMembersList.length} member(s)
+                  Distribute {formatNumber(rewardAmount || '0')} pts to {selectedMembersList.length} member(s)
                 </Text>
               </View>
             )}
@@ -730,7 +898,7 @@ export default function ClubLeaderPointsPage() {
                         {isSelected && rewardAmount && parseInt(rewardAmount) > 0 && (
                           <View className="mt-2 bg-green-100 px-2 py-1 rounded-lg">
                             <Text className="text-sm text-green-700 font-bold">
-                              +{rewardAmount} pts
+                              +{formatNumber(rewardAmount)} pts
                             </Text>
                           </View>
                         )}
@@ -780,6 +948,217 @@ export default function ClubLeaderPointsPage() {
           )}
         </View>
       </ScrollView>
+
+      {/* Transaction History Modal */}
+      <Modal
+        visible={showHistoryModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowHistoryModal(false)}
+      >
+        <View className="flex-1 bg-black/50">
+          <View className="flex-1 mt-20 bg-white rounded-t-3xl">
+            <View className="p-6 border-b border-gray-200">
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center">
+                  <Ionicons name="time" size={28} color="#3B82F6" />
+                  <Text className="text-2xl font-bold text-gray-800 ml-2">
+                    Transaction History
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+                  <Ionicons name="close-circle" size={28} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-gray-600">Club to member transactions</Text>
+            </View>
+
+            <ScrollView className="flex-1 px-6 py-4">
+              {transactionsLoading ? (
+                <View className="items-center py-12">
+                  <ActivityIndicator size="large" color="#3B82F6" />
+                  <Text className="text-gray-600 mt-4">Loading transactions...</Text>
+                </View>
+              ) : transactions.length === 0 ? (
+                <View className="items-center py-12">
+                  <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
+                  <Text className="text-xl font-semibold text-gray-800 mt-4">
+                    No Transactions Yet
+                  </Text>
+                  <Text className="text-gray-600 mt-2">
+                    No club-to-member transactions found.
+                  </Text>
+                </View>
+              ) : (
+                transactions.map((transaction) => (
+                  <View
+                    key={transaction.id}
+                    className="bg-white rounded-2xl p-4 mb-3 border border-gray-200 shadow-sm"
+                  >
+                    <View className="flex-row items-center justify-between mb-2">
+                      <View className="flex-row items-center">
+                        <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
+                          <Ionicons name="arrow-up" size={20} color="#10B981" />
+                        </View>
+                        <View>
+                          <Text className="text-base font-bold text-gray-800">
+                            {transaction.type}
+                          </Text>
+                          <Text className="text-sm text-gray-600">
+                            ID: #{transaction.id}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text className="text-lg font-bold text-green-600">
+                        +{formatNumber(transaction.amount)} pts
+                      </Text>
+                    </View>
+
+                    <View className="mt-2 space-y-1">
+                      {transaction.senderName && (
+                        <View className="flex-row items-center">
+                          <Text className="text-sm text-gray-600 w-20">From:</Text>
+                          <Text className="text-sm font-medium text-purple-600">
+                            {transaction.senderName}
+                          </Text>
+                        </View>
+                      )}
+                      {transaction.receiverName && (
+                        <View className="flex-row items-center">
+                          <Text className="text-sm text-gray-600 w-20">To:</Text>
+                          <Text className="text-sm font-medium text-blue-600">
+                            {transaction.receiverName}
+                          </Text>
+                        </View>
+                      )}
+                      {transaction.description && (
+                        <View className="flex-row items-start">
+                          <Text className="text-sm text-gray-600 w-20">Note:</Text>
+                          <Text className="text-sm text-gray-700 flex-1">
+                            {transaction.description}
+                          </Text>
+                        </View>
+                      )}
+                      <View className="flex-row items-center">
+                        <Text className="text-sm text-gray-600 w-20">Date:</Text>
+                        <Text className="text-sm text-gray-700">
+                          {formatDate(transaction.createdAt)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Point Request Modal */}
+      <Modal
+        visible={showRequestModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRequestModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-3xl w-11/12 max-w-md p-6 shadow-2xl">
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center">
+                <Ionicons name="add-circle" size={28} color="#10B981" />
+                <Text className="text-2xl font-bold text-gray-800 ml-2">
+                  Request Points
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowRequestModal(false)}
+                disabled={isSubmittingRequest}
+              >
+                <Ionicons name="close-circle" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-gray-600 mb-6">
+              Submit a request to the university staff to add more points to your club's wallet.
+            </Text>
+
+            <View className="space-y-4">
+              {/* Points Input */}
+              <View>
+                <Text className="text-sm font-semibold text-gray-700 mb-2">
+                  Points Requested
+                </Text>
+                <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+                  <Ionicons name="diamond-outline" size={20} color="#6B7280" />
+                  <TextInput
+                    className="flex-1 ml-3 text-base text-gray-800"
+                    placeholder="e.g., 1,000,000"
+                    keyboardType="numeric"
+                    value={requestPoints ? formatNumber(requestPoints) : ''}
+                    onChangeText={(text) => {
+                      const unformatted = text.replace(/[^0-9]/g, '');
+                      setRequestPoints(unformatted);
+                    }}
+                    editable={!isSubmittingRequest}
+                  />
+                </View>
+              </View>
+
+              {/* Reason Input */}
+              <View>
+                <Text className="text-sm font-semibold text-gray-700 mb-2">Reason</Text>
+                <View className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+                  <TextInput
+                    className="text-base text-gray-800 min-h-[100px]"
+                    placeholder="e.g., Funding for 'TechSpark 2025' event prizes..."
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    value={requestReason}
+                    onChangeText={setRequestReason}
+                    editable={!isSubmittingRequest}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row gap-3 mt-6">
+              <TouchableOpacity
+                onPress={() => setShowRequestModal(false)}
+                disabled={isSubmittingRequest}
+                className="flex-1 bg-gray-200 rounded-xl py-3 items-center"
+              >
+                <Text className="text-gray-700 font-bold">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleCreatePointRequest}
+                disabled={
+                  isSubmittingRequest ||
+                  !requestPoints ||
+                  parseInt(requestPoints) <= 0 ||
+                  !requestReason.trim()
+                }
+                className={`flex-1 rounded-xl py-3 items-center ${
+                  isSubmittingRequest ||
+                  !requestPoints ||
+                  parseInt(requestPoints) <= 0 ||
+                  !requestReason.trim()
+                    ? 'bg-gray-300'
+                    : 'bg-green-600'
+                }`}
+              >
+                {isSubmittingRequest ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white font-bold">Submit Request</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Navigation Bar */}
       <NavigationBar role={user?.role} user={user || undefined} />

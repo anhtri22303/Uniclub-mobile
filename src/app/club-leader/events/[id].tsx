@@ -480,7 +480,7 @@ export default function EventDetailPage() {
                 </TouchableOpacity>
               </>
             )}
-            {event.status === 'APPROVED' && (
+            {event.status === 'ONGOING' && (
               <TouchableOpacity
                 onPress={handleEndEvent}
                 disabled={isEndingEvent}

@@ -4,15 +4,15 @@ import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -56,20 +56,27 @@ export default function Sidebar({ role }: SidebarProps) {
         
         if (!mounted) return;
         
+        console.log('=== SIDEBAR PROFILE DATA ===');
+        console.log('Full profile data:', JSON.stringify(profileData, null, 2));
+        console.log('Wallet object:', profileData?.wallet);
+        console.log('Balance points:', profileData?.wallet?.balancePoints);
+        console.log('===========================');
+        
         setAvatarUrl(profileData?.avatarUrl || '');
         setUserName(profileData?.fullName || user?.fullName || 'User');
         setUserEmail(profileData?.email || user?.email || '');
         
-        // Get wallet points from profile
-        if (profileData?.wallet?.balancePoints !== undefined) {
-          setUserPoints(profileData.wallet.balancePoints);
-        }
+        // Get wallet points from profile - handle multiple cases
+        const points = profileData?.wallet?.balancePoints ?? 0;
+        console.log('Setting userPoints to:', points);
+        setUserPoints(points);
       } catch (err) {
         console.error('Failed to load profile in Sidebar:', err);
         // Fallback to auth store data
         if (mounted) {
           setUserName(user?.fullName || 'User');
           setUserEmail(user?.email || '');
+          setUserPoints(0); // Reset to 0 on error
         }
       } finally {
         if (mounted) {
@@ -449,18 +456,18 @@ export default function Sidebar({ role }: SidebarProps) {
                 <View className="p-4 space-y-3">
                   {/* Points Card (for students and club leaders) */}
                   {shouldShowPoints && (
-                    <View className={`rounded-lg overflow-hidden shadow-sm ${pointsStyle.bgColor}`}>
-                      <View className="p-3 flex-row items-center justify-between">
+                    <View className="rounded-lg overflow-hidden shadow-sm bg-gradient-to-r from-purple-600 to-pink-600" style={{ backgroundColor: '#9333EA' }}>
+                      <View className="p-4 flex-row items-center justify-between">
                         <View className="flex-1">
-                          <Text className={`text-xs font-medium ${pointsStyle.subtitleColor}`}>
+                          <Text className="text-xs font-medium text-white/80 mb-1">
                             Accumulated Points
                           </Text>
-                          <Text className={`text-2xl font-bold ${pointsStyle.textColor}`}>
-                            {userPoints.toLocaleString()}
+                          <Text className="text-3xl font-bold text-white">
+                            {userPoints?.toLocaleString() || '0'}
                           </Text>
                         </View>
-                        <View className={`p-2 rounded-full ${pointsStyle.iconBg}`}>
-                          <Ionicons name="flame" size={24} color={pointsStyle.iconColor.includes('white') ? 'white' : '#F59E0B'} />
+                        <View className="p-3 rounded-full bg-white/20">
+                          <Ionicons name="flame" size={28} color="white" />
                         </View>
                       </View>
                     </View>

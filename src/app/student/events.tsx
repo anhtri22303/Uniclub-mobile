@@ -2,7 +2,7 @@ import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { useMyEventRegistrations, useRegisterForEvent } from '@hooks/useQueryHooks';
 import { ClubService } from '@services/club.service';
-import { Event, fetchEvent, timeObjectToString } from '@services/event.service';
+import { Event, fetchEvent, getEventByClubId, timeObjectToString } from '@services/event.service';
 import { MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
@@ -87,18 +87,34 @@ export default function StudentEventsPage() {
   }, [user]);
 
   // Load events and clubs
-  const loadEvents = async () => {
+  const loadEvents = async (clubId?: string | number) => {
     try {
       setLoading(true);
       
       // Load events and clubs in parallel
+      let eventsPromise;
+      if (clubId && clubId !== 'all') {
+        console.log('Loading events for specific club:', clubId);
+        eventsPromise = getEventByClubId(clubId);
+      } else if (clubId === 'all' && userClubIds.length > 0) {
+        // Load events from all user's clubs
+        console.log('Loading events for all user clubs:', userClubIds);
+        eventsPromise = Promise.all(
+          userClubIds.map(id => getEventByClubId(id))
+        ).then(results => results.flat());
+      } else {
+        // Load all events (default behavior)
+        eventsPromise = fetchEvent();
+      }
+      
       const [eventsData, clubsData] = await Promise.all([
-        fetchEvent(),
+        eventsPromise,
         ClubService.fetchClubs(0, 100),
       ]);
 
       console.log('Events page - Loaded events:', eventsData.length);
       console.log('Events page - User club IDs:', userClubIds);
+      console.log('Events page - Selected club ID:', clubId);
 
       setEvents(eventsData);
       setClubs(clubsData);
@@ -117,7 +133,7 @@ export default function StudentEventsPage() {
   // Pull to refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadEvents();
+    await loadEvents(selectedClubId || undefined);
     setRefreshing(false);
   };
 
@@ -125,6 +141,14 @@ export default function StudentEventsPage() {
   useEffect(() => {
     loadEvents();
   }, []);
+
+  // Reload events when selected club changes
+  useEffect(() => {
+    if (selectedClubId) {
+      console.log('Selected club changed to:', selectedClubId);
+      loadEvents(selectedClubId);
+    }
+  }, [selectedClubId]);
 
   // Helper function to check if event is registered
   const isEventRegistered = (eventId: number) => {
@@ -156,19 +180,8 @@ export default function StudentEventsPage() {
   useEffect(() => {
     let filtered = events;
 
-    // Filter by selected club
-    if (selectedClubId && selectedClubId !== 'all') {
-      filtered = filtered.filter((event) => {
-        const eventClubId = event.hostClub?.id || event.clubId;
-        return String(eventClubId) === selectedClubId;
-      });
-    } else if (userClubIds.length > 0) {
-      // If no specific club selected, filter by user's clubs
-      filtered = filtered.filter((event) => {
-        const eventClubId = event.hostClub?.id || event.clubId;
-        return userClubIds.includes(Number(eventClubId));
-      });
-    }
+    // Note: Club filtering is now done at the API level in loadEvents()
+    // No need to filter by club here since events are already filtered by the API call
 
     // Filter by search term
     if (searchTerm.trim() !== '') {
@@ -224,7 +237,7 @@ export default function StudentEventsPage() {
     });
 
     setFilteredEvents(filtered);
-  }, [searchTerm, events, clubs, userClubIds, selectedClubId, showExpiredFilter, showRegisteredOnly, myRegistrations]);
+  }, [searchTerm, events, clubs, showExpiredFilter, showRegisteredOnly, myRegistrations]);
 
   // Get event status
   const getEventStatus = (eventDate: string): 'past' | 'upcoming' | 'future' => {
@@ -486,7 +499,7 @@ export default function StudentEventsPage() {
                           </Text>
                         </TouchableOpacity>
                         
-                        {!isExpired && event.status === 'APPROVED' && (
+                        {!isExpired && (event.status === 'APPROVED' || event.status === 'ONGOING') && (
                           <TouchableOpacity
                             onPress={() => handleRegister(event.id)}
                             disabled={isRegistering || isRegistered}

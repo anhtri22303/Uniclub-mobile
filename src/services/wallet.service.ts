@@ -35,6 +35,31 @@ export interface ClubWallet {
   userFullName: string | null;
 }
 
+export interface ClubToMemberTransaction {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+  senderName: string | null;
+  receiverName: string | null;
+}
+
+export interface RewardMembersTransaction {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+  receiverName: string;
+}
+
+export interface RewardMembersResponse {
+  success: boolean;
+  message: string;
+  data: RewardMembersTransaction[];
+}
+
 export class WalletService {
   /**
    * Get current user's wallet
@@ -150,11 +175,65 @@ export class WalletService {
       const response = await axiosClient.get<ClubWallet>(
         `/api/wallets/club/${clubId}`
       );
-      console.log('getClubWallet:', response.data);
+      console.log('getClubWallet raw response:', response.data);
+      
+      // Handle nested data structure (e.g., { success: true, data: {...} })
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        const nestedData = (response.data as any).data;
+        console.log('getClubWallet extracted data:', nestedData);
+        return nestedData;
+      }
+      
       return response.data;
     } catch (error: any) {
       console.error(`Failed to get club wallet for clubId ${clubId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Reward points to multiple members (batch operation)
+   */
+  static async rewardPointsToMembers(
+    targetIds: number[],
+    points: number,
+    reason?: string
+  ): Promise<RewardMembersResponse> {
+    try {
+      const response = await axiosClient.post<RewardMembersResponse>(
+        `/api/wallets/reward/members`,
+        {
+          targetIds,
+          points,
+          reason: reason || '',
+        }
+      );
+      console.log(`rewardPointsToMembers (targetIds: ${targetIds.length} members):`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to reward points to members`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get club-to-member transaction history
+   */
+  static async getClubToMemberTransactions(): Promise<ClubToMemberTransaction[]> {
+    try {
+      const response = await axiosClient.get('/api/wallets/transactions/club-to-member');
+      console.log('getClubToMemberTransactions:', response.data);
+      
+      // Handle nested data structure
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        const nestedData = (response.data as any).data;
+        return Array.isArray(nestedData) ? nestedData : [];
+      }
+      
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching club-to-member transactions:', error);
+      return [];
     }
   }
 
