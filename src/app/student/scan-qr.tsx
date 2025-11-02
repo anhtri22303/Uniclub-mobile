@@ -25,47 +25,72 @@ export default function ScanQRPage() {
 
     // Check if scanned data contains a token or URL
     try {
-      // Case 1: Direct token (just the token string)
+      // Case 1: Direct token (just the token string) - legacy format
       if (data && !data.includes('://') && !data.includes('/')) {
-        console.log('Direct token detected:', data);
-        router.push(`/student/checkin/${data}` as any);
+        console.log('Direct token detected (legacy):', data);
+        router.push(`/student/checkin/NONE/${data}` as any);
         return;
       }
 
-      // Case 2: URL with token (e.g., https://example.com/checkin?token=abc or exp://...)
+      // Case 2: URL format (e.g., exp://host/--/student/checkin/START/token)
       const url = new URL(data);
+      console.log('Parsed URL:', url.href);
+      console.log('URL pathname:', url.pathname);
       
-      // Check for token in query params
-      const tokenParam = url.searchParams.get('token');
-      if (tokenParam) {
-        console.log('Token from query param:', tokenParam);
-        router.push(`/student/checkin/${tokenParam}` as any);
-        return;
+      // Handle Expo URL format with "--" separator
+      // Path could be: /--/student/checkin/START/token or /student/checkin/START/token
+      let pathParts = url.pathname.split('/').filter(Boolean);
+      console.log('Path parts:', pathParts);
+      
+      // Remove "--" if present (Expo deep link format)
+      if (pathParts[0] === '--') {
+        pathParts = pathParts.slice(1);
       }
-
-      // Check for token in path (e.g., /student/checkin/token or /checkin/token)
-      const pathParts = url.pathname.split('/').filter(Boolean);
+      
+      // Find "checkin" in path
       const checkinIndex = pathParts.findIndex(part => 
         part.toLowerCase() === 'checkin'
       );
       
-      if (checkinIndex !== -1 && pathParts[checkinIndex + 1]) {
-        const token = pathParts[checkinIndex + 1];
-        console.log('Token from path:', token);
-        router.push(`/student/checkin/${token}` as any);
+      if (checkinIndex !== -1) {
+        // New format: /student/checkin/TIME/TOKEN
+        const time = pathParts[checkinIndex + 1];
+        const token = pathParts[checkinIndex + 2];
+        
+        if (time && token) {
+          console.log('Extracted time:', time, 'token:', token.substring(0, 20) + '...');
+          router.push(`/student/checkin/${time}/${token}` as any);
+          return;
+        }
+        
+        // Legacy format: /student/checkin/TOKEN (no time)
+        if (time && !token) {
+          console.log('Legacy format detected, token:', time.substring(0, 20) + '...');
+          router.push(`/student/checkin/NONE/${time}` as any);
+          return;
+        }
+      }
+
+      // Check for token in query params (fallback)
+      const tokenParam = url.searchParams.get('token');
+      const phaseParam = url.searchParams.get('phase') || url.searchParams.get('time');
+      if (tokenParam) {
+        const phase = phaseParam || 'NONE';
+        console.log('Token from query param:', tokenParam.substring(0, 20) + '...', 'phase:', phase);
+        router.push(`/student/checkin/${phase}/${tokenParam}` as any);
         return;
       }
 
       // If we get here, couldn't find token
       Alert.alert(
         'Invalid QR Code',
-        'Could not find check-in token in QR code',
+        'Could not find check-in information in QR code. Please try again or contact support.',
         [{ text: 'Scan Again', onPress: () => setScanned(false) }]
       );
     } catch (error) {
-      // Not a valid URL, might be just a token string
-      console.log('Not a URL, treating as token:', data);
-      router.push(`/student/checkin/${data}` as any);
+      // Not a valid URL, might be just a token string (legacy)
+      console.log('Not a URL, treating as token (legacy):', data.substring(0, 20) + '...');
+      router.push(`/student/checkin/NONE/${data}` as any);
     }
   };
 

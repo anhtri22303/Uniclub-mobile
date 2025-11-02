@@ -1,17 +1,18 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
-import { ClubApplication, getMyClubApplications } from '@services/clubApplication.service';
-import { MemberApplication, MemberApplicationService } from '@services/memberApplication.service';
+import { useMyClubApplications, useMyMemberApplications } from '@hooks/useQueryHooks';
+import type { ClubApplication } from '@services/clubApplication.service';
+import type { MemberApplication } from '@services/memberApplication.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,81 +28,55 @@ type TabType = 'member' | 'club';
 
 export default function StudentHistoryPage() {
   const { user } = useAuthStore();
-
   const [activeTab, setActiveTab] = useState<TabType>('member');
-  const [memberApplications, setMemberApplications] = useState<MemberApplication[]>([]);
-  const [clubApplications, setClubApplications] = useState<ClubApplication[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Load member applications
-  const loadMemberApplications = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await MemberApplicationService.getMyMemberApplications();
-      setMemberApplications(data);
-    } catch (err: any) {
-      console.error('Failed to load member applications:', err);
-      setError(err?.message || 'Failed to load member applications');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ✅ USE REACT QUERY for applications
+  const {
+    data: memberApplications = [],
+    isLoading: memberLoading,
+    error: memberError,
+    refetch: refetchMemberApps,
+  } = useMyMemberApplications();
 
-  // Load club applications
-  const loadClubApplications = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getMyClubApplications();
-      setClubApplications(data);
-    } catch (err: any) {
-      console.error('Failed to load club applications:', err);
-      setError(err?.message || 'Failed to load club applications');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: clubApplications = [],
+    isLoading: clubLoading,
+    error: clubError,
+    refetch: refetchClubApps,
+  } = useMyClubApplications();
+
+  const loading = activeTab === 'member' ? memberLoading : clubLoading;
+  const error = activeTab === 'member' ? memberError : clubError;
 
   // Pull to refresh
   const onRefresh = async () => {
-    setRefreshing(true);
     if (activeTab === 'member') {
-      await loadMemberApplications();
+      await refetchMemberApps();
     } else {
-      await loadClubApplications();
+      await refetchClubApps();
     }
-    setRefreshing(false);
   };
 
-  // Initial load
-  useEffect(() => {
-    if (user) {
-      loadMemberApplications();
-      loadClubApplications();
-    }
-  }, [user]);
-
   // Prepare activities based on active tab
-  const activities: Activity[] =
-    activeTab === 'member'
-      ? memberApplications.map((app) => ({
-          type: 'memberApplication' as const,
-          date: app.createdAt || new Date().toISOString(),
-          data: app,
-        }))
-      : clubApplications.map((app) => ({
-          type: 'clubApplication' as const,
-          date: app.submittedAt || new Date().toISOString(),
-          data: app,
-        }));
+  const sortedActivities = useMemo(() => {
+    const activities: Activity[] =
+      activeTab === 'member'
+        ? memberApplications.map((app) => ({
+            type: 'memberApplication' as const,
+            date: app.createdAt || new Date().toISOString(),
+            data: app,
+          }))
+        : clubApplications.map((app) => ({
+            type: 'clubApplication' as const,
+            date: app.submittedAt || new Date().toISOString(),
+            data: app,
+          }));
 
-  // Sort by date descending
-  const sortedActivities = activities.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+    // Sort by date descending
+    return activities.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [activeTab, memberApplications, clubApplications]);
 
   // Get status color
   const getStatusColor = (status: string) => {
@@ -229,10 +204,10 @@ export default function StudentHistoryPage() {
           className="flex-1"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={loading} onRefresh={onRefresh} />
           }
         >
-          {loading && sortedActivities.length === 0 ? (
+          {loading ? (
             <View className="items-center py-20">
               <ActivityIndicator size="large" color="#3B82F6" />
               <Text className="text-gray-500 mt-4">Loading activities...</Text>
@@ -243,7 +218,15 @@ export default function StudentHistoryPage() {
               <Text className="text-lg font-semibold text-gray-900 mb-2">
                 Error Loading Data
               </Text>
-              <Text className="text-gray-500 text-center px-8">{error}</Text>
+              <Text className="text-gray-500 text-center px-8">
+                {error instanceof Error ? error.message : String(error)}
+              </Text>
+              <TouchableOpacity
+                onPress={onRefresh}
+                className="mt-4 bg-blue-600 px-6 py-3 rounded-lg"
+              >
+                <Text className="text-white font-semibold">Try Again</Text>
+              </TouchableOpacity>
             </View>
           ) : sortedActivities.length === 0 ? (
             <View className="items-center py-20">
@@ -301,9 +284,11 @@ export default function StudentHistoryPage() {
                               <Text className="text-sm text-gray-600 mb-1">
                                 Club: {data.clubName}
                               </Text>
-                              <Text className="text-xs text-gray-500">
-                                Category: {data.category || 'N/A'}
-                              </Text>
+                              {data.majorName && (
+                                <Text className="text-xs text-gray-500">
+                                  Major: {data.majorName}
+                                </Text>
+                              )}
                             </>
                           )}
                         </View>
@@ -324,12 +309,24 @@ export default function StudentHistoryPage() {
                         </View>
                       </View>
 
-                      {/* Description/Reason */}
-                      {(data.message || data.reason || data.description) && (
+                      {/* Description/Reason/Message */}
+                      {(data.message || data.reason || data.description || data.vision) && (
                         <View className="bg-gray-50 p-3 rounded-lg mb-3">
-                          <Text className="text-sm text-gray-700">
-                            {data.message || data.reason || data.description}
-                          </Text>
+                          {data.description && (
+                            <Text className="text-sm text-gray-700 mb-2">
+                              {data.description}
+                            </Text>
+                          )}
+                          {data.vision && (
+                            <Text className="text-sm text-gray-700 mb-2">
+                              Vision: {data.vision}
+                            </Text>
+                          )}
+                          {(data.message || data.reason) && (
+                            <Text className="text-sm text-gray-700">
+                              {data.message || data.reason}
+                            </Text>
+                          )}
                         </View>
                       )}
 
@@ -346,9 +343,9 @@ export default function StudentHistoryPage() {
                       )}
 
                       {/* Reviewed By */}
-                      {data.handledByName && (
+                      {(data.handledByName || (data.reviewedBy && typeof data.reviewedBy === 'object' && data.reviewedBy.fullName)) && (
                         <Text className="text-xs text-gray-500 mb-2">
-                          Reviewed by: {data.handledByName}
+                          Reviewed by: {data.handledByName || (typeof data.reviewedBy === 'object' ? data.reviewedBy.fullName : '')}
                         </Text>
                       )}
 

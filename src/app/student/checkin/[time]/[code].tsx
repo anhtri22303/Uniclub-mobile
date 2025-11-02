@@ -1,7 +1,7 @@
-import { checkin } from '@/services/checkin.service';
+import { eventCheckin } from '@/services/checkin.service';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, Clock } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -13,20 +13,62 @@ import {
     View,
 } from 'react-native';
 
-export default function MemberCheckinByCodePage() {
+// Phase configuration with colors and labels
+const PHASE_CONFIG = {
+  START: {
+    label: 'START',
+    description: 'Beginning of event',
+    colors: ['#10b981', '#059669'], // green
+    bgColor: 'bg-green-100',
+    borderColor: 'border-green-500',
+    textColor: 'text-green-700',
+  },
+  MID: {
+    label: 'MID',
+    description: 'Middle of event',
+    colors: ['#3b82f6', '#2563eb'], // blue
+    bgColor: 'bg-blue-100',
+    borderColor: 'border-blue-500',
+    textColor: 'text-blue-700',
+  },
+  END: {
+    label: 'END',
+    description: 'End of event',
+    colors: ['#a855f7', '#9333ea'], // purple
+    bgColor: 'bg-purple-100',
+    borderColor: 'border-purple-500',
+    textColor: 'text-purple-700',
+  },
+  NONE: {
+    label: 'GENERAL',
+    description: 'Event check-in',
+    colors: ['#6b7280', '#4b5563'], // gray
+    bgColor: 'bg-gray-100',
+    borderColor: 'border-gray-500',
+    textColor: 'text-gray-700',
+  },
+};
+
+export default function MemberCheckinByTimeAndCodePage() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const [isCheckinLoading, setIsCheckinLoading] = useState(false);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
 
-  // Get token from URL params - This is the token from generateCode API
-  const token = params?.code as string | undefined;
+  // Get time (phase) and token from URL
+  const checkInTime = params?.time as string | undefined;
+  const checkInCode = params?.code as string | undefined;
+
+  // Get phase configuration
+  const phaseKey = (checkInTime?.toUpperCase() || 'NONE') as keyof typeof PHASE_CONFIG;
+  const phaseConfig = PHASE_CONFIG[phaseKey] || PHASE_CONFIG.NONE;
 
   useEffect(() => {
-    console.debug('Check-in token from URL:', token);
+    console.debug('Check-in phase from URL:', checkInTime);
+    console.debug('Check-in token from URL:', checkInCode);
     
-    // Validate token on mount
-    if (!token || typeof token !== 'string') {
+    // Validate parameters on mount
+    if (!checkInCode || typeof checkInCode !== 'string') {
       Alert.alert(
         'Invalid Token',
         'Check-in token is missing or invalid',
@@ -37,12 +79,31 @@ export default function MemberCheckinByCodePage() {
           },
         ]
       );
+      return;
     }
-  }, [token]);
+
+    if (!checkInTime || typeof checkInTime !== 'string') {
+      Alert.alert(
+        'Invalid Phase',
+        'Check-in phase is missing or invalid',
+        [
+          {
+            text: 'Go Back',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    }
+  }, [checkInCode, checkInTime]);
 
   const handleCheckin = async () => {
-    if (!token || typeof token !== 'string') {
+    if (!checkInCode || typeof checkInCode !== 'string') {
       Alert.alert('Invalid Token', 'Check-in token is missing or invalid');
+      return;
+    }
+
+    if (!checkInTime || typeof checkInTime !== 'string') {
+      Alert.alert('Invalid Phase', 'Check-in phase is missing or invalid');
       return;
     }
 
@@ -51,16 +112,18 @@ export default function MemberCheckinByCodePage() {
     setIsCheckinLoading(true);
 
     try {
-      console.log('Starting check-in with token:', token);
-      // Call checkin API with token from generateCode
-      const response = await checkin(token);
+      console.log('Starting event check-in with token:', checkInCode, 'and phase:', checkInTime);
+      
+      // Call event check-in API with JWT token and phase
+      // Using START, MID, END directly as per API requirements
+      const response = await eventCheckin(checkInCode, checkInTime.toUpperCase());
 
-      console.log('Check-in response:', response);
+      console.log('Event check-in response:', response);
 
-      // Response is a simple string like "Checked-in"
+      // Show success alert
       Alert.alert(
         'Check-in Successful! 🎉',
-        String(response) || "You've successfully checked in!",
+        response?.message || "You've successfully checked in to the event!",
         [
           {
             text: 'OK',
@@ -75,9 +138,9 @@ export default function MemberCheckinByCodePage() {
         ]
       );
     } catch (error: any) {
-      console.error('Check-in error:', error);
+      console.error('Event check-in error:', error);
 
-      // Ensure error message is a string
+      // Extract error message
       const errorMessage =
         error?.message || 'An error occurred during check-in. Please try again.';
 
@@ -110,7 +173,7 @@ export default function MemberCheckinByCodePage() {
           {/* Icon Circle */}
           <View className="w-32 h-32 rounded-full bg-blue-100 items-center justify-center mb-6">
             {isCheckedIn ? (
-              <CheckCircle size={64} color="#3b82f6" />
+              <CheckCircle size={64} color="#10b981" />
             ) : (
               <CheckCircle size={64} color="#3b82f6" strokeWidth={2} />
             )}
@@ -122,16 +185,29 @@ export default function MemberCheckinByCodePage() {
           </Text>
 
           {/* Subtitle */}
-          <Text className="text-base text-center text-gray-600 mb-2">
+          <Text className="text-base text-center text-gray-600 mb-4">
             {isCheckedIn
               ? 'Successfully checked in!'
               : 'Tap the button below to check in'}
           </Text>
 
+          {/* Phase Badge */}
+          <View className={`rounded-full px-6 py-3 border-2 ${phaseConfig.borderColor} ${phaseConfig.bgColor} flex-row items-center mb-4`}>
+            <Clock size={24} color={phaseConfig.colors[0]} />
+            <View className="ml-3">
+              <Text className={`text-lg font-bold ${phaseConfig.textColor}`}>
+                {phaseConfig.label}
+              </Text>
+              <Text className={`text-xs ${phaseConfig.textColor}`}>
+                {phaseConfig.description}
+              </Text>
+            </View>
+          </View>
+
           {/* Token Info (for debugging) */}
-          {__DEV__ && token && (
+          {__DEV__ && checkInCode && (
             <Text className="text-xs text-gray-400 mt-2 text-center">
-              Token: {token.substring(0, 20)}...
+              Token: {checkInCode.substring(0, 20)}...
             </Text>
           )}
         </View>
@@ -148,7 +224,7 @@ export default function MemberCheckinByCodePage() {
               colors={
                 isCheckedIn
                   ? ['#10b981', '#059669']
-                  : ['#3b82f6', '#2563eb']
+                  : phaseConfig.colors
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -184,9 +260,15 @@ export default function MemberCheckinByCodePage() {
 
         {/* Info Card */}
         {!isCheckedIn && (
-          <View className="mt-8 bg-blue-50 rounded-xl p-4 border border-blue-100">
-            <Text className="text-sm text-blue-900 text-center font-medium">
+          <View className={`mt-8 rounded-xl p-4 border ${phaseConfig.borderColor} ${phaseConfig.bgColor}`}>
+            <Text className={`text-sm font-medium text-center ${phaseConfig.textColor}`}>
               💡 Make sure you're at the event venue before checking in
+            </Text>
+            <Text className={`text-xs text-center mt-2 ${phaseConfig.textColor}`}>
+              This QR code is valid for a limited time
+            </Text>
+            <Text className={`text-xs text-center font-bold mt-1 ${phaseConfig.textColor}`}>
+              Phase: {phaseConfig.label}
             </Text>
           </View>
         )}
@@ -213,3 +295,4 @@ export default function MemberCheckinByCodePage() {
     </SafeAreaView>
   );
 }
+

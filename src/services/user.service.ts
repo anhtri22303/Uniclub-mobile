@@ -34,6 +34,7 @@ export interface UserProfile {
   majorName: string | null;
   bio: string | null;
   memberships: any[];
+  clubs?: any[]; // Array of clubs the user is a member of
 }
 
 export interface ProfileResponse {

@@ -1,22 +1,25 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { useMyEventRegistrations, useRegisterForEvent } from '@hooks/useQueryHooks';
 import { ClubService } from '@services/club.service';
-import { Event, fetchEvent } from '@services/event.service';
+import { Event, fetchEvent, timeObjectToString } from '@services/event.service';
 import { MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 interface Club {
   id: number;
@@ -25,6 +28,7 @@ interface Club {
 
 export default function StudentEventsPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
 
   const [events, setEvents] = useState<Event[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -33,8 +37,15 @@ export default function StudentEventsPage() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userClubIds, setUserClubIds] = useState<number[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
+  const [showExpiredFilter, setShowExpiredFilter] = useState<'hide' | 'show' | 'only'>('hide');
+  const [showRegisteredOnly, setShowRegisteredOnly] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [clubSelectorVisible, setClubSelectorVisible] = useState(false);
+
+  // React Query hooks
+  const { data: myRegistrations = [], isLoading: registrationsLoading } = useMyEventRegistrations();
+  const { mutate: registerForEvent, isPending: isRegistering } = useRegisterForEvent();
 
   // Get user's club IDs from auth store or user data
   useEffect(() => {
@@ -45,6 +56,9 @@ export default function StudentEventsPage() {
           const clubIdNumbers = user.clubIds.map((id) => Number(id)).filter((id) => !isNaN(id));
           console.log('Events page - Setting userClubIds from user object:', clubIdNumbers);
           setUserClubIds(clubIdNumbers);
+          if (clubIdNumbers.length > 0 && !selectedClubId) {
+            setSelectedClubId(String(clubIdNumbers[0]));
+          }
           return;
         }
 
@@ -57,6 +71,9 @@ export default function StudentEventsPage() {
         
         console.log('Events page - Setting userClubIds from API:', clubIds);
         setUserClubIds(clubIds);
+        if (clubIds.length > 0 && !selectedClubId) {
+          setSelectedClubId(String(clubIds[0]));
+        }
       } catch (error) {
         console.error('Failed to load user club IDs:', error);
         // If both methods fail, show all events (no filter)
@@ -85,27 +102,13 @@ export default function StudentEventsPage() {
 
       setEvents(eventsData);
       setClubs(clubsData);
-
-      // Filter events by user's club IDs only if user has club memberships
-      // If userClubIds is empty, show all events (user might not have joined any clubs yet)
-      if (userClubIds.length > 0) {
-        const userEvents = eventsData.filter((event) => {
-          const eventClubId = Number(event.clubId);
-          const isUserEvent = userClubIds.includes(eventClubId);
-          if (isUserEvent) {
-            console.log(`Including event "${event.name}" from club ${eventClubId}`);
-          }
-          return isUserEvent;
-        });
-        console.log('Events page - Filtered events for user:', userEvents.length);
-        setFilteredEvents(userEvents);
-      } else {
-        // Show all events if user hasn't joined any clubs
-        console.log('Events page - Showing all events (no club filter)');
-        setFilteredEvents(eventsData);
-      }
     } catch (error) {
       console.error('Failed to load events:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load events',
+      });
     } finally {
       setLoading(false);
     }
@@ -121,41 +124,107 @@ export default function StudentEventsPage() {
   // Initial load
   useEffect(() => {
     loadEvents();
-  }, [userClubIds]);
+  }, []);
 
-  // Search filter
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      // No search term - show filtered events based on club membership
-      if (userClubIds.length > 0) {
-        const userEvents = events.filter((event) =>
-          userClubIds.includes(Number(event.clubId))
-        );
-        setFilteredEvents(userEvents);
-      } else {
-        // Show all events if no club filter
-        setFilteredEvents(events);
-      }
-    } else {
-      // Apply search filter
-      const filtered = events.filter((event) => {
-        const eventName = event.name || event.eventName || '';
-        const club = clubs.find((c) => c.id === event.clubId);
-        const clubName = club?.name || '';
+  // Helper function to check if event is registered
+  const isEventRegistered = (eventId: number) => {
+    return myRegistrations.some((reg) => reg.eventId === eventId);
+  };
 
-        const matchesSearch =
-          eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          clubName.toLowerCase().includes(searchTerm.toLowerCase());
+  // Helper function to check if event has expired
+  const isEventExpired = (event: Event) => {
+    if (event.status === 'COMPLETED') return true;
+    
+    if (!event.date || !event.endTime) return false;
 
-        // Filter by club membership only if user has clubs
-        const matchesClub =
-          userClubIds.length === 0 || userClubIds.includes(Number(event.clubId));
+    try {
+      const now = new Date();
+      const eventDate = new Date(event.date);
+      const endTimeStr = timeObjectToString(event.endTime);
+      const [hours, minutes] = endTimeStr.split(':').map(Number);
+      const eventEndDateTime = new Date(eventDate);
+      eventEndDateTime.setHours(hours, minutes, 0, 0);
 
-        return matchesSearch && matchesClub;
-      });
-      setFilteredEvents(filtered);
+      return now > eventEndDateTime;
+    } catch (error) {
+      console.error('Error checking event expiration:', error);
+      return false;
     }
-  }, [searchTerm, events, clubs, userClubIds]);
+  };
+
+  // Apply all filters
+  useEffect(() => {
+    let filtered = events;
+
+    // Filter by selected club
+    if (selectedClubId && selectedClubId !== 'all') {
+      filtered = filtered.filter((event) => {
+        const eventClubId = event.hostClub?.id || event.clubId;
+        return String(eventClubId) === selectedClubId;
+      });
+    } else if (userClubIds.length > 0) {
+      // If no specific club selected, filter by user's clubs
+      filtered = filtered.filter((event) => {
+        const eventClubId = event.hostClub?.id || event.clubId;
+        return userClubIds.includes(Number(eventClubId));
+      });
+    }
+
+    // Filter by search term
+    if (searchTerm.trim() !== '') {
+      filtered = filtered.filter((event) => {
+        const eventName = event.name || '';
+        const clubName = clubs.find((c) => c.id === (event.hostClub?.id || event.clubId))?.name || '';
+        return (
+          eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          clubName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      });
+    }
+
+    // Filter by registered only
+    if (showRegisteredOnly) {
+      filtered = filtered.filter((event) => isEventRegistered(event.id));
+    }
+
+    // Filter by expired status
+    const isFutureEvent = (event: Event) => {
+      if (!event.date) return false;
+      const eventDate = new Date(event.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      return eventDate >= today;
+    };
+
+    filtered = filtered.filter((event) => {
+      const isExpired = isEventExpired(event);
+      const isFuture = isFutureEvent(event);
+      
+      if (showExpiredFilter === 'hide') {
+        // Hide expired and rejected events, show only APPROVED/PENDING_UNISTAFF/ONGOING events
+        if (event.status === 'REJECTED') return false;
+        if (!['APPROVED', 'PENDING_UNISTAFF', 'ONGOING'].includes(event.status)) return false;
+        
+        // ONGOING events should always be shown (they're happening now!)
+        if (event.status === 'ONGOING') return true;
+        
+        // For other statuses, check if expired or not future
+        if (isExpired) return false;
+        if (!isFuture) return false;
+      } else if (showExpiredFilter === 'only') {
+        if (!isExpired) return false;
+      } else if (showExpiredFilter === 'show') {
+        // Show all events with APPROVED, PENDING_UNISTAFF, COMPLETED, or ONGOING status
+        if (!['APPROVED', 'PENDING_UNISTAFF', 'COMPLETED', 'ONGOING'].includes(event.status)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+
+    setFilteredEvents(filtered);
+  }, [searchTerm, events, clubs, userClubIds, selectedClubId, showExpiredFilter, showRegisteredOnly, myRegistrations]);
 
   // Get event status
   const getEventStatus = (eventDate: string): 'past' | 'upcoming' | 'future' => {
@@ -168,28 +237,33 @@ export default function StudentEventsPage() {
     return 'future';
   };
 
-  // Get status color
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'past':
-        return 'bg-gray-400';
-      case 'upcoming':
-        return 'bg-green-500';
-      default:
-        return 'bg-blue-500';
+  // Get status badge color
+  const getStatusBadgeStyle = (event: Event) => {
+    if (event.status === 'COMPLETED') {
+      return 'bg-blue-900';
+    } else if (event.status === 'ONGOING') {
+      return 'bg-purple-600';
+    } else if (event.status === 'APPROVED') {
+      return 'bg-green-500';
+    } else if (event.status === 'PENDING_UNISTAFF') {
+      return 'bg-yellow-500';
+    } else if (event.status === 'REJECTED') {
+      return 'bg-red-500';
     }
+    return 'bg-gray-400';
   };
 
   // Get status text
-  const getStatusText = (status: string): string => {
-    switch (status) {
-      case 'past':
-        return 'Past';
-      case 'upcoming':
-        return 'Soon';
-      default:
-        return 'Future';
-    }
+  const getStatusText = (event: Event) => {
+    if (event.status === 'COMPLETED') return 'COMPLETED';
+    if (event.status === 'ONGOING') return 'ONGOING';
+    if (event.status === 'PENDING_UNISTAFF') return 'PENDING';
+    if (event.status === 'REJECTED') return 'REJECTED';
+    
+    const status = getEventStatus(event.date);
+    if (status === 'past') return 'Past';
+    if (status === 'upcoming') return 'Soon';
+    return 'Approved';
   };
 
   // Format date
@@ -204,10 +278,33 @@ export default function StudentEventsPage() {
   };
 
   // Handle event detail
-  const handleEventDetail = (event: Event) => {
-    setSelectedEvent(event);
-    setDetailModalVisible(true);
+  const handleEventDetail = (eventId: number) => {
+    router.push(`/student/events/${eventId}`);
   };
+
+  // Handle event registration
+  const handleRegister = (eventId: number) => {
+    registerForEvent(eventId, {
+      onSuccess: (data) => {
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: data.message || 'Successfully registered for the event!',
+        });
+      },
+      onError: (error: any) => {
+        console.error('Error registering for event:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: error?.response?.data?.message || 'Failed to register for the event',
+        });
+      },
+    });
+  };
+
+  // Get user's club details for filter
+  const userClubsDetails = clubs.filter((club) => userClubIds.includes(club.id));
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -217,14 +314,32 @@ export default function StudentEventsPage() {
       <View className="flex-1 px-4">
         {/* Header */}
         <View className="py-4">
-          <Text className="text-2xl font-bold text-gray-900">Events</Text>
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-2xl font-bold text-gray-900">Events</Text>
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => setClubSelectorVisible(true)}
+                className="bg-purple-500 px-4 py-2 rounded-lg"
+              >
+                <Text className="text-white font-semibold">🏫 Clubs</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setFilterModalVisible(true)}
+                className="bg-blue-500 px-4 py-2 rounded-lg"
+              >
+                <Text className="text-white font-semibold">🎛️ Filters</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
           <Text className="text-sm text-gray-600 mt-1">
             Discover upcoming events from your clubs
           </Text>
           {userClubIds.length > 0 && (
             <Text className="text-xs text-gray-500 mt-1">
-              Showing events from club{userClubIds.length > 1 ? 's' : ''}{' '}
-              {userClubIds.join(', ')}
+              {selectedClubId && selectedClubId !== 'all' 
+                ? `Viewing events from ${clubs.find(c => String(c.id) === selectedClubId)?.name || 'selected club'}`
+                : `Showing events from ${userClubIds.length} club${userClubIds.length > 1 ? 's' : ''}`
+              }
             </Text>
           )}
         </View>
@@ -261,6 +376,16 @@ export default function StudentEventsPage() {
               <ActivityIndicator size="large" color="#3B82F6" />
               <Text className="text-gray-500 mt-4">Loading events...</Text>
             </View>
+          ) : userClubIds.length === 0 ? (
+            <View className="flex-1 items-center justify-center py-20">
+              <Text className="text-6xl mb-4">🏫</Text>
+              <Text className="text-lg font-semibold text-gray-900 mb-2">
+                No club membership found
+              </Text>
+              <Text className="text-gray-500 text-center px-8">
+                You need to join a club first to see events
+              </Text>
+            </View>
           ) : filteredEvents.length === 0 ? (
             <View className="flex-1 items-center justify-center py-20">
               <Text className="text-6xl mb-4">📅</Text>
@@ -270,16 +395,19 @@ export default function StudentEventsPage() {
               <Text className="text-gray-500 text-center px-8">
                 {searchTerm
                   ? 'Try adjusting your search terms'
+                  : showRegisteredOnly
+                  ? 'You have not registered for any events yet'
                   : "Your clubs haven't posted any events yet"}
               </Text>
             </View>
           ) : (
             <View className="pb-4">
               {filteredEvents.map((event) => {
-                const club = clubs.find((c) => c.id === event.clubId);
-                const eventDate = event.date || event.eventDate || '';
-                const status = getEventStatus(eventDate);
-                const eventName = event.name || event.eventName || 'Untitled Event';
+                const club = clubs.find((c) => c.id === (event.hostClub?.id || event.clubId));
+                const eventDate = event.date || '';
+                const eventName = event.name || 'Untitled Event';
+                const isRegistered = isEventRegistered(event.id);
+                const isExpired = isEventExpired(event);
 
                 return (
                   <View
@@ -299,19 +427,17 @@ export default function StudentEventsPage() {
                           <View className="flex-row items-center">
                             <Text className="text-gray-400 mr-1">👥</Text>
                             <Text className="text-sm text-gray-600">
-                              {club?.name || `Club ${event.clubId}`}
+                              {club?.name || 'Unknown Club'}
                             </Text>
                           </View>
                         </View>
 
                         {/* Status Badge */}
                         <View
-                          className={`${getStatusColor(
-                            status
-                          )} px-3 py-1 rounded-full`}
+                          className={`${getStatusBadgeStyle(event)} px-3 py-1 rounded-full`}
                         >
                           <Text className="text-white text-xs font-medium">
-                            {getStatusText(status)}
+                            {getStatusText(event)}
                           </Text>
                         </View>
                       </View>
@@ -328,43 +454,68 @@ export default function StudentEventsPage() {
                           </View>
                         )}
 
-                        {/* Type */}
-                        {(event.type || event.eventType) && (
+                        {/* Time */}
+                        {event.startTime && event.endTime && (
                           <View className="flex-row items-center">
-                            <Text className="text-gray-400 mr-2">🏷️</Text>
+                            <Text className="text-gray-400 mr-2">🕐</Text>
                             <Text className="text-sm text-gray-600">
-                              {event.type || event.eventType}
+                              {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
                             </Text>
                           </View>
                         )}
 
-                        {/* Expected Attendees */}
-                        {event.expectedAttendees && (
+                        {/* Registration Status */}
+                        {isRegistered && (
                           <View className="flex-row items-center">
-                            <Text className="text-gray-400 mr-2">👤</Text>
-                            <Text className="text-sm text-gray-600">
-                              {event.expectedAttendees} expected attendees
+                            <Text className="text-green-400 mr-2">✓</Text>
+                            <Text className="text-sm text-green-600 font-semibold">
+                              You are registered
                             </Text>
                           </View>
                         )}
                       </View>
 
-                      {/* Detail Button */}
-                      <TouchableOpacity
-                        onPress={() => handleEventDetail(event)}
-                        disabled={status === 'past'}
-                        className={`py-3 rounded-lg items-center ${
-                          status === 'past' ? 'bg-gray-300' : 'bg-blue-500'
-                        }`}
-                      >
-                        <Text
-                          className={`font-semibold ${
-                            status === 'past' ? 'text-gray-500' : 'text-white'
-                          }`}
+                      {/* Action Buttons */}
+                      <View className="flex-row gap-2">
+                        <TouchableOpacity
+                          onPress={() => handleEventDetail(event.id)}
+                          className="flex-1 py-3 rounded-lg items-center bg-gray-100"
                         >
-                          {status === 'past' ? 'Event Ended' : 'View Details'}
-                        </Text>
-                      </TouchableOpacity>
+                          <Text className="font-semibold text-gray-700">
+                            View Details
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        {!isExpired && event.status === 'APPROVED' && (
+                          <TouchableOpacity
+                            onPress={() => handleRegister(event.id)}
+                            disabled={isRegistering || isRegistered}
+                            className={`flex-1 py-3 rounded-lg items-center ${
+                              isRegistered
+                                ? 'bg-green-100'
+                                : isRegistering
+                                ? 'bg-gray-300'
+                                : 'bg-blue-500'
+                            }`}
+                          >
+                            <Text
+                              className={`font-semibold ${
+                                isRegistered
+                                  ? 'text-green-700'
+                                  : isRegistering
+                                  ? 'text-gray-500'
+                                  : 'text-white'
+                              }`}
+                            >
+                              {isRegistering
+                                ? 'Registering...'
+                                : isRegistered
+                                ? '✓ Registered'
+                                : '📝 Register'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   </View>
                 );
@@ -374,278 +525,214 @@ export default function StudentEventsPage() {
         </ScrollView>
       </View>
 
-      {/* Event Detail Modal */}
+      {/* Filter Modal */}
       <Modal
-        visible={detailModalVisible}
+        visible={filterModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setDetailModalVisible(false)}
+        onRequestClose={() => setFilterModalVisible(false)}
       >
         <View className="flex-1 bg-black/50">
-          <View className="flex-1 bg-white rounded-t-3xl mt-20">
-            {/* Modal Header - Fixed */}
+          <View className="flex-1 bg-white rounded-t-3xl mt-32">
+            {/* Modal Header */}
             <View className="flex-row items-center justify-between p-6 pb-4 border-b border-gray-200">
-              <View className="flex-row items-center">
-                <Text className="text-gray-400 mr-2">👁️</Text>
-                <Text className="text-base text-gray-600">Event Details</Text>
-              </View>
+              <Text className="text-xl font-bold text-gray-900">Filters</Text>
               <TouchableOpacity
-                onPress={() => setDetailModalVisible(false)}
+                onPress={() => setFilterModalVisible(false)}
                 className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
               >
                 <Text className="text-gray-600 text-xl">✕</Text>
               </TouchableOpacity>
             </View>
 
-            {selectedEvent && (
-              <ScrollView 
-                showsVerticalScrollIndicator={false}
-                className="flex-1"
+            <ScrollView className="flex-1 p-6">
+              {/* Expired Filter */}
+              <View className="mb-6">
+                <Text className="text-base font-semibold text-gray-900 mb-3">
+                  Event Status
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowExpiredFilter('hide')}
+                  className={`p-4 rounded-lg mb-2 ${
+                    showExpiredFilter === 'hide' ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50'
+                  }`}
+                >
+                  <Text className={`font-semibold ${showExpiredFilter === 'hide' ? 'text-blue-700' : 'text-gray-700'}`}>
+                    Hide Expired
+                  </Text>
+                  <Text className="text-sm text-gray-600 mt-1">
+                    Show only upcoming events
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowExpiredFilter('show')}
+                  className={`p-4 rounded-lg mb-2 ${
+                    showExpiredFilter === 'show' ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50'
+                  }`}
+                >
+                  <Text className={`font-semibold ${showExpiredFilter === 'show' ? 'text-blue-700' : 'text-gray-700'}`}>
+                    Show All
+                  </Text>
+                  <Text className="text-sm text-gray-600 mt-1">
+                    Show all events including past ones
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowExpiredFilter('only')}
+                  className={`p-4 rounded-lg mb-2 ${
+                    showExpiredFilter === 'only' ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50'
+                  }`}
+                >
+                  <Text className={`font-semibold ${showExpiredFilter === 'only' ? 'text-blue-700' : 'text-gray-700'}`}>
+                    Only Expired
+                  </Text>
+                  <Text className="text-sm text-gray-600 mt-1">
+                    Show only past events
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Registration Filter */}
+              <View className="mb-6">
+                <Text className="text-base font-semibold text-gray-900 mb-3">
+                  Registration Status
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowRegisteredOnly(!showRegisteredOnly)}
+                  className={`p-4 rounded-lg flex-row items-center justify-between ${
+                    showRegisteredOnly ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50'
+                  }`}
+                >
+                  <View>
+                    <Text className={`font-semibold ${showRegisteredOnly ? 'text-blue-700' : 'text-gray-700'}`}>
+                      My Registrations
+                    </Text>
+                    <Text className="text-sm text-gray-600 mt-1">
+                      Show only events you registered for
+                    </Text>
+                  </View>
+                  {showRegisteredOnly && myRegistrations.length > 0 && (
+                    <View className="bg-blue-500 px-3 py-1 rounded-full">
+                      <Text className="text-white font-semibold text-sm">
+                        {myRegistrations.length}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Apply Button */}
+              <TouchableOpacity
+                onPress={() => setFilterModalVisible(false)}
+                className="bg-blue-500 py-4 rounded-lg items-center mt-4"
               >
-                <View className="p-6">
-                  {/* Event Header */}
-                  <View className="mb-6">
-                    <View className="flex-row items-start justify-between mb-3">
-                      <View className="flex-1 mr-3">
-                        <Text className="text-2xl font-bold text-gray-900 mb-2">
-                          {selectedEvent.name || selectedEvent.eventName}
-                        </Text>
-                        
-                        {/* Type Badge */}
-                        <View className="flex-row items-center">
-                          <View
-                            className={`px-3 py-1 rounded-full ${
-                              selectedEvent.type === 'PUBLIC'
-                                ? 'bg-blue-500'
-                                : 'bg-gray-400'
-                            }`}
-                          >
-                            <Text className="text-white text-xs font-medium">
-                              {selectedEvent.type || selectedEvent.eventType || 'Event'}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
+                <Text className="text-white font-bold text-base">
+                  Apply Filters
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
-                      {/* Event ID */}
-                      <View className="bg-gray-50 px-3 py-2 rounded-lg">
-                        <Text className="text-xs text-gray-500">Event ID</Text>
-                        <Text className="text-base font-bold text-gray-900 font-mono">
-                          #{selectedEvent.id}
-                        </Text>
-                      </View>
-                    </View>
+      {/* Club Selector Modal */}
+      <Modal
+        visible={clubSelectorVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setClubSelectorVisible(false)}
+      >
+        <View className="flex-1 bg-black/50">
+          <View className="flex-1 bg-white rounded-t-3xl mt-32">
+            {/* Modal Header */}
+            <View className="flex-row items-center justify-between p-6 pb-4 border-b border-gray-200">
+              <Text className="text-xl font-bold text-gray-900">Select Club</Text>
+              <TouchableOpacity
+                onPress={() => setClubSelectorVisible(false)}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+              >
+                <Text className="text-gray-600 text-xl">✕</Text>
+              </TouchableOpacity>
+            </View>
 
-                    {/* Club Name */}
-                    <View className="flex-row items-center bg-blue-50 p-3 rounded-lg">
-                      <Text className="text-blue-600 mr-2">🏢</Text>
-                      <Text className="text-sm text-blue-900 font-medium">
-                        {clubs.find((c) => c.id === selectedEvent.clubId)?.name ||
-                          `Club ${selectedEvent.clubId}`}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Separator */}
-                  <View className="h-px bg-gray-200 mb-6" />
-
-                  {/* Description */}
-                  {selectedEvent.description && (
-                    <View className="mb-6">
-                      <Text className="text-base font-semibold text-gray-900 mb-3">
-                        Description
-                      </Text>
-                      <Text className="text-sm text-gray-600 leading-6">
-                        {selectedEvent.description}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Separator */}
-                  <View className="h-px bg-gray-200 mb-6" />
-
-                  {/* Date & Time Section */}
-                  <View className="mb-6">
-                    <Text className="text-base font-semibold text-gray-900 mb-3">
-                      📅 Date & Time
+            <ScrollView className="flex-1 p-6">
+              {/* All Clubs Option */}
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedClubId('all');
+                  setClubSelectorVisible(false);
+                }}
+                className={`p-4 rounded-lg mb-3 ${
+                  selectedClubId === 'all' ? 'bg-purple-100 border-2 border-purple-500' : 'bg-gray-50'
+                }`}
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className={`text-lg font-bold ${selectedClubId === 'all' ? 'text-purple-700' : 'text-gray-900'}`}>
+                      All My Clubs
                     </Text>
-                    <View className="space-y-3">
-                      {/* Date */}
-                      {(selectedEvent.date || selectedEvent.eventDate) && (
-                        <View className="bg-gray-50 p-4 rounded-xl">
-                          <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
-                              <Text className="text-xl">📅</Text>
-                            </View>
-                            <View className="flex-1">
-                              <Text className="text-sm font-semibold text-gray-900">
-                                {formatDate(
-                                  selectedEvent.date || selectedEvent.eventDate || ''
-                                )}
-                              </Text>
-                              <Text className="text-xs text-gray-500 mt-1">
-                                {selectedEvent.date || selectedEvent.eventDate}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Time */}
-                      {selectedEvent.time && (
-                        <View className="bg-gray-50 p-4 rounded-xl">
-                          <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
-                              <Text className="text-xl">🕐</Text>
-                            </View>
-                            <View className="flex-1">
-                              <Text className="text-sm font-semibold text-gray-900">
-                                {selectedEvent.time}
-                              </Text>
-                              <Text className="text-xs text-gray-500 mt-1">
-                                Start Time
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Location & Organization Section */}
-                  <View className="mb-6">
-                    <Text className="text-base font-semibold text-gray-900 mb-3">
-                      📍 Location & Organization
+                    <Text className="text-sm text-gray-600 mt-1">
+                      Show events from all {userClubIds.length} club{userClubIds.length > 1 ? 's' : ''}
                     </Text>
-                    <View className="space-y-3">
-                      {/* Location */}
-                      {selectedEvent.locationId && (
-                        <View className="bg-gray-50 p-4 rounded-xl">
-                          <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
-                              <Text className="text-xl">📍</Text>
-                            </View>
-                            <View className="flex-1">
-                              <Text className="text-sm font-semibold text-gray-900">
-                                {selectedEvent.venue || `Location ID: ${selectedEvent.locationId}`}
-                              </Text>
-                              <Text className="text-xs text-gray-500 mt-1">
-                                Event Venue
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Club/Organization */}
-                      <View className="bg-gray-50 p-4 rounded-xl">
-                        <View className="flex-row items-center">
-                          <View className="w-10 h-10 bg-purple-100 rounded-full items-center justify-center mr-3">
-                            <Text className="text-xl">�</Text>
-                          </View>
-                          <View className="flex-1">
-                            <Text className="text-sm font-semibold text-gray-900">
-                              {clubs.find((c) => c.id === selectedEvent.clubId)?.name ||
-                                `Club ID: ${selectedEvent.clubId}`}
-                            </Text>
-                            <Text className="text-xs text-gray-500 mt-1">
-                              Organizing Club
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
                   </View>
-
-                  {/* Additional Info */}
-                  {(selectedEvent.category || 
-                    selectedEvent.expectedAttendees || 
-                    selectedEvent.status) && (
-                    <>
-                      <View className="h-px bg-gray-200 mb-6" />
-                      <View className="mb-6">
-                        <Text className="text-base font-semibold text-gray-900 mb-3">
-                          ℹ️ Additional Information
-                        </Text>
-                        <View className="space-y-2">
-                          {/* Category */}
-                          {selectedEvent.category && (
-                            <View className="flex-row items-center py-2">
-                              <Text className="text-gray-500 text-sm w-32">Category</Text>
-                              <Text className="text-gray-900 text-sm font-medium flex-1">
-                                {selectedEvent.category}
-                              </Text>
-                            </View>
-                          )}
-
-                          {/* Expected Attendees */}
-                          {selectedEvent.expectedAttendees && (
-                            <View className="flex-row items-center py-2">
-                              <Text className="text-gray-500 text-sm w-32">Expected</Text>
-                              <Text className="text-gray-900 text-sm font-medium flex-1">
-                                {selectedEvent.expectedAttendees} attendees
-                              </Text>
-                            </View>
-                          )}
-
-                          {/* Status */}
-                          {selectedEvent.status && (
-                            <View className="flex-row items-center py-2">
-                              <Text className="text-gray-500 text-sm w-32">Status</Text>
-                              <View
-                                className={`px-3 py-1 rounded-full ${
-                                  selectedEvent.status === 'ACTIVE' ||
-                                  selectedEvent.status === 'APPROVED'
-                                    ? 'bg-green-100'
-                                    : 'bg-gray-100'
-                                }`}
-                              >
-                                <Text
-                                  className={`text-xs font-medium ${
-                                    selectedEvent.status === 'ACTIVE' ||
-                                    selectedEvent.status === 'APPROVED'
-                                      ? 'text-green-700'
-                                      : 'text-gray-700'
-                                  }`}
-                                >
-                                  {selectedEvent.status}
-                                </Text>
-                              </View>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    </>
+                  {selectedClubId === 'all' && (
+                    <View className="w-6 h-6 bg-purple-500 rounded-full items-center justify-center">
+                      <Text className="text-white text-xs font-bold">✓</Text>
+                    </View>
                   )}
                 </View>
+              </TouchableOpacity>
 
-                {/* Action Buttons - Fixed at bottom inside scroll */}
-                <View className="p-6 pt-0 pb-8">
-                  <View className="flex-row gap-3">
+              {/* Individual Clubs */}
+              {userClubsDetails.length > 0 && (
+                <View className="mt-2">
+                  <Text className="text-sm font-semibold text-gray-500 mb-3 uppercase">
+                    My Clubs
+                  </Text>
+                  {userClubsDetails.map((club) => (
                     <TouchableOpacity
-                      onPress={() => setDetailModalVisible(false)}
-                      className="flex-1 py-4 rounded-xl bg-gray-100 items-center"
-                    >
-                      <Text className="font-semibold text-gray-700">
-                        Close
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                      key={club.id}
                       onPress={() => {
-                        // TODO: Implement register for event
-                        console.log('Register for event:', selectedEvent.id);
-                        setDetailModalVisible(false);
+                        setSelectedClubId(String(club.id));
+                        setClubSelectorVisible(false);
                       }}
-                      className="flex-1 py-4 rounded-xl bg-blue-500 items-center"
+                      className={`p-4 rounded-lg mb-3 ${
+                        selectedClubId === String(club.id) ? 'bg-purple-100 border-2 border-purple-500' : 'bg-gray-50'
+                      }`}
                     >
-                      <Text className="font-semibold text-white">
-                        📝 Register
-                      </Text>
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-1">
+                          <Text className={`text-lg font-bold ${selectedClubId === String(club.id) ? 'text-purple-700' : 'text-gray-900'}`}>
+                            {club.name}
+                          </Text>
+                          <Text className="text-sm text-gray-600 mt-1">
+                            View events from this club only
+                          </Text>
+                        </View>
+                        {selectedClubId === String(club.id) && (
+                          <View className="w-6 h-6 bg-purple-500 rounded-full items-center justify-center">
+                            <Text className="text-white text-xs font-bold">✓</Text>
+                          </View>
+                        )}
+                      </View>
                     </TouchableOpacity>
-                  </View>
+                  ))}
                 </View>
-              </ScrollView>
-            )}
+              )}
+
+              {/* No Clubs Message */}
+              {userClubsDetails.length === 0 && (
+                <View className="items-center justify-center py-10">
+                  <Text className="text-6xl mb-4">🏫</Text>
+                  <Text className="text-lg font-semibold text-gray-900 mb-2">
+                    No clubs found
+                  </Text>
+                  <Text className="text-gray-500 text-center px-8">
+                    Join a club to see events
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>

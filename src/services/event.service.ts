@@ -1,26 +1,49 @@
 import { axiosClient } from '@configs/axios';
 
+// TimeObject type for handling time data
+export interface TimeObject {
+  hour: number;
+  minute: number;
+  second: number;
+  nano: number;
+}
+
+// Helper function to convert TimeObject to string (HH:MM:SS format)
+export const timeObjectToString = (time: TimeObject | string | null | undefined): string => {
+  if (!time) return '00:00:00';
+  if (typeof time === 'string') return time;
+  const { hour = 0, minute = 0, second = 0 } = time;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+};
+
+// Helper function to convert string to TimeObject
+export const timeStringToObject = (timeStr: string): TimeObject => {
+  const [hour = 0, minute = 0, second = 0] = timeStr.split(':').map(Number);
+  return { hour, minute, second, nano: 0 };
+};
+
 export interface Event {
   id: number;
   name: string;
   description: string;
   type: "PUBLIC" | "PRIVATE" | string;
   date: string;
-  startTime: string;
-  endTime: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | string;
+  startTime: TimeObject | string;
+  endTime: TimeObject | string;
+  status: "PENDING_COCLUB" | "PENDING_UNISTAFF" | "APPROVED" | "REJECTED" | "CANCELLED" | "WAITING" | "ONGOING" | "COMPLETED" | string;
   checkInCode: string;
   locationName: string;
   maxCheckInCount: number;
   currentCheckInCount: number;
+  budgetPoints: number;
   hostClub: {
     id: number;
     name: string;
   };
-  coHostClubs?: Array<{
+  coHostedClubs?: Array<{
     id: number;
     name: string;
-    coHostStatus?: string;
+    coHostStatus: string;
   }>;
   points?: number;
   // Legacy fields for backward compatibility
@@ -35,6 +58,36 @@ export interface Event {
   eventName?: string;
   eventType?: string;
   requestedBy?: string;
+}
+
+// Event Wallet interface
+export interface EventWallet {
+  eventId: number;
+  eventName: string;
+  hostClubName: string;
+  budgetPoints: number;
+  balancePoints: number;
+  ownerType: string;
+  createdAt: string;
+  transactions: WalletTransaction[];
+}
+
+// Wallet Transaction interface
+export interface WalletTransaction {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+}
+
+// Event Summary interface
+export interface EventSummary {
+  eventId: number;
+  registrationsCount: number;
+  refundedCount: number;
+  eventName: string;
+  eventDate: string;
 }
 
 export interface CreateEventPayload {
@@ -230,6 +283,187 @@ export const deleteEvent = async (id: string | number): Promise<void> => {
   }
 };
 
+/**
+ * Get events co-hosted by a club
+ */
+export const getEventCoHostByClubId = async (clubId: string | number): Promise<Event[]> => {
+  try {
+    const response = await axiosClient.get(`/api/events/club/${clubId}/cohost`);
+    const resData: any = response.data;
+    console.log(`Fetched co-host events for club ${clubId}:`, resData);
+    
+    // If response is direct array of events
+    if (Array.isArray(resData)) return resData;
+    
+    // If response has wrapper structure like { success, data, message }
+    if (resData?.data && Array.isArray(resData.data)) return resData.data;
+    
+    // If response has content property (pagination)
+    if (resData?.content && Array.isArray(resData.content)) return resData.content;
+    
+    // Fallback to empty array if no events found
+    return [];
+  } catch (error) {
+    console.error(`Error fetching co-host events for club ${clubId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Submit event to university for approval
+ */
+export const submitForUniversityApproval = async (eventId: string | number): Promise<void> => {
+  try {
+    await axiosClient.post(`/api/events/${eventId}/submit-university`);
+    console.log(`Event ${eventId} submitted to university for approval`);
+  } catch (error) {
+    console.error(`Error submitting event ${eventId} to university:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Respond to co-host invitation
+ */
+export const coHostRespond = async (eventId: string | number, accept: boolean): Promise<{ message: string }> => {
+  try {
+    const response = await axiosClient.post(`/api/events/${eventId}/cohost/respond`, null, {
+      params: { accept }
+    });
+    const data: any = response.data;
+    return { message: data.message || (accept ? 'Co-host invitation accepted' : 'Co-host invitation rejected') };
+  } catch (error) {
+    console.error(`Error responding to co-host invitation for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get event wallet with transaction history
+ */
+export const getEventWallet = async (eventId: string | number): Promise<EventWallet> => {
+  try {
+    const response = await axiosClient.get(`/api/events/${eventId}/wallet/detail`);
+    const resData: any = response.data;
+    
+    // Handle response structure: { success, message, data }
+    if (resData?.data) return resData.data;
+    
+    // Fallback for direct data
+    return resData;
+  } catch (error) {
+    console.error(`Error fetching wallet for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get event summary (registrations, refunds, etc.)
+ */
+export const getEventSummary = async (eventId: string | number): Promise<EventSummary> => {
+  try {
+    const response = await axiosClient.get(`/api/events/${eventId}/summary`);
+    const resData: any = response.data;
+    
+    // Handle response structure: { success, message, data }
+    if (resData?.data) return resData.data;
+    
+    // Fallback for direct data
+    return resData;
+  } catch (error) {
+    console.error(`Error fetching summary for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Complete an event (mark as COMPLETED)
+ */
+export const completeEvent = async (eventId: string | number): Promise<{ message: string }> => {
+  try {
+    const response = await axiosClient.post(`/api/events/${eventId}/complete`);
+    const data: any = response.data;
+    return { message: data.message || 'Event completed successfully' };
+  } catch (error) {
+    console.error(`Error completing event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Register for an event
+ */
+export const registerForEvent = async (eventId: string | number): Promise<{ success: boolean; message: string; data: string }> => {
+  try {
+    const response = await axiosClient.post(`/api/events/register`, { eventId });
+    const data: any = response.data;
+    console.log(`Registered for event ${eventId}:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error registering for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Event Registration interface
+ */
+export interface EventRegistration {
+  clubName: string;
+  status: string;
+  eventId: number;
+  eventName: string;
+  registeredAt: string;
+  attendanceLevel: string;
+  date: string;
+  committedPoints: number;
+}
+
+/**
+ * Get my event registrations
+ */
+export const getMyEventRegistrations = async (): Promise<EventRegistration[]> => {
+  try {
+    const response = await axiosClient.get(`/api/events/my-registrations`);
+    const data: any = response.data;
+    console.log(`Fetched my event registrations:`, data);
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+  } catch (error) {
+    console.error(`Error fetching my event registrations:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Generate QR token for specific phase
+ * Updated to match web implementation with new API endpoint
+ */
+export const eventQR = async (eventId: string | number, phase: string): Promise<{ phase: string; token: string; expiresIn: number }> => {
+  try {
+    console.log(`[eventQR] Calling API with eventId: ${eventId}, phase: ${phase}`);
+    const response = await axiosClient.get(`/api/events/${eventId}/attendance/qr`, {
+      params: { phase }
+    });
+    const data: any = response.data;
+    console.log(`[eventQR] API Response for event ${eventId} phase ${phase}:`, JSON.stringify(data, null, 2));
+    // Response structure: { success: true, message: "success", data: { phase: "CHECK_IN", token: "string", expiresIn: 120 } }
+    if (data?.data) {
+      return data.data as { phase: string; token: string; expiresIn: number };
+    }
+    // Fallback for direct response
+    return {
+      phase: data.phase || phase,
+      token: data.token,
+      expiresIn: data.expiresIn || 120
+    };
+  } catch (error) {
+    console.error(`Error generating QR for event ${eventId} phase ${phase}:`, error);
+    throw error;
+  }
+};
+
 export default {
   fetchEvent,
   createEvent,
@@ -240,5 +474,16 @@ export default {
   fetchLocation,
   fetchClub,
   updateEvent,
-  deleteEvent
+  deleteEvent,
+  getEventCoHostByClubId,
+  submitForUniversityApproval,
+  coHostRespond,
+  getEventWallet,
+  getEventSummary,
+  completeEvent,
+  registerForEvent,
+  getMyEventRegistrations,
+  eventQR,
+  timeObjectToString,
+  timeStringToObject
 };

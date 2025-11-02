@@ -33,6 +33,8 @@ export interface EventFormData {
   endTime: string;
   locationId: number;
   maxCheckInCount: number;
+  commitPointCost?: number;
+  budgetPoints?: number;
   coHostClubIds?: number[];
 }
 
@@ -57,6 +59,8 @@ export default function EventCreateModal({
     endTime: '11:00:00',
     locationId: 0,
     maxCheckInCount: 100,
+    commitPointCost: 0,
+    budgetPoints: 0,
     coHostClubIds: [],
   });
   const [selectedCoHostIds, setSelectedCoHostIds] = useState<number[]>([]);
@@ -73,6 +77,8 @@ export default function EventCreateModal({
       endTime: '11:00:00',
       locationId: 0,
       maxCheckInCount: 100,
+      commitPointCost: 0,
+      budgetPoints: 0,
       coHostClubIds: [],
     });
     setSelectedCoHostIds([]);
@@ -268,6 +274,36 @@ export default function EventCreateModal({
                 value={String(formData.maxCheckInCount)}
                 onChangeText={(text) =>
                   setFormData({ ...formData, maxCheckInCount: parseInt(text) || 100 })
+                }
+                keyboardType="number-pad"
+                editable={!isSubmitting}
+              />
+            </View>
+
+            {/* Point Cost */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-2">Point Cost</Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
+                placeholder="0"
+                value={String(formData.commitPointCost || 0)}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, commitPointCost: parseInt(text) || 0 })
+                }
+                keyboardType="number-pad"
+                editable={!isSubmitting}
+              />
+            </View>
+
+            {/* Budget Points */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-2">Budget Points</Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
+                placeholder="0"
+                value={String(formData.budgetPoints || 0)}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, budgetPoints: parseInt(text) || 0 })
                 }
                 keyboardType="number-pad"
                 editable={!isSubmitting}

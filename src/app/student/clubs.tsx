@@ -4,21 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import { postClubApplication } from '@services/clubApplication.service';
 import { MajorService, type Major } from '@services/major.service';
-import { MembershipsService } from '@services/memberships.service';
+import { MemberApplicationService } from '@services/memberApplication.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -107,7 +107,7 @@ export default function StudentClubsPage() {
             name: club.name,
             description: club.description || '',
             majorName: club.category || '',
-            members: memberCount,
+            members: memberCount.activeMemberCount,
             majorPolicyName: club.policy || '',
             status: getClubStatus(club.id) as 'member' | 'pending' | 'none',
           };
@@ -186,12 +186,21 @@ export default function StudentClubsPage() {
 
     setApplying(true);
     try {
-      await MembershipsService.applyToClub(selectedClub.id, applicationText.trim());
+      // Use MemberApplicationService instead of MembershipsService
+      const response = await MemberApplicationService.createMemberApplication({
+        clubId: selectedClub.id,
+        message: applicationText.trim(),
+      });
+
+      console.log('✅ Application submitted:', response);
 
       // Add to pending list for optimistic UI
       setPendingClubIds((prev) => [...prev, selectedClub.id]);
 
-      Alert.alert('Success', `Your application to ${selectedClub.name} has been submitted`);
+      Alert.alert(
+        'Success',
+        `Your application to ${response.clubName || selectedClub.name} has been submitted. Status: ${response.status}`
+      );
       setShowApplyModal(false);
       setApplicationText('');
       setSelectedClub(null);

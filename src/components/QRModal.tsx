@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { generateCode } from '@services/checkin.service';
+import { eventQR } from '@services/event.service';
 import { getCheckinUrl } from '@utils/getLocalUrl';
 import React, { useEffect, useState } from 'react';
 import {
@@ -19,21 +19,23 @@ interface QRModalProps {
   onOpenChange: (open: boolean) => void;
   eventName: string;
   eventId?: number;
+  phase?: 'START' | 'END' | 'MID';
 }
 
-type QRMode = 'prod' | 'dev';
+type QRMode = 'prod' | 'dev' | 'mobile';
 
 export default function QRModal({
   open,
   onOpenChange,
   eventName,
   eventId,
+  phase = 'START',
 }: QRModalProps) {
-  const REFRESH_SECONDS = 30;
+  const REFRESH_SECONDS = 120; // Updated to match API expiresIn default
   const [secondsLeft, setSecondsLeft] = useState(REFRESH_SECONDS);
   const [qrLoading, setQrLoading] = useState(false);
   const [token, setToken] = useState('');
-  const [qrUrl, setQrUrl] = useState('');
+  const [currentPhase, setCurrentPhase] = useState<'START' | 'END' | 'MID'>(phase || 'START');
   const [qrMode, setQrMode] = useState<QRMode>('prod');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState('');
@@ -41,41 +43,46 @@ export default function QRModal({
   const screenWidth = Dimensions.get('window').width;
   const qrSize = isFullscreen ? Math.min(screenWidth * 0.8, 400) : 220;
 
-  // Fetch QR code
+  // Fetch QR code with phase
   const fetchQrCode = async () => {
     if (!eventId) return;
+    console.log(`[QRModal] Fetching QR with eventId: ${eventId}, currentPhase: ${currentPhase}`);
     setQrLoading(true);
     setError('');
     try {
-      const { token, qrUrl } = await generateCode(eventId);
-      setToken(token);
-      setQrUrl(qrUrl);
+      const result = await eventQR(eventId, currentPhase);
+      console.log(`[QRModal] Received QR result - phase: ${result.phase}, token: ${result.token.substring(0, 20)}..., expiresIn: ${result.expiresIn}`);
+      setToken(result.token);
+      setCurrentPhase(result.phase);
+      // Update refresh timer based on API response
+      if (result.expiresIn) {
+        setSecondsLeft(result.expiresIn);
+      }
     } catch (err: any) {
       console.error('Failed to fetch QR code:', err);
       setToken('');
-      setQrUrl('');
-      setError(err?.message || 'Failed to generate QR code');
+      setError(err?.response?.data?.message || err?.message || 'Failed to generate QR code');
       Toast.show({
         type: 'error',
         text1: 'QR Error',
-        text2: 'Could not generate QR code',
+        text2: err?.response?.data?.message || 'Could not generate QR code',
       });
     } finally {
       setQrLoading(false);
     }
   };
 
-  // Initial fetch and refresh every 30s
+  // Initial fetch and refresh based on expiresIn
   useEffect(() => {
     if (!open || !eventId) {
       setSecondsLeft(REFRESH_SECONDS);
       setToken('');
-      setQrUrl('');
+      setCurrentPhase(phase);
       setError('');
       return;
     }
+    setCurrentPhase(phase);
     fetchQrCode();
-    setSecondsLeft(REFRESH_SECONDS);
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
@@ -87,15 +94,21 @@ export default function QRModal({
     }, 1000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, eventId]);
+  }, [open, eventId, phase]);
 
   // Generate QR data based on mode
   const getQRValue = () => {
+    if (!token) return '';
+    
     if (qrMode === 'prod') {
-      return qrUrl || token;
+      // Production mode: use token directly for web check-in
+      return token;
+    } else if (qrMode === 'mobile') {
+      // Mobile mode: generate deep link URL with token and phase
+      return getCheckinUrl(token, currentPhase);
     } else {
-      // Dev mode: generate local URL with token
-      return getCheckinUrl(token);
+      // Dev mode: generate local URL with token and phase
+      return getCheckinUrl(token, currentPhase);
     }
   };
 
@@ -120,7 +133,7 @@ export default function QRModal({
             <View className="flex-row items-center justify-between">
               <View className="flex-1">
                 <Text className="text-white text-xl font-bold mb-1">{eventName}</Text>
-                <Text className="text-gray-400 text-sm">Check-in QR Code</Text>
+                <Text className="text-gray-400 text-sm">QR Code - Phase: {currentPhase.replace('_', ' ')}</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setIsFullscreen(false)}
@@ -142,16 +155,24 @@ export default function QRModal({
                   className={`flex-1 py-3 rounded-lg ${qrMode === 'prod' ? 'bg-teal-600' : 'bg-transparent'}`}
                   onPress={() => setQrMode('prod')}
                 >
-                  <Text className={`text-center font-semibold ${qrMode === 'prod' ? 'text-white' : 'text-gray-400'}`}>
-                    Production
+                  <Text className={`text-center font-semibold text-sm ${qrMode === 'prod' ? 'text-white' : 'text-gray-400'}`}>
+                    Web
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 py-3 rounded-lg ${qrMode === 'mobile' ? 'bg-teal-600' : 'bg-transparent'}`}
+                  onPress={() => setQrMode('mobile')}
+                >
+                  <Text className={`text-center font-semibold text-sm ${qrMode === 'mobile' ? 'text-white' : 'text-gray-400'}`}>
+                    Mobile
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   className={`flex-1 py-3 rounded-lg ${qrMode === 'dev' ? 'bg-teal-600' : 'bg-transparent'}`}
                   onPress={() => setQrMode('dev')}
                 >
-                  <Text className={`text-center font-semibold ${qrMode === 'dev' ? 'text-white' : 'text-gray-400'}`}>
-                    Development
+                  <Text className={`text-center font-semibold text-sm ${qrMode === 'dev' ? 'text-white' : 'text-gray-400'}`}>
+                    Dev
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -170,13 +191,33 @@ export default function QRModal({
                 </View>
 
                 {/* Mode Info */}
+                {qrMode === 'mobile' && (
+                  <View className="bg-purple-900/50 border border-purple-500 rounded-lg p-4 mb-4 w-full">
+                    <Text className="text-purple-200 text-sm font-medium mb-2">
+                      📱 Mobile Deep Link
+                    </Text>
+                    <Text className="text-purple-300 text-xs">
+                      This QR opens the mobile app for check-in
+                    </Text>
+                  </View>
+                )}
                 {qrMode === 'dev' && (
                   <View className="bg-blue-900/50 border border-blue-500 rounded-lg p-4 mb-4 w-full">
                     <Text className="text-blue-200 text-sm font-medium mb-2">
-                      📱 Development Mode
+                      🔧 Development Mode
                     </Text>
                     <Text className="text-blue-300 text-xs">
-                      This QR links to your local app
+                      This QR links to your local development server
+                    </Text>
+                  </View>
+                )}
+                {qrMode === 'prod' && (
+                  <View className="bg-green-900/50 border border-green-500 rounded-lg p-4 mb-4 w-full">
+                    <Text className="text-green-200 text-sm font-medium mb-2">
+                      🌐 Web Check-in
+                    </Text>
+                    <Text className="text-green-300 text-xs">
+                      This QR code opens the web check-in page
                     </Text>
                   </View>
                 )}
@@ -251,6 +292,11 @@ export default function QRModal({
                 <Text className="text-white/90 text-sm" numberOfLines={2}>
                   {eventName}
                 </Text>
+                <View className="mt-2 bg-white/20 px-3 py-1 rounded-full self-start">
+                  <Text className="text-white text-xs font-semibold">
+                    Phase: {currentPhase.replace('_', ' ')}
+                  </Text>
+                </View>
               </View>
               <TouchableOpacity
                 onPress={() => setIsFullscreen(true)}
@@ -268,16 +314,24 @@ export default function QRModal({
                 className={`flex-1 py-3 rounded-lg ${qrMode === 'prod' ? 'bg-teal-600 shadow-sm' : 'bg-transparent'}`}
                 onPress={() => setQrMode('prod')}
               >
-                <Text className={`text-center font-semibold text-sm ${qrMode === 'prod' ? 'text-white' : 'text-gray-600'}`}>
-                  Production
+                <Text className={`text-center font-semibold text-xs ${qrMode === 'prod' ? 'text-white' : 'text-gray-600'}`}>
+                  Web
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className={`flex-1 py-3 rounded-lg ${qrMode === 'mobile' ? 'bg-teal-600 shadow-sm' : 'bg-transparent'}`}
+                onPress={() => setQrMode('mobile')}
+              >
+                <Text className={`text-center font-semibold text-xs ${qrMode === 'mobile' ? 'text-white' : 'text-gray-600'}`}>
+                  Mobile
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 className={`flex-1 py-3 rounded-lg ${qrMode === 'dev' ? 'bg-teal-600 shadow-sm' : 'bg-transparent'}`}
                 onPress={() => setQrMode('dev')}
               >
-                <Text className={`text-center font-semibold text-sm ${qrMode === 'dev' ? 'text-white' : 'text-gray-600'}`}>
-                  Development
+                <Text className={`text-center font-semibold text-xs ${qrMode === 'dev' ? 'text-white' : 'text-gray-600'}`}>
+                  Dev
                 </Text>
               </TouchableOpacity>
             </View>
@@ -296,13 +350,33 @@ export default function QRModal({
                 </View>
 
                 {/* Mode Info */}
+                {qrMode === 'mobile' && (
+                  <View className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3 w-full">
+                    <Text className="text-xs text-purple-900 font-medium mb-1">
+                      📱 Mobile Deep Link
+                    </Text>
+                    <Text className="text-xs text-purple-700">
+                      Opens mobile app for check-in
+                    </Text>
+                  </View>
+                )}
                 {qrMode === 'dev' && (
                   <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 w-full">
                     <Text className="text-xs text-blue-900 font-medium mb-1">
-                      📱 Development Mode
+                      🔧 Development Mode
                     </Text>
                     <Text className="text-xs text-blue-700">
-                      QR links to local app: /student/checkin/{token.substring(0, 10)}...
+                      QR links to local development server
+                    </Text>
+                  </View>
+                )}
+                {qrMode === 'prod' && (
+                  <View className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3 w-full">
+                    <Text className="text-xs text-green-900 font-medium mb-1">
+                      🌐 Web Check-in
+                    </Text>
+                    <Text className="text-xs text-green-700">
+                      QR opens web check-in page
                     </Text>
                   </View>
                 )}

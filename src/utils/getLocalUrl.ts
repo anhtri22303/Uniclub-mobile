@@ -22,8 +22,14 @@ export const getLocalUrl = (path: string): string => {
 };
 
 /**
- * Get local URL for check-in with token
+ * Get local URL for check-in with phase and token
+ * Phase should be: START, MID, END, or NONE
  */
-export const getCheckinUrl = (token: string): string => {
-  return getLocalUrl(`student/checkin/${token}`);
+export const getCheckinUrl = (token: string, phase: string = 'NONE'): string => {
+  // Use phase directly - no mapping needed
+  // API and mobile both use: START, MID, END, NONE
+  const normalizedPhase = phase.toUpperCase();
+  const url = getLocalUrl(`student/checkin/${normalizedPhase}/${token}`);
+  console.log(`[QR URL] Phase: ${phase}, URL: ${url.substring(0, 80)}...`);
+  return url;
 };

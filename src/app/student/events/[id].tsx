@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMyEventRegistrations, useRegisterForEvent } from '@hooks/useQueryHooks';
 import type { Event } from '@services/event.service';
-import { getEventById } from '@services/event.service';
+import { getEventById, timeObjectToString } from '@services/event.service';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -19,6 +20,10 @@ export default function StudentEventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // React Query hooks
+  const { data: myRegistrations = [] } = useMyEventRegistrations();
+  const { mutate: registerForEvent, isPending: isRegistering } = useRegisterForEvent();
 
   const loadEventDetail = async () => {
     if (!id) return;
@@ -49,6 +54,33 @@ export default function StudentEventDetailPage() {
     loadEventDetail();
   }, [id]);
 
+  // Check if user is registered for this event
+  const isRegistered = event ? myRegistrations.some((reg) => reg.eventId === event.id) : false;
+
+  // Handle event registration
+  const handleRegister = () => {
+    if (!event) return;
+
+    registerForEvent(event.id, {
+      onSuccess: (data) => {
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: data.message || 'Successfully registered for the event!',
+        });
+        loadEventDetail(); // Refresh event details
+      },
+      onError: (error: any) => {
+        console.error('Error registering for event:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: error?.response?.data?.message || 'Failed to register for the event',
+        });
+      },
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     const statusUpper = status.toUpperCase();
     switch (statusUpper) {
@@ -60,6 +92,7 @@ export default function StudentEventDetailPage() {
           label: 'Approved',
         };
       case 'PENDING':
+      case 'PENDING_UNISTAFF':
         return {
           bg: 'bg-yellow-100',
           text: 'text-yellow-800',
@@ -80,6 +113,20 @@ export default function StudentEventDetailPage() {
           icon: 'ban' as const,
           label: 'Cancelled',
         };
+      case 'COMPLETED':
+        return {
+          bg: 'bg-blue-100',
+          text: 'text-blue-800',
+          icon: 'checkmark-done-circle' as const,
+          label: 'Completed',
+        };
+      case 'ONGOING':
+        return {
+          bg: 'bg-purple-100',
+          text: 'text-purple-800',
+          icon: 'play-circle' as const,
+          label: 'Ongoing',
+        };
       default:
         return {
           bg: 'bg-gray-100',
@@ -97,7 +144,7 @@ export default function StudentEventDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -105,7 +152,32 @@ export default function StudentEventDetailPage() {
     });
   };
 
-  // Check if the event is currently active
+  // Check if the event is currently active and can be registered for
+  const canRegister = () => {
+    if (!event) return false;
+
+    // Must be APPROVED
+    if (event.status !== 'APPROVED') return false;
+
+    // Check if event hasn't ended yet
+    if (!event.date || !event.endTime) return false;
+
+    try {
+      const now = new Date();
+      const eventDate = new Date(event.date);
+      const endTimeStr = timeObjectToString(event.endTime);
+      const [hours, minutes] = endTimeStr.split(':').map(Number);
+      const eventEndDateTime = new Date(eventDate);
+      eventEndDateTime.setHours(hours, minutes, 0, 0);
+
+      return now <= eventEndDateTime;
+    } catch (error) {
+      console.error('Error checking if can register:', error);
+      return false;
+    }
+  };
+
+  // Check if the event is currently active for check-in
   const isEventActive = () => {
     if (!event) return false;
 
@@ -118,7 +190,8 @@ export default function StudentEventDetailPage() {
     try {
       const now = new Date();
       const eventDate = new Date(event.date);
-      const [hours, minutes] = event.endTime.split(':').map(Number);
+      const endTimeStr = timeObjectToString(event.endTime);
+      const [hours, minutes] = endTimeStr.split(':').map(Number);
       const eventEndDateTime = new Date(eventDate);
       eventEndDateTime.setHours(hours, minutes, 0, 0);
 
@@ -197,6 +270,7 @@ export default function StudentEventDetailPage() {
 
   const statusBadge = getStatusBadge(event.status);
   const typeBadge = getTypeBadge(event.type);
+  const showRegisterButton = canRegister();
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -237,7 +311,7 @@ export default function StudentEventDetailPage() {
             </View>
 
             {/* Badges */}
-            <View className="flex-row gap-2 mb-4">
+            <View className="flex-row gap-2 mb-4 flex-wrap">
               <View className={`flex-row items-center px-3 py-1.5 rounded-full ${statusBadge.bg}`}>
                 <Ionicons name={statusBadge.icon} size={14} color={statusBadge.text.replace('text-', '#')} />
                 <Text className={`ml-1 text-xs font-semibold ${statusBadge.text}`}>
@@ -249,6 +323,14 @@ export default function StudentEventDetailPage() {
                   {typeBadge.label}
                 </Text>
               </View>
+              {isRegistered && (
+                <View className="flex-row items-center px-3 py-1.5 rounded-full bg-green-100">
+                  <Ionicons name="checkmark-circle" size={14} color="#15803d" />
+                  <Text className="ml-1 text-xs font-semibold text-green-800">
+                    Registered
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Description */}
@@ -276,19 +358,19 @@ export default function StudentEventDetailPage() {
               </View>
             </View>
 
-            <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
-              <View className="bg-teal-100 p-3 rounded-lg mr-4">
-                <Ionicons name="time" size={20} color="#0D9488" />
+            {(event.startTime && event.endTime) && (
+              <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
+                <View className="bg-teal-100 p-3 rounded-lg mr-4">
+                  <Ionicons name="time" size={20} color="#0D9488" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-900 font-medium">
+                    {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
+                  </Text>
+                  <Text className="text-gray-500 text-sm">Event Duration</Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-gray-900 font-medium">
-                  {event.startTime && event.endTime
-                    ? `${event.startTime} - ${event.endTime}`
-                    : event.time || 'Time not set'}
-                </Text>
-                <Text className="text-gray-500 text-sm">Event Duration</Text>
-              </View>
-            </View>
+            )}
           </View>
 
           {/* Divider */}
@@ -300,15 +382,17 @@ export default function StudentEventDetailPage() {
               Location & Organization
             </Text>
 
-            <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
-              <View className="bg-teal-100 p-3 rounded-lg mr-4">
-                <Ionicons name="location" size={20} color="#0D9488" />
+            {event.locationName && (
+              <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
+                <View className="bg-teal-100 p-3 rounded-lg mr-4">
+                  <Ionicons name="location" size={20} color="#0D9488" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-900 font-medium">{event.locationName}</Text>
+                  <Text className="text-gray-500 text-sm">Event Venue</Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-gray-900 font-medium">{event.locationName}</Text>
-                <Text className="text-gray-500 text-sm">Event Venue</Text>
-              </View>
-            </View>
+            )}
 
             <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
               <View className="bg-teal-100 p-3 rounded-lg mr-4">
@@ -351,8 +435,36 @@ export default function StudentEventDetailPage() {
               </View>
             </View>
 
+            {/* Registration Action */}
+            {showRegisterButton && !isRegistered && (
+              <View className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <View className="flex-row items-center mb-3">
+                  <View className="bg-blue-100 p-2 rounded-full mr-3">
+                    <Ionicons name="clipboard" size={20} color="#2563EB" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-blue-900 font-semibold">Ready to Join?</Text>
+                    <Text className="text-blue-700 text-xs mt-1">
+                      Register for this event to participate
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleRegister}
+                  disabled={isRegistering}
+                  className={`${isRegistering ? 'bg-gray-400' : 'bg-blue-600'} p-4 rounded-lg flex-row items-center justify-center`}
+                >
+                  <Ionicons name="person-add" size={20} color="white" />
+                  <Text className="text-white font-semibold ml-2">
+                    {isRegistering ? 'Registering...' : 'Register for Event'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Check-in Action */}
-            {isEventActive() && (
+            {isEventActive() && isRegistered && (
               <View className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-4">
                 <View className="flex-row items-center mb-3">
                   <View className="bg-teal-100 p-2 rounded-full mr-3">
@@ -378,18 +490,46 @@ export default function StudentEventDetailPage() {
               </View>
             )}
 
-            {/* Status message for non-active events */}
-            {!isEventActive() && (
+            {/* Status messages */}
+            {!showRegisterButton && event.status === 'APPROVED' && (
+              <View className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex-row">
+                <Ionicons name="information-circle" size={20} color="#6B7280" />
+                <View className="ml-3 flex-1">
+                  <Text className="text-gray-800 font-medium text-sm">
+                    Event Has Ended
+                  </Text>
+                  <Text className="text-gray-600 text-xs mt-1">
+                    This event has ended. Registration and check-in are no longer available.
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {event.status !== 'APPROVED' && (
               <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex-row">
                 <Ionicons name="alert-circle" size={20} color="#D97706" />
                 <View className="ml-3 flex-1">
                   <Text className="text-yellow-800 font-medium text-sm">
-                    Check-in Unavailable
+                    {event.status === 'PENDING_UNISTAFF' ? 'Pending Approval' : event.status}
                   </Text>
                   <Text className="text-yellow-700 text-xs mt-1">
-                    {event.status !== 'APPROVED'
-                      ? `This event is not approved yet. Current status: ${event.status}`
-                      : 'This event has ended. Check-in is no longer available.'}
+                    {event.status === 'PENDING_UNISTAFF'
+                      ? 'This event is waiting for university approval.'
+                      : `This event is ${event.status.toLowerCase()}. Registration is not available.`}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {isRegistered && !isEventActive() && event.status === 'APPROVED' && (
+              <View className="bg-green-50 border border-green-200 rounded-lg p-4 flex-row">
+                <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                <View className="ml-3 flex-1">
+                  <Text className="text-green-800 font-medium text-sm">
+                    You're Registered!
+                  </Text>
+                  <Text className="text-green-700 text-xs mt-1">
+                    You have successfully registered for this event. Check-in will be available during the event.
                   </Text>
                 </View>
               </View>
@@ -398,22 +538,22 @@ export default function StudentEventDetailPage() {
         </View>
 
         {/* Points Information */}
-        {event.points !== undefined && event.points > 0 && (
+        {event.budgetPoints !== undefined && event.budgetPoints > 0 && (
           <View className="bg-white m-4 rounded-xl shadow-sm">
             <View className="p-6">
               <Text className="text-lg font-semibold text-gray-900 mb-4">
-                Rewards
+                Event Budget
               </Text>
               <View className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4 flex-row items-center">
                 <View className="bg-amber-100 p-3 rounded-full mr-4">
-                  <Ionicons name="star" size={24} color="#F59E0B" />
+                  <Ionicons name="wallet" size={24} color="#F59E0B" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-amber-900 font-semibold text-lg">
-                    {event.points} Points
+                    {event.budgetPoints} Points
                   </Text>
                   <Text className="text-amber-700 text-xs mt-1">
-                    Earn points by attending this event
+                    Total budget allocated for this event
                   </Text>
                 </View>
               </View>
@@ -422,13 +562,13 @@ export default function StudentEventDetailPage() {
         )}
 
         {/* Co-hosted Clubs */}
-        {event.coHostClubs && event.coHostClubs.length > 0 && (
+        {event.coHostedClubs && event.coHostedClubs.length > 0 && (
           <View className="bg-white m-4 rounded-xl shadow-sm">
             <View className="p-6">
               <Text className="text-lg font-semibold text-gray-900 mb-4">
                 Co-hosting Clubs
               </Text>
-              {event.coHostClubs.map((club) => (
+              {event.coHostedClubs.map((club) => (
                 <View
                   key={club.id}
                   className="bg-gray-50 p-4 rounded-lg flex-row items-center mb-2"
@@ -439,6 +579,15 @@ export default function StudentEventDetailPage() {
                   <View className="flex-1">
                     <Text className="text-gray-900 font-medium">{club.name}</Text>
                     <Text className="text-gray-500 text-xs">Club ID: {club.id}</Text>
+                  </View>
+                  <View className={`px-2 py-1 rounded ${
+                    club.coHostStatus === 'APPROVED' ? 'bg-green-100' : 'bg-yellow-100'
+                  }`}>
+                    <Text className={`text-xs font-semibold ${
+                      club.coHostStatus === 'APPROVED' ? 'text-green-700' : 'text-yellow-700'
+                    }`}>
+                      {club.coHostStatus}
+                    </Text>
                   </View>
                 </View>
               ))}
@@ -452,4 +601,3 @@ export default function StudentEventDetailPage() {
     </View>
   );
 }
-

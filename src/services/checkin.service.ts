@@ -69,7 +69,36 @@ export const checkin = async (token: string): Promise<string> => {
   }
 };
 
+/**
+ * POST /api/events/checkin
+ * Check in to an event using JWT token and phase/level
+ * @param eventJwtToken - JWT token from QR code
+ * @param level - Phase/level of check-in (START, MID, END, or NONE)
+ * Returns: { success: boolean, message: string, data: null }
+ */
+export const eventCheckin = async (eventJwtToken: string, level: string = 'NONE'): Promise<{ success: boolean; message: string; data: any }> => {
+  try {
+    const response = await axiosClient.post('/api/events/checkin', {
+      eventJwtToken,
+      level
+    });
+    
+    const data = response.data as any;
+    
+    // Response structure: { success: true, message: "Check-in success for event co club", data: null }
+    return {
+      success: data?.success ?? true,
+      message: data?.message || 'Check-in successful',
+      data: data?.data || null
+    };
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.message || error?.response?.data || error?.message || 'Check-in failed';
+    throw new Error(typeof errorMsg === 'string' ? errorMsg : 'Check-in failed');
+  }
+};
+
 export default {
   generateCode,
-  checkin
+  checkin,
+  eventCheckin
 };

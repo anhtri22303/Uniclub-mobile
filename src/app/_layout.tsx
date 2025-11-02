@@ -39,7 +39,7 @@ export default function RootLayout() {
             <Stack.Screen name="student/events/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="student/check-in" options={{ headerShown: false }} />
             <Stack.Screen name="student/scan-qr" options={{ headerShown: false }} />
-            <Stack.Screen name="student/checkin/[code]" options={{ headerShown: false }} />
+            <Stack.Screen name="student/checkin/[time]/[code]" options={{ headerShown: false }} />
             <Stack.Screen name="student/gift" options={{ headerShown: false }} />
             <Stack.Screen name="student/wallet" options={{ headerShown: false }} />
             <Stack.Screen name="student/history" options={{ headerShown: false }} />

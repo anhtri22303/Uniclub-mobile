@@ -31,6 +31,8 @@ export const queryKeys = {
   eventsList: () => [...queryKeys.events, 'list'] as const,
   eventDetail: (id: number) => [...queryKeys.events, 'detail', id] as const,
   eventsByClub: (clubId: number) => [...queryKeys.events, 'club', clubId] as const,
+  eventsCoHostByClub: (clubId: number) => [...queryKeys.events, 'cohost', clubId] as const,
+  myRegistrations: () => [...queryKeys.events, 'my-registrations'] as const,
 
   // Locations
   locations: ['locations'] as const,
@@ -432,6 +434,23 @@ export function useClubApplications() {
 }
 
 /**
+ * Hook to fetch current user's club applications
+ * GET /api/club-applications/my
+ */
+export function useMyClubApplications() {
+  return useQuery({
+    queryKey: ['clubApplications', 'my'],
+    queryFn: async () => {
+      const { getMyClubApplications } = await import('@services/clubApplication.service');
+      const applications = await getMyClubApplications();
+      return applications;
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes - user's applications may change
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
  * Mutation hook to create club application
  */
 export function useCreateClubApplication() {
@@ -477,6 +496,63 @@ export function useUpdateClubApplicationStatus() {
     onSuccess: () => {
       // Invalidate club applications list to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.clubApplicationsList() });
+    },
+  });
+}
+
+// ============================================
+// MEMBER APPLICATIONS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch current user's member applications
+ * GET /api/member-applications/my
+ */
+export function useMyMemberApplications() {
+  return useQuery({
+    queryKey: ['memberApplications', 'my'],
+    queryFn: async () => {
+      const { MemberApplicationService } = await import('@services/memberApplication.service');
+      const applications = await MemberApplicationService.getMyMemberApplications();
+      return applications;
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes - user's applications may change
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch member applications by club ID
+ * GET /api/member-applications/club/{clubId}
+ */
+export function useMemberApplicationsByClub(clubId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: ['memberApplications', 'club', clubId],
+    queryFn: async () => {
+      const { MemberApplicationService } = await import('@services/memberApplication.service');
+      const applications = await MemberApplicationService.getMemberApplicationsByClubId(clubId);
+      return applications;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to create member application
+ */
+export function useCreateMemberApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { clubId: number | string; message: string }) => {
+      const { MemberApplicationService } = await import('@services/memberApplication.service');
+      return await MemberApplicationService.createMemberApplication(payload);
+    },
+    onSuccess: () => {
+      // Invalidate member applications to refetch
+      queryClient.invalidateQueries({ queryKey: ['memberApplications', 'my'] });
     },
   });
 }
@@ -573,5 +649,73 @@ export function useClubMemberCounts(clubIds: number[]) {
     staleTime: 5 * 60 * 1000,
     // Don't show errors for member counts - just use 0 as fallback
     retry: 1,
+  });
+}
+
+// ============================================
+// CO-HOST EVENTS QUERY
+// ============================================
+
+/**
+ * Hook to fetch co-host events by club ID
+ */
+export function useEventCoHostByClub(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventsCoHostByClub(clubId),
+    queryFn: async () => {
+      const { getEventCoHostByClubId } = await import('@services/event.service');
+      const events = await getEventCoHostByClubId(clubId);
+      // Normalize events - ensure backward compatibility
+      return events.map((e: any) => ({
+        ...e,
+        title: e.name || e.title,
+        time: e.startTime || e.time,
+        clubId: e.hostClub?.id || e.clubId,
+        clubName: e.hostClub?.name || e.clubName,
+      }));
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 3 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+// ============================================
+// EVENT REGISTRATIONS
+// ============================================
+
+/**
+ * Hook to fetch my event registrations
+ */
+export function useMyEventRegistrations(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myRegistrations(),
+    queryFn: async () => {
+      const { getMyEventRegistrations } = await import('@services/event.service');
+      const registrations = await getMyEventRegistrations();
+      return registrations;
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes - registrations change frequently
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to register for event
+ */
+export function useRegisterForEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventId: number) => {
+      const { registerForEvent } = await import('@services/event.service');
+      return await registerForEvent(eventId);
+    },
+    onSuccess: () => {
+      // Invalidate registrations and events to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.myRegistrations() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
   });
 }
