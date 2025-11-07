@@ -16,6 +16,9 @@
       "@organisms/*": [
         "./src/components/Organisms/*"
       ],
+      "@components/*": [
+        "./src/components/*"
+      ],
       "@configs/*": [
         "./src/configs/*"
       ],

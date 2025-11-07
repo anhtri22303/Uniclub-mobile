@@ -70,60 +70,36 @@ export default function UniStaffPage() {
   const pendingClubApplications = clubApplications.filter((app: any) => app.status === 'PENDING').length;
   const rejectedClubApplications = clubApplications.filter((app: any) => app.status === 'REJECTED').length;
 
-  // Count approved/pending events (non-expired only)
+  // Count events by status (updated for new event statuses)
   const approvedEvents = useMemo(() => {
-    const now = new Date();
-    return events.filter((event: any) => {
-      if (event.status !== 'APPROVED') return false;
-
-      try {
-        const eventDate = new Date(event.date);
-        if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':');
-          eventDate.setHours(parseInt(hours), parseInt(minutes));
-        }
-        return eventDate >= now || eventDate.toDateString() === now.toDateString();
-      } catch {
-        return false;
-      }
-    }).length;
+    return events.filter((event: any) => event.status === 'APPROVED').length;
   }, [events]);
 
-  const pendingEvents = useMemo(() => {
-    const now = new Date();
-    return events.filter((event: any) => {
-      if (event.status !== 'PENDING') return false;
+  const ongoingEvents = useMemo(() => {
+    return events.filter((event: any) => event.status === 'ONGOING').length;
+  }, [events]);
 
-      try {
-        const eventDate = new Date(event.date);
-        if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':');
-          eventDate.setHours(parseInt(hours), parseInt(minutes));
-        }
-        return eventDate >= now || eventDate.toDateString() === now.toDateString();
-      } catch {
-        return false;
-      }
-    }).length;
+  const completedEvents = useMemo(() => {
+    return events.filter((event: any) => event.status === 'COMPLETED').length;
+  }, [events]);
+
+  const pendingUnistaffEvents = useMemo(() => {
+    return events.filter((event: any) => event.status === 'PENDING_UNISTAFF').length;
+  }, [events]);
+
+  const pendingCoclubEvents = useMemo(() => {
+    return events.filter((event: any) => event.status === 'PENDING_COCLUB').length;
   }, [events]);
 
   const rejectedEvents = useMemo(() => {
-    const now = new Date();
-    return events.filter((event: any) => {
-      if (event.status !== 'REJECTED') return false;
-
-      try {
-        const eventDate = new Date(event.date);
-        if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':');
-          eventDate.setHours(parseInt(hours), parseInt(minutes));
-        }
-        return eventDate >= now || eventDate.toDateString() === now.toDateString();
-      } catch {
-        return false;
-      }
-    }).length;
+    return events.filter((event: any) => event.status === 'REJECTED').length;
   }, [events]);
+
+  const cancelledEvents = useMemo(() => {
+    return events.filter((event: any) => event.status === 'CANCELLED').length;
+  }, [events]);
+
+  const totalPendingEvents = pendingUnistaffEvents + pendingCoclubEvents;
 
   // Fetch all data (excluding club applications which is now handled by React Query)
   const loadData = async () => {
@@ -213,24 +189,11 @@ export default function UniStaffPage() {
       .slice(0, 3);
   }, [clubApplications]);
 
-  // Top 3 pending events
+  // Top 3 pending events (awaiting UniStaff approval)
   const top3PendingEvents = useMemo(() => {
-    const now = new Date();
     return events
-      .filter((event: any) => {
-        if (event.status !== 'PENDING') return false;
-
-        try {
-          const eventDate = new Date(event.date);
-          if (event.endTime) {
-            const [hours, minutes] = event.endTime.split(':');
-            eventDate.setHours(parseInt(hours), parseInt(minutes));
-          }
-          return eventDate >= now || eventDate.toDateString() === now.toDateString();
-        } catch {
-          return false;
-        }
-      })
+      .filter((event: any) => event.status === 'PENDING_UNISTAFF')
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 3);
   }, [events]);
 
@@ -314,10 +277,10 @@ export default function UniStaffPage() {
                 <Text className="text-white text-xs opacity-80">Total</Text>
               </View>
               <Text className="text-white text-3xl font-bold">{totalEventRequests}</Text>
-              <Text className="text-white text-xs mt-1 opacity-90">Event Requests</Text>
+              <Text className="text-white text-xs mt-1 opacity-90">Events</Text>
               <View className="flex-row items-center mt-1">
-                <Ionicons name="checkmark-circle" size={12} color="white" />
-                <Text className="text-white text-[10px] ml-1">{approvedEvents} approved</Text>
+                <Ionicons name="hourglass" size={12} color="white" />
+                <Text className="text-white text-[10px] ml-1">{pendingUnistaffEvents} awaiting approval</Text>
               </View>
             </TouchableOpacity>
 
@@ -418,16 +381,16 @@ export default function UniStaffPage() {
               )}
             </View>
 
-            {/* Pending Events */}
+            {/* Pending Events - Awaiting UniStaff Approval */}
             <View className="bg-white rounded-2xl p-4 shadow-sm">
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center">
                   <View className="bg-purple-100 p-2 rounded-lg mr-2">
                     <Ionicons name="calendar" size={20} color="#a855f7" />
                   </View>
-                  <Text className="text-lg font-bold text-gray-800">Pending Events</Text>
+                  <Text className="text-lg font-bold text-gray-800">Awaiting Your Approval</Text>
                 </View>
-                <TouchableOpacity onPress={() => router.push('/uni-staff/events-req' as any)}>
+                <TouchableOpacity onPress={() => router.push('/uni-staff/event-requests' as any)}>
                   <Text className="text-teal-500 text-sm font-medium">View All →</Text>
                 </TouchableOpacity>
               </View>
@@ -435,7 +398,7 @@ export default function UniStaffPage() {
               {eventsLoading ? (
                 <ActivityIndicator size="small" color="#14B8A6" />
               ) : top3PendingEvents.length === 0 ? (
-                <Text className="text-center text-gray-500 py-4 text-sm">No pending events</Text>
+                <Text className="text-center text-gray-500 py-4 text-sm">No events awaiting approval</Text>
               ) : (
                 top3PendingEvents.map((event: any) => (
                   <View key={event.id} className="border-t border-gray-100 pt-3 mt-3">
@@ -445,17 +408,15 @@ export default function UniStaffPage() {
                         <Text className="text-xs text-gray-500 mt-1">
                           {new Date(event.date).toLocaleDateString()} • {event.locationName}
                         </Text>
-                        <Text className="text-xs text-gray-400 mt-0.5">{event.type || 'N/A'}</Text>
+                        <Text className="text-xs text-gray-400 mt-0.5">
+                          Host: {event.hostClub?.name || 'N/A'}
+                        </Text>
                       </View>
                       <View
-                        className="px-2 py-1 rounded-full"
-                        style={{ backgroundColor: STATUS_COLORS[event.status] + '20' }}
+                        className="px-2 py-1 rounded-full bg-yellow-100"
                       >
-                        <Text
-                          className="text-xs font-medium"
-                          style={{ color: STATUS_COLORS[event.status] }}
-                        >
-                          {event.status}
+                        <Text className="text-xs font-medium text-yellow-700">
+                          ⏳ PENDING
                         </Text>
                       </View>
                     </View>
@@ -641,34 +602,16 @@ export default function UniStaffPage() {
               </View>
             </View>
 
-            {/* Event Requests Analytics */}
+            {/* Event Status Analytics */}
             <View className="bg-white rounded-2xl p-4 shadow-sm">
-              <Text className="text-lg font-bold text-gray-800 mb-4">Event Requests Status</Text>
+              <Text className="text-lg font-bold text-gray-800 mb-4">Event Status Overview</Text>
 
               {/* Stats Bars */}
               <View className="space-y-3">
-                {/* Pending */}
-                <View>
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">Pending</Text>
-                    <Text className="text-sm font-bold text-yellow-600">{pendingEvents}</Text>
-                  </View>
-                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <View
-                      className="h-full bg-yellow-500 rounded-full"
-                      style={{
-                        width: `${
-                          totalEventRequests > 0 ? (pendingEvents / totalEventRequests) * 100 : 0
-                        }%`,
-                      }}
-                    />
-                  </View>
-                </View>
-
                 {/* Approved */}
                 <View>
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">Approved</Text>
+                    <Text className="text-sm font-medium text-gray-700">✅ Approved</Text>
                     <Text className="text-sm font-bold text-green-600">{approvedEvents}</Text>
                   </View>
                   <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -683,10 +626,82 @@ export default function UniStaffPage() {
                   </View>
                 </View>
 
+                {/* Ongoing */}
+                <View>
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">🟢 Ongoing</Text>
+                    <Text className="text-sm font-bold text-blue-600">{ongoingEvents}</Text>
+                  </View>
+                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-blue-500 rounded-full"
+                      style={{
+                        width: `${
+                          totalEventRequests > 0 ? (ongoingEvents / totalEventRequests) * 100 : 0
+                        }%`,
+                      }}
+                    />
+                  </View>
+                </View>
+
+                {/* Completed */}
+                <View>
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">🏁 Completed</Text>
+                    <Text className="text-sm font-bold text-teal-600">{completedEvents}</Text>
+                  </View>
+                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-teal-500 rounded-full"
+                      style={{
+                        width: `${
+                          totalEventRequests > 0 ? (completedEvents / totalEventRequests) * 100 : 0
+                        }%`,
+                      }}
+                    />
+                  </View>
+                </View>
+
+                {/* Pending UniStaff */}
+                <View>
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">🕓 Pending (UniStaff)</Text>
+                    <Text className="text-sm font-bold text-yellow-600">{pendingUnistaffEvents}</Text>
+                  </View>
+                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-yellow-500 rounded-full"
+                      style={{
+                        width: `${
+                          totalEventRequests > 0 ? (pendingUnistaffEvents / totalEventRequests) * 100 : 0
+                        }%`,
+                      }}
+                    />
+                  </View>
+                </View>
+
+                {/* Pending CoClub */}
+                <View>
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">⏳ Pending (CoClub)</Text>
+                    <Text className="text-sm font-bold text-orange-600">{pendingCoclubEvents}</Text>
+                  </View>
+                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-orange-500 rounded-full"
+                      style={{
+                        width: `${
+                          totalEventRequests > 0 ? (pendingCoclubEvents / totalEventRequests) * 100 : 0
+                        }%`,
+                      }}
+                    />
+                  </View>
+                </View>
+
                 {/* Rejected */}
                 <View>
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">Rejected</Text>
+                    <Text className="text-sm font-medium text-gray-700">❌ Rejected</Text>
                     <Text className="text-sm font-bold text-red-600">{rejectedEvents}</Text>
                   </View>
                   <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -695,6 +710,24 @@ export default function UniStaffPage() {
                       style={{
                         width: `${
                           totalEventRequests > 0 ? (rejectedEvents / totalEventRequests) * 100 : 0
+                        }%`,
+                      }}
+                    />
+                  </View>
+                </View>
+
+                {/* Cancelled */}
+                <View>
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">🚫 Cancelled</Text>
+                    <Text className="text-sm font-bold text-gray-600">{cancelledEvents}</Text>
+                  </View>
+                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-gray-500 rounded-full"
+                      style={{
+                        width: `${
+                          totalEventRequests > 0 ? (cancelledEvents / totalEventRequests) * 100 : 0
                         }%`,
                       }}
                     />

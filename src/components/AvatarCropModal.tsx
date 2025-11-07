@@ -18,6 +18,7 @@ interface AvatarCropModalProps {
   onClose: () => void;
   imageUri: string;
   onCropComplete: (croppedBlob: { uri: string; base64?: string }) => void | Promise<void>;
+  aspectRatio?: number; // 1 for square (avatar), 3 for 3:1 (background)
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -28,6 +29,7 @@ export function AvatarCropModal({
   onClose,
   imageUri,
   onCropComplete,
+  aspectRatio = 1, // Default to square
 }: AvatarCropModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -47,12 +49,39 @@ export function AvatarCropModal({
         { format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      // Calculate crop dimensions to make it square (centered)
-      const size = Math.min(imageInfo.width, imageInfo.height);
-      const originX = (imageInfo.width - size) / 2;
-      const originY = (imageInfo.height - size) / 2;
+      // Calculate crop dimensions based on aspect ratio
+      let cropWidth: number, cropHeight: number, originX: number, originY: number;
+      
+      if (aspectRatio === 1) {
+        // Square crop
+        const size = Math.min(imageInfo.width, imageInfo.height);
+        cropWidth = size;
+        cropHeight = size;
+        originX = (imageInfo.width - size) / 2;
+        originY = (imageInfo.height - size) / 2;
+      } else {
+        // Wide crop (e.g., 3:1 for background)
+        const targetWidth = imageInfo.width;
+        const targetHeight = targetWidth / aspectRatio;
+        
+        if (targetHeight <= imageInfo.height) {
+          cropWidth = targetWidth;
+          cropHeight = targetHeight;
+          originX = 0;
+          originY = (imageInfo.height - targetHeight) / 2;
+        } else {
+          cropHeight = imageInfo.height;
+          cropWidth = cropHeight * aspectRatio;
+          originX = (imageInfo.width - cropWidth) / 2;
+          originY = 0;
+        }
+      }
 
-      // Crop and resize to 400x400 for avatar
+      // Resize dimensions based on aspect ratio
+      const resizeWidth = aspectRatio === 1 ? 400 : 1200;
+      const resizeHeight = aspectRatio === 1 ? 400 : 400;
+
+      // Crop and resize
       const manipulatedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
@@ -60,14 +89,14 @@ export function AvatarCropModal({
             crop: {
               originX,
               originY,
-              width: size,
-              height: size,
+              width: cropWidth,
+              height: cropHeight,
             },
           },
           {
             resize: {
-              width: 400,
-              height: 400,
+              width: resizeWidth,
+              height: resizeHeight,
             },
           },
         ],
@@ -106,7 +135,9 @@ export function AvatarCropModal({
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <Ionicons name="crop" size={20} color="#0D9488" />
-              <Text style={styles.headerTitle}>Crop Avatar</Text>
+              <Text style={styles.headerTitle}>
+                {aspectRatio === 1 ? 'Crop Avatar' : 'Crop Background'}
+              </Text>
             </View>
           </View>
 
@@ -122,13 +153,24 @@ export function AvatarCropModal({
             
             {/* Crop guide overlay */}
             <View style={styles.cropGuide}>
-              <View style={styles.cropBox} />
+              <View 
+                style={[
+                  styles.cropBox,
+                  aspectRatio !== 1 && {
+                    width: CROP_SIZE * 0.9,
+                    height: (CROP_SIZE * 0.9) / aspectRatio,
+                    borderRadius: 8,
+                  }
+                ]} 
+              />
             </View>
           </View>
 
           {/* Instructions */}
           <Text style={styles.instructions}>
-            The image will be automatically cropped to a square and resized for the avatar.
+            {aspectRatio === 1 
+              ? 'The image will be automatically cropped to a square and resized for the avatar.'
+              : 'The image will be automatically cropped to a wide format and resized for the background.'}
           </Text>
 
           {/* Action Buttons */}

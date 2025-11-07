@@ -55,6 +55,26 @@ export class ClubService {
       const body = response.data;
       console.log('fetchClubs response:', JSON.stringify(body, null, 2));
 
+      // Check if response has nested data structure { success, message, data: { content: [] } }
+      if (body && typeof body === 'object' && 'data' in body && typeof body.data === 'object') {
+        const data = body.data as any;
+        if ('content' in data && Array.isArray(data.content)) {
+          // Transform API response to Club format
+          return data.content.map((club: ClubApiResponse) => ({
+            id: club.id,
+            name: club.name,
+            category: club.majorName || '-',
+            leaderName: club.leaderName || 'No Leader',
+            members: club.memberCount ?? 0,
+            policy: club.majorPolicyName || '-',
+            events: club.eventCount ?? 0,
+            description: club.description,
+            status: club.status,
+          }));
+        }
+      }
+
+      // Check if response has content directly { content: [] }
       if (body && typeof body === 'object' && 'content' in body && Array.isArray(body.content)) {
         // Transform API response to Club format
         return body.content.map((club) => ({
@@ -250,6 +270,25 @@ export class ClubService {
       const body = response.data;
       console.log('getAllClubs response:', JSON.stringify(body, null, 2));
 
+      // Check if response has nested data structure { success, message, data: { content: [] } }
+      if (body && typeof body === 'object' && 'data' in body && typeof body.data === 'object') {
+        const data = body.data as any;
+        if ('content' in data && Array.isArray(data.content)) {
+          return data.content.map((club: ClubApiResponse) => ({
+            id: club.id,
+            name: club.name,
+            category: club.majorName || '-',
+            leaderName: club.leaderName || 'No Leader',
+            members: club.memberCount ?? 0, // Use nullish coalescing for null values
+            policy: club.majorPolicyName || '-',
+            events: club.eventCount ?? 0, // Use nullish coalescing for null values
+            description: club.description,
+            status: club.status,
+          }));
+        }
+      }
+
+      // Check if response has content directly { content: [] }
       if (body && typeof body === 'object' && 'content' in body && Array.isArray(body.content)) {
         return body.content.map((club) => ({
           id: club.id,
@@ -268,6 +307,34 @@ export class ClubService {
     } catch (error) {
       console.error('Error fetching all clubs:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get clubId from stored auth token
+   */
+  static getClubIdFromToken(): number | null {
+    try {
+      const authStore = require('@stores/auth.store');
+      const token = authStore.useAuthStore.getState()?.token;
+      
+      if (!token) {
+        console.warn('No token found in auth store');
+        return null;
+      }
+
+      // Simple JWT decode - split token and decode payload
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.warn('Invalid token format');
+        return null;
+      }
+
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.clubId ?? null;
+    } catch (error) {
+      console.error('Error getting clubId from token:', error);
+      return null;
     }
   }
 }

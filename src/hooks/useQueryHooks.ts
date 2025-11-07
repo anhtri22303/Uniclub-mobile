@@ -52,6 +52,13 @@ export const queryKeys = {
   clubApplications: ['clubApplications'] as const,
   clubApplicationsList: () => [...queryKeys.clubApplications, 'list'] as const,
   clubApplicationDetail: (id: number) => [...queryKeys.clubApplications, 'detail', id] as const,
+
+  // Products
+  products: ['products'] as const,
+  productsByClubId: (clubId: number) => [...queryKeys.products, 'club', clubId] as const,
+  productDetail: (clubId: number, productId: number | string) =>
+    [...queryKeys.products, 'detail', clubId, productId] as const,
+  productTags: () => [...queryKeys.products, 'tags'] as const,
 };
 
 // ============================================
@@ -716,6 +723,301 @@ export function useRegisterForEvent() {
       // Invalidate registrations and events to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.myRegistrations() });
       queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
+  });
+}
+
+// ============================================
+// REDEEM ORDERS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch current user's redeem orders
+ * GET /api/redeem/orders/member
+ */
+export function useMyRedeemOrders(enabled = true) {
+  return useQuery({
+    queryKey: ['redeemOrders', 'my'],
+    queryFn: async () => {
+      const { getMemberRedeemOrders } = await import('@services/redeem.service');
+      const orders = await getMemberRedeemOrders();
+      return orders;
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes - orders may change
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch redeem orders by club ID
+ * GET /api/redeem/orders/club/{clubId}
+ */
+export function useClubRedeemOrders(clubId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: ['redeemOrders', 'club', clubId],
+    queryFn: async () => {
+      const { getClubRedeemOrders } = await import('@services/redeem.service');
+      const orders = await getClubRedeemOrders(clubId);
+      return orders;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch redeem orders by event ID
+ * GET /api/redeem/orders/event/{eventId}
+ */
+export function useEventRedeemOrders(eventId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: ['redeemOrders', 'event', eventId],
+    queryFn: async () => {
+      const { getEventRedeemOrders } = await import('@services/redeem.service');
+      const orders = await getEventRedeemOrders(eventId);
+      return orders;
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to redeem club product
+ */
+export function useRedeemClubProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      clubId,
+      payload,
+    }: {
+      clubId: number | string;
+      payload: { productId: number; quantity: number; membershipId: number };
+    }) => {
+      const { redeemClubProduct } = await import('@services/redeem.service');
+      return await redeemClubProduct(clubId, payload);
+    },
+    onSuccess: () => {
+      // Invalidate redeem orders to refetch
+      queryClient.invalidateQueries({ queryKey: ['redeemOrders', 'my'] });
+    },
+  });
+}
+
+/**
+ * Mutation hook to redeem event product
+ */
+export function useRedeemEventProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      payload,
+    }: {
+      eventId: number | string;
+      payload: { productId: number; quantity: number; membershipId: number };
+    }) => {
+      const { redeemEventProduct } = await import('@services/redeem.service');
+      return await redeemEventProduct(eventId, payload);
+    },
+    onSuccess: () => {
+      // Invalidate redeem orders to refetch
+      queryClient.invalidateQueries({ queryKey: ['redeemOrders', 'my'] });
+    },
+  });
+}
+
+/**
+ * Mutation hook to complete redeem order
+ */
+export function useCompleteRedeemOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: number | string) => {
+      const { completeRedeemOrder } = await import('@services/redeem.service');
+      return await completeRedeemOrder(orderId);
+    },
+    onSuccess: () => {
+      // Invalidate redeem orders to refetch
+      queryClient.invalidateQueries({ queryKey: ['redeemOrders'] });
+    },
+  });
+}
+
+/**
+ * Mutation hook to refund redeem order
+ */
+export function useRefundRedeemOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { orderId: number | string; quantityToRefund: number; reason: string }) => {
+      const { refundRedeemOrder } = await import('@services/redeem.service');
+      return await refundRedeemOrder(payload);
+    },
+    onSuccess: () => {
+      // Invalidate redeem orders to refetch
+      queryClient.invalidateQueries({ queryKey: ['redeemOrders'] });
+    },
+  });
+}
+
+/**
+ * Mutation hook to partial refund redeem order
+ */
+export function useRefundPartialRedeemOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { orderId: number | string; quantityToRefund: number; reason: string }) => {
+      const { refundPartialRedeemOrder } = await import('@services/redeem.service');
+      return await refundPartialRedeemOrder(payload);
+    },
+    onSuccess: () => {
+      // Invalidate redeem orders to refetch
+      queryClient.invalidateQueries({ queryKey: ['redeemOrders'] });
+    },
+  });
+}
+
+// ============================================
+// PRODUCTS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch products by club ID
+ * GET /api/clubs/{clubId}/products
+ */
+export function useProductsByClubId(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.productsByClubId(clubId),
+    queryFn: async () => {
+      const { ProductService } = await import('@services/product.service');
+      const products = await ProductService.getProducts(clubId, {
+        includeInactive: true,
+        includeArchived: true,
+      });
+      return products;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch product by ID
+ * GET /api/clubs/{clubId}/products/{productId}
+ */
+export function useProduct(clubId: number, productId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.productDetail(clubId, productId),
+    queryFn: async () => {
+      const { ProductService } = await import('@services/product.service');
+      const product = await ProductService.getProductById(clubId, productId);
+      return product;
+    },
+    enabled: !!clubId && !!productId && enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch all product tags
+ * GET /api/tags
+ */
+export function useProductTags(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.productTags(),
+    queryFn: async () => {
+      const { TagService } = await import('@services/tag.service');
+      const tags = await TagService.getTags();
+      return tags;
+    },
+    enabled,
+    staleTime: 10 * 60 * 1000, // 10 minutes - tags rarely change
+    gcTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to create product
+ */
+export function useCreateProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ clubId, payload }: { clubId: number; payload: any }) => {
+      const { ProductService } = await import('@services/product.service');
+      return await ProductService.addProduct(clubId, payload);
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate products list to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(variables.clubId) });
+    },
+  });
+}
+
+/**
+ * Mutation hook to update product
+ */
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      clubId,
+      productId,
+      payload,
+    }: {
+      clubId: number;
+      productId: number | string;
+      payload: any;
+    }) => {
+      const { ProductService } = await import('@services/product.service');
+      return await ProductService.updateProduct(clubId, productId, payload);
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate product detail and list to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.productDetail(variables.clubId, variables.productId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(variables.clubId) });
+    },
+  });
+}
+
+/**
+ * Mutation hook to update stock
+ */
+export function useUpdateStock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      clubId,
+      productId,
+      delta,
+      note,
+    }: {
+      clubId: number;
+      productId: number | string;
+      delta: number;
+      note: string;
+    }) => {
+      const { ProductService } = await import('@services/product.service');
+      return await ProductService.updateStock(clubId, productId, delta, note);
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate product to refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.productDetail(variables.clubId, variables.productId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(variables.clubId) });
     },
   });
 }

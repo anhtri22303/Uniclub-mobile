@@ -9,15 +9,15 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    Share,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  Share,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -169,8 +169,10 @@ export default function VirtualCardScreen() {
       const profileData = await UserService.fetchProfile();
       setProfile(profileData);
       
-      // Extract club IDs from clubs array
+      // Extract club IDs from multiple possible sources
       const clubIds: number[] = [];
+      
+      // 1. From clubs array (wallet data)
       if (profileData.clubs && Array.isArray(profileData.clubs)) {
         profileData.clubs.forEach((club: any) => {
           if (club.clubId) {
@@ -179,7 +181,16 @@ export default function VirtualCardScreen() {
         });
       }
       
-      console.log('Available club IDs:', clubIds);
+      // 2. From memberships array
+      if (profileData.memberships && Array.isArray(profileData.memberships)) {
+        profileData.memberships.forEach((membership: any) => {
+          if (membership.club?.clubId && !clubIds.includes(membership.club.clubId)) {
+            clubIds.push(membership.club.clubId);
+          }
+        });
+      }
+      
+      console.log('📋 Available club IDs:', clubIds);
       setAvailableClubIds(clubIds);
       
       // Auto-select first club if available
@@ -187,7 +198,7 @@ export default function VirtualCardScreen() {
         setSelectedClubId(clubIds[0]);
       }
     } catch (err) {
-      console.error('Failed to load profile:', err);
+      console.error('❌ Failed to load profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to load profile');
     } finally {
       setLoading(false);
@@ -254,11 +265,36 @@ export default function VirtualCardScreen() {
     return profile.clubs.find((club: any) => club.clubId === selectedClubId);
   };
 
+  // Get current membership info
+  const getCurrentMembership = () => {
+    if (!profile?.memberships || !selectedClubId) return null;
+    return profile.memberships.find((membership: any) => 
+      membership.club?.clubId === selectedClubId
+    );
+  };
+
   // Get club name for display
   const getClubName = () => {
     if (cardDesign?.clubName) return cardDesign.clubName;
+    
+    // Try wallet first
     const club = getCurrentClubWallet();
-    return club?.clubName || 'UniClub';
+    if (club?.clubName) return club.clubName;
+    
+    // Try membership
+    const membership = getCurrentMembership();
+    if (membership?.club?.name) return membership.club.name;
+    
+    return 'UniClub';
+  };
+
+  // Get member role/level for display
+  const getMemberRole = () => {
+    const membership = getCurrentMembership();
+    if (membership?.level) {
+      return formatRoleName(membership.level);
+    }
+    return formatRoleName(profile?.role?.roleName);
   };
 
   // Generate QR code data
@@ -414,21 +450,26 @@ export default function VirtualCardScreen() {
         </View>
       </View>
 
-      {/* Virtual Card - No Scroll, Centered */}
-      <View className="flex-1 justify-center px-4">
+      {/* Virtual Card - Scrollable and Responsive */}
+      <ScrollView 
+        className="flex-1 px-4 py-3"
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+      >
         {loadingCard && (
           <View className="items-center mb-4">
             <ActivityIndicator size="small" color="#3B82F6" />
-            <Text className="text-gray-600 mt-2">Loading card design...</Text>
+            <Text className="text-gray-600 mt-2 text-sm">Loading card design...</Text>
           </View>
         )}
         
-        <View ref={viewShotRef} collapsable={false}>
+        <View ref={viewShotRef} collapsable={false} style={{ width: '100%', flex: 1 }}>
           <LinearGradient
-            colors={parseGradientColors(cardDesign?.gradient)}
+            colors={parseGradientColors(cardDesign?.gradient) as any}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ 
+              flex: 1,
               borderRadius: parseBorderRadius(cardDesign?.borderRadius),
               opacity: cardDesign?.cardOpacity ? cardDesign.cardOpacity / 100 : 1,
               shadowColor: '#000',
@@ -445,27 +486,29 @@ export default function VirtualCardScreen() {
               opacity={cardDesign?.patternOpacity || 10} 
             />
 
-            <View className="p-6 relative z-10">
+            <View className="p-6 relative z-10 flex-1 justify-between">
               {/* Card Header */}
-              <View className="flex-row items-start justify-between mb-5">
+              <View className="flex-row items-start justify-between mb-6">
                 <View className="flex-1">
-                  <Text className="text-2xl font-bold text-white mb-1">{getClubName()}</Text>
-                  <Text className="text-white/80 text-sm">Member Identification Card</Text>
+                  <Text className="text-xl font-bold text-white mb-1" numberOfLines={2}>
+                    {getClubName()}
+                  </Text>
+                  <Text className="text-white/80 text-xs">Member Identification Card</Text>
                 </View>
-                <View className="items-end">
+                <View className="items-end ml-2">
                   {cardDesign?.showLogo && cardDesign?.logoUrl ? (
                     <Image
                       source={{ uri: cardDesign.logoUrl }}
                       style={{ 
-                        width: cardDesign.logoSize || 50, 
-                        height: cardDesign.logoSize || 50 
+                        width: cardDesign.logoSize || 45, 
+                        height: cardDesign.logoSize || 45 
                       }}
                       resizeMode="contain"
                     />
                   ) : (
                     <>
-                      <Text className="text-white/70 text-sm">Valid Until</Text>
-                      <Text className="text-white font-semibold text-base">
+                      <Text className="text-white/70 text-xs">Valid Until</Text>
+                      <Text className="text-white font-semibold text-sm">
                         {new Date().getFullYear() + 1}
                       </Text>
                     </>
@@ -474,8 +517,8 @@ export default function VirtualCardScreen() {
               </View>
 
               {/* Avatar Section */}
-              <View className="items-center mb-5">
-                <View className="w-28 h-28 rounded-full bg-white/20 border-4 border-white/30 items-center justify-center overflow-hidden mb-4">
+              <View className="items-center mb-6">
+                <View className="w-28 h-28 rounded-full bg-white/20 items-center justify-center overflow-hidden mb-4">
                   {profile.avatarUrl ? (
                     <Image
                       source={{ uri: profile.avatarUrl }}
@@ -483,27 +526,27 @@ export default function VirtualCardScreen() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Text className="text-3xl font-bold text-white">
+                    <Text className="text-2xl font-bold text-white">
                       {getInitials(profile.fullName)}
                     </Text>
                   )}
                 </View>
                 
-                <Text className="text-2xl font-bold text-white text-center mb-2">
+                <Text className="text-2xl font-bold text-white text-center mb-2" numberOfLines={2}>
                   {profile.fullName}
                 </Text>
-                <Text className="text-white/90 text-base text-center mb-3">
+                <Text className="text-white/90 text-base text-center mb-3" numberOfLines={1}>
                   {profile.email}
                 </Text>
                 <View className="bg-white/20 px-4 py-2 rounded-full">
                   <Text className="text-white font-medium text-sm">
-                    {formatRoleName(profile.role?.roleName)}
+                    {getMemberRole()}
                   </Text>
                 </View>
               </View>
 
               {/* Student Info */}
-              <View className="bg-white/10 rounded-xl p-4 mb-5">
+              <View className="bg-white/10 rounded-xl p-4 mb-6">
                 <View className="flex-row items-center justify-center mb-3">
                   <Text className="text-white/80 text-sm bg-white/20 px-3 py-1.5 rounded mr-2">
                     STUDENT ID
@@ -512,7 +555,7 @@ export default function VirtualCardScreen() {
                     {profile.studentCode || 'N/A'}
                   </Text>
                 </View>
-                <Text className="text-white text-center text-base font-medium">
+                <Text className="text-white text-center text-base font-medium" numberOfLines={2}>
                   {profile.majorName || 'N/A'}
                 </Text>
                 {profile.phone && (
@@ -523,7 +566,7 @@ export default function VirtualCardScreen() {
               </View>
 
               {/* QR Code */}
-              <View className="items-center mb-5">
+              <View className="items-center">
                 <View className="bg-white p-4 rounded-xl">
                   <QRCode
                     value={getQRData()}
@@ -536,40 +579,10 @@ export default function VirtualCardScreen() {
                   Scan for profile info
                 </Text>
               </View>
-
-              {/* Additional Info Grid */}
-              <View className="border-t border-white/20 pt-4">
-                <View className="flex-row justify-between mb-3">
-                  <View className="bg-white/10 rounded-lg p-3 flex-1 mr-2">
-                    <Text className="text-white/70 text-sm mb-1">Status</Text>
-                    <Text className="text-white text-sm font-medium">{profile.status}</Text>
-                  </View>
-                  <View className="bg-white/10 rounded-lg p-3 flex-1 ml-2">
-                    <Text className="text-white/70 text-sm mb-1">Since</Text>
-                    <Text className="text-white text-sm font-medium">
-                      {new Date().getFullYear()}
-                    </Text>
-                  </View>
-                </View>
-                <View className="flex-row justify-between">
-                  <View className="bg-white/10 rounded-lg p-3 flex-1 mr-2">
-                    <Text className="text-white/70 text-sm mb-1">Card ID</Text>
-                    <Text className="text-white text-sm font-medium font-mono">
-                      #UC{String(profile.userId).padStart(6, '0')}
-                    </Text>
-                  </View>
-                  <View className="bg-white/10 rounded-lg p-3 flex-1 ml-2">
-                    <Text className="text-white/70 text-sm mb-1">Points</Text>
-                    <Text className="text-white text-sm font-medium">
-                      {getCurrentClubWallet()?.balancePoints?.toLocaleString() || '0'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
             </View>
           </LinearGradient>
         </View>
-      </View>
+      </ScrollView>
 
       {/* Club Selector Modal */}
       <Modal
@@ -590,7 +603,12 @@ export default function VirtualCardScreen() {
             <ScrollView className="max-h-96">
               {availableClubIds.map((clubId) => {
                 const club = profile?.clubs?.find((c: any) => c.clubId === clubId);
+                const membership = profile?.memberships?.find((m: any) => m.club?.clubId === clubId);
                 const isSelected = selectedClubId === clubId;
+                
+                // Get club name from either source
+                const clubName = club?.clubName || membership?.club?.name || `Club ${clubId}`;
+                const memberLevel = membership?.level ? formatRoleName(membership.level) : null;
                 
                 return (
                   <TouchableOpacity
@@ -604,10 +622,17 @@ export default function VirtualCardScreen() {
                     }`}
                   >
                     <View className="flex-1">
-                      <Text className={`text-lg font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
-                        {club?.clubName || `Club ${clubId}`}
-                      </Text>
-                      <Text className="text-sm text-gray-600 mt-1">
+                      <View className="flex-row items-center mb-1">
+                        <Text className={`text-lg font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
+                          {clubName}
+                        </Text>
+                        {memberLevel && (
+                          <View className="bg-teal-500 px-2 py-1 rounded ml-2">
+                            <Text className="text-white text-xs font-medium">{memberLevel}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="text-sm text-gray-600">
                         Points: {club?.balancePoints?.toLocaleString() || '0'}
                       </Text>
                     </View>

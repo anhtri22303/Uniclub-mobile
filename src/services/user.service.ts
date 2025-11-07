@@ -22,6 +22,7 @@ export interface UserProfile {
   phone: string;
   status: string;
   avatarUrl: string | null;
+  backgroundUrl?: string | null; // Background image URL
   role: {
     roleId: number;
     roleName: string;
@@ -29,12 +30,28 @@ export interface UserProfile {
   } | null;
   wallet: {
     balancePoints: number;
+    walletId?: number;
+    ownerType?: string;
+    userId?: number;
+    userFullName?: string;
   } | null;
+  wallets?: ApiMembershipWallet[]; // Array of membership wallets
   studentCode: string | null;
   majorName: string | null;
   bio: string | null;
   memberships: any[];
   clubs?: any[]; // Array of clubs the user is a member of
+}
+
+// Membership wallet interface (for multiple club memberships)
+export interface ApiMembershipWallet {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string;
+  clubId: number;
+  clubName: string;
+  userId: number;
+  userFullName: string;
 }
 
 export interface ProfileResponse {
@@ -112,6 +129,32 @@ export class UserService {
       return body;
     } catch (error) {
       console.error('Error uploading avatar:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload background image
+   */
+  static async uploadBackground(file: any): Promise<any> {
+    try {
+      console.log('Uploading background file:', file.name || 'file');
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axiosClient.post('/api/users/profile/background', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      const body = response.data;
+      console.log('Upload background response:', body);
+      
+      return body;
+    } catch (error) {
+      console.error('Error uploading background:', error);
       throw error;
     }
   }
@@ -238,6 +281,40 @@ export class UserService {
       throw error;
     }
   }
+
+  /**
+   * Get current user's profile statistics (Activity Statistics)
+   */
+  static async getProfileStats(): Promise<ProfileStats | null> {
+    try {
+      const response = await axiosClient.get<any>('/api/users/profile/stats');
+      const body = response.data;
+      console.log('Fetched profile stats response:', body);
+
+      // If backend uses { success, message, data }
+      if (body && typeof body === 'object' && 'data' in body && 'success' in body && body.success) {
+        return body.data as ProfileStats;
+      }
+
+      // If the endpoint returns the stats object directly
+      if (body && typeof body === 'object') {
+        return body as ProfileStats;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error fetching profile stats:', error);
+      throw error;
+    }
+  }
+}
+
+// Profile statistics interface
+export interface ProfileStats {
+  totalClubsJoined: number;
+  totalEventsJoined: number;
+  totalPointsEarned: number;
+  totalAttendanceDays: number;
 }
 
 export default UserService;
