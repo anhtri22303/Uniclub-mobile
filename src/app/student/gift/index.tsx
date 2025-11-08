@@ -6,7 +6,7 @@ import { Product, ProductService } from '@services/product.service';
 import { useAuthStore } from '@stores/auth.store';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -21,6 +21,13 @@ import {
 
 type TabType = 'CLUB_ITEM' | 'EVENT_ITEM';
 
+interface Club {
+  id: number;
+  name: string;
+  description?: string;
+  // Add other club properties as needed
+}
+
 export default function StudentGiftPage() {
   const { user } = useAuthStore();
   const router = useRouter();
@@ -31,7 +38,7 @@ export default function StudentGiftPage() {
   const [selectedTab, setSelectedTab] = useState<TabType>('CLUB_ITEM');
   const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
-  const [clubs, setClubs] = useState<any[]>([]);
+  const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -44,21 +51,35 @@ export default function StudentGiftPage() {
   }, [user]);
 
   // Load clubs data
-  const loadClubs = async () => {
+  const loadClubs = useCallback(async () => {
     if (userClubIds.length === 0) return;
 
+    console.log('🔄 Loading clubs for IDs:', userClubIds);
     try {
       const clubsData = await Promise.all(
-        userClubIds.map((id) => ClubService.getClubById(id).catch(() => null))
+        userClubIds.map(async (id) => {
+          try {
+            console.log(`📥 Fetching club ID: ${id}`);
+            const club = await ClubService.getClubById(id);
+            console.log(`✅ Loaded club:`, club);
+            return club;
+          } catch (err) {
+            console.error(`❌ Failed to load club ${id}:`, err);
+            return null;
+          }
+        })
       );
-      setClubs(clubsData.filter(Boolean));
+      const validClubs = clubsData.filter(Boolean) as Club[];
+      console.log(`✅ Total clubs loaded: ${validClubs.length}/${userClubIds.length}`, validClubs);
+      setClubs(validClubs);
     } catch (error) {
-      console.error('Error loading clubs:', error);
+      console.error('❌ Error loading clubs:', error);
+      Alert.alert('Error', 'Failed to load clubs information');
     }
-  };
+  }, [userClubIds]);
 
   // Load products for selected club
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     if (!selectedClubId) return;
 
     try {
@@ -74,15 +95,15 @@ export default function StudentGiftPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedClubId]);
 
   useEffect(() => {
     loadClubs();
-  }, [userClubIds]);
+  }, [loadClubs]);
 
   useEffect(() => {
     loadProducts();
-  }, [selectedClubId]);
+  }, [loadProducts]);
 
   const onRefresh = async () => {
     setRefreshing(true);

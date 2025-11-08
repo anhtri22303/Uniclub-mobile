@@ -42,6 +42,7 @@ export default function RootLayout() {
             <Stack.Screen name="student/checkin/[time]/[code]" options={{ headerShown: false }} />
             <Stack.Screen name="student/gift" options={{ headerShown: false }} />
             <Stack.Screen name="student/wallet" options={{ headerShown: false }} />
+            <Stack.Screen name="student/attendances" options={{ headerShown: false }} />
             <Stack.Screen name="student/history" options={{ headerShown: false }} />
             <Stack.Screen name="student/staff-history" options={{ headerShown: false }} />
             <Stack.Screen name="student/staff-gift" options={{ headerShown: false }} />

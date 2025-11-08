@@ -599,6 +599,41 @@ export function useClubStats(enabled = true) {
 }
 
 /**
+ * Hook to fetch club members
+ * @param clubId - Club ID
+ */
+export function useClubMembers(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['clubs', clubId, 'members'],
+    queryFn: async () => {
+      const { MembershipsService } = await import('@services/memberships.service');
+      const members = await MembershipsService.getMembersByClubId(clubId);
+      return members;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 3 * 60 * 1000, // 3 minutes (more dynamic data)
+  });
+}
+
+/**
+ * Hook to fetch current user's memberships
+ * Returns all clubs the user is a member of
+ */
+export function useMyMemberships(enabled = true) {
+  return useQuery({
+    queryKey: ['memberships', 'my'],
+    queryFn: async () => {
+      const { MembershipsService } = await import('@services/memberships.service');
+      const memberships = await MembershipsService.getMyMemberships();
+      return memberships;
+    },
+    enabled,
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
  * Hook to fetch club member count
  * @param clubId - Club ID
  */
@@ -724,6 +759,54 @@ export function useRegisterForEvent() {
       queryClient.invalidateQueries({ queryKey: queryKeys.myRegistrations() });
       queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
     },
+  });
+}
+
+// ============================================
+// ATTENDANCES QUERIES
+// ============================================
+
+/**
+ * Interface for attendance record
+ */
+export interface AttendanceRecord {
+  date: string;
+  note: string | null;
+  clubName: string;
+  status: string;
+}
+
+/**
+ * Interface for member attendance history response
+ */
+export interface MemberHistoryResponse {
+  success: boolean;
+  message: string;
+  data: {
+    clubName: string;
+    membershipId: number;
+    attendanceHistory: AttendanceRecord[];
+  };
+}
+
+/**
+ * Hook to fetch attendance history for a specific member
+ * @param membershipId - The member's membership ID (NOT userId or clubId)
+ */
+export function useMemberAttendanceHistory(membershipId: number | null, enabled = true) {
+  return useQuery<MemberHistoryResponse | null, Error>({
+    queryKey: ['attendances', 'member', membershipId],
+    queryFn: async () => {
+      if (!membershipId) return null;
+      
+      const { fetchMemberAttendanceHistory } = await import('@services/attendance.service');
+      const responseBody = await fetchMemberAttendanceHistory(membershipId);
+      
+      return responseBody as MemberHistoryResponse;
+    },
+    enabled: !!membershipId && enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 

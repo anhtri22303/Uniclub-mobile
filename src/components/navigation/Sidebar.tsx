@@ -242,6 +242,12 @@ export default function Sidebar({ role }: SidebarProps) {
           icon: 'time',
           route: '/student/history',
           label: 'History'
+        },
+        {
+          name: 'attendances',
+          icon: 'checkmark-done-circle',
+          route: '/student/attendances',
+          label: 'Attendances'
         }
       ];
       
@@ -271,12 +277,12 @@ export default function Sidebar({ role }: SidebarProps) {
           route: '/student/gift',
           label: 'Gift'
         },
-        {
-          name: 'wallet',
-          icon: 'wallet',
-          route: '/student/wallet',
-          label: 'Wallet'
-        }
+        // {
+        //   name: 'wallet',
+        //   icon: 'wallet',
+        //   route: '/student/wallet',
+        //   label: 'Wallet'
+        // }
       ] : [];
       
       // Items shown only if student is a staff member

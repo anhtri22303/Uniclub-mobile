@@ -1,3 +1,4 @@
+import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { Product, ProductMedia, ProductService } from '@services/product.service';
 import { redeemClubProduct, redeemEventProduct, RedeemPayload } from '@services/redeem.service';
@@ -19,6 +20,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function StudentProductDetailPage() {
   const router = useRouter();
@@ -207,6 +209,7 @@ export default function StudentProductDetailPage() {
         <Stack.Screen options={{ headerShown: false }} />
         <View className="flex-1 bg-gray-50 pt-12">
           <StatusBar style="dark" />
+          <Sidebar role={user?.role} />
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#3B82F6" />
             <Text className="text-gray-600 mt-4">Loading product...</Text>
@@ -222,6 +225,7 @@ export default function StudentProductDetailPage() {
         <Stack.Screen options={{ headerShown: false }} />
         <View className="flex-1 bg-gray-50 pt-12">
           <StatusBar style="dark" />
+          <Sidebar role={user?.role} />
           <View className="p-4">
             <TouchableOpacity onPress={() => router.back()} className="mb-4">
               <View className="flex-row items-center">
@@ -248,6 +252,7 @@ export default function StudentProductDetailPage() {
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
+      <Sidebar role={user?.role} />
       
       <ScrollView
         className="flex-1"
@@ -266,16 +271,34 @@ export default function StudentProductDetailPage() {
         <View className="p-4 space-y-4">
           {/* Main Image */}
           <View className="bg-white rounded-xl overflow-hidden border border-gray-200">
-            <View className="aspect-square bg-gray-100 relative">
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => {
+                const currentMedia = sortedMedia.find((m) => m.url === selectedImage);
+                if (currentMedia) {
+                  openMediaViewer(currentMedia);
+                }
+              }}
+              className="aspect-square bg-gray-100 relative"
+            >
               {selectedImage ? (
                 <>
                   {isVideo(sortedMedia.find((m) => m.url === selectedImage) || null) ? (
-                    <Video
-                      source={{ uri: selectedImage }}
-                      className="w-full h-full"
-                      useNativeControls
-                      resizeMode={ResizeMode.CONTAIN}
-                    />
+                    <View className="relative w-full h-full">
+                      <Image
+                        source={{ uri: selectedImage }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                      <View className="absolute inset-0 items-center justify-center bg-black/30">
+                        <View className="bg-white/90 rounded-full p-4">
+                          <Ionicons name="play" size={48} color="#3B82F6" />
+                        </View>
+                        <Text className="text-white font-semibold mt-2 bg-black/50 px-3 py-1 rounded">
+                          Tap to play video
+                        </Text>
+                      </View>
+                    </View>
                   ) : (
                     <Image
                       source={{ uri: selectedImage }}
@@ -295,13 +318,19 @@ export default function StudentProductDetailPage() {
               {sortedMedia.length > 1 && (
                 <>
                   <TouchableOpacity
-                    onPress={() => handleImageNavigation('prev')}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleImageNavigation('prev');
+                    }}
                     className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full"
                   >
                     <Ionicons name="chevron-back" size={24} color="#374151" />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => handleImageNavigation('next')}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleImageNavigation('next');
+                    }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full"
                   >
                     <Ionicons name="chevron-forward" size={24} color="#374151" />
@@ -317,7 +346,7 @@ export default function StudentProductDetailPage() {
                   </Text>
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Thumbnails */}
@@ -592,7 +621,8 @@ export default function StudentProductDetailPage() {
         onRequestClose={closeMediaViewer}
       >
         <View className="flex-1 bg-black">
-          <View className="flex-1 pt-12">
+          {/* Header with close button */}
+          <SafeAreaView className="absolute top-0 left-0 right-0 z-10">
             <View className="flex-row items-center justify-between px-4 py-2">
               <View className="flex-1">
                 {selectedMedia && (
@@ -613,24 +643,37 @@ export default function StudentProductDetailPage() {
                 <Ionicons name="close" size={28} color="white" />
               </TouchableOpacity>
             </View>
+          </SafeAreaView>
 
-            <View className="flex-1 items-center justify-center">
-              {selectedMedia && (
-                <>
-                  {isVideo(selectedMedia) ? (
-                    <Video
-                      ref={videoRef}
-                      source={{ uri: selectedMedia.url }}
-                      style={{
-                        width: Dimensions.get('window').width,
-                        height: Dimensions.get('window').height * 0.7,
-                      }}
-                      useNativeControls
-                      resizeMode={ResizeMode.CONTAIN}
-                      shouldPlay
-                      isLooping
-                    />
-                  ) : (
+          {/* Media Content */}
+          <View className="flex-1 items-center justify-center">
+            {selectedMedia && (
+              <>
+                {isVideo(selectedMedia) ? (
+                  <Video
+                    ref={videoRef}
+                    source={{ uri: selectedMedia.url }}
+                    style={{
+                      width: Dimensions.get('window').width,
+                      height: Dimensions.get('window').height * 0.7,
+                    }}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    shouldPlay
+                    isLooping
+                  />
+                ) : (
+                  <ScrollView
+                    maximumZoomScale={3}
+                    minimumZoomScale={1}
+                    showsVerticalScrollIndicator={false}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: Dimensions.get('window').height,
+                    }}
+                  >
                     <Image
                       source={{ uri: selectedMedia.url }}
                       style={{
@@ -639,8 +682,22 @@ export default function StudentProductDetailPage() {
                       }}
                       resizeMode="contain"
                     />
-                  )}
-                </>
+                  </ScrollView>
+                )}
+              </>
+            )}
+          </View>
+
+          {/* Bottom info bar */}
+          <View className="absolute bottom-0 left-0 right-0 bg-black/50 p-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text className="text-white text-sm">
+                  {isVideo(selectedMedia!) ? '📹 Video' : '🖼️ Image'} • Tap to interact
+                </Text>
+              </View>
+              {selectedMedia && !isVideo(selectedMedia) && (
+                <Text className="text-white/70 text-xs">Pinch to zoom</Text>
               )}
             </View>
           </View>

@@ -116,8 +116,18 @@ export class ClubService {
    */
   static async getClubById(id: number): Promise<ClubApiResponse> {
     try {
-      const response = await axiosClient.get<ClubApiResponse>(`/api/clubs/${id}`);
-      return response.data;
+      const response = await axiosClient.get(`/api/clubs/${id}`);
+      console.log(`📥 getClubById(${id}) raw response:`, response.data);
+      
+      // Check if response has standard wrapper { success, message, data }
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        console.log(`✅ getClubById(${id}) unwrapped:`, response.data.data);
+        return response.data.data as ClubApiResponse;
+      }
+      
+      // Otherwise return response.data directly
+      console.log(`✅ getClubById(${id}) direct:`, response.data);
+      return response.data as ClubApiResponse;
     } catch (error) {
       console.error('Error fetching club by ID:', error);
       throw error;
