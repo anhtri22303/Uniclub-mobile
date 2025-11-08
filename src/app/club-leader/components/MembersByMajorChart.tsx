@@ -65,13 +65,18 @@ export function MembersByMajorChart({
                     <Text className="text-sm font-medium flex-1" numberOfLines={1}>
                       {major}
                     </Text>
-                    <Badge variant="outline" className="ml-2">
-                      {count as number}
-                    </Badge>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-xs text-gray-500">
+                        {percentage.toFixed(1)}%
+                      </Text>
+                      <Badge variant="outline" className="ml-1">
+                        {count as number}
+                      </Badge>
+                    </View>
                   </View>
-                  <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <View
-                      className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+                      className="h-full bg-purple-500 rounded-full"
                       style={{ width: `${percentage}%` }}
                     />
                   </View>

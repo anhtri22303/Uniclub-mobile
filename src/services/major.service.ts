@@ -1,10 +1,23 @@
 import { axiosClient } from '@configs/axios';
 
+export interface MajorPolicy {
+  id: number;
+  policyName: string;
+  description: string;
+  maxClubJoin: number;
+  majorName: string;
+  active: boolean;
+}
+
 export interface Major {
   id: number;
   name: string;
+  majorCode?: string;
   description: string;
   active: boolean;
+  policies?: MajorPolicy[];
+  policyName?: string;
+  policyId?: number;
 }
 
 export class MajorService {

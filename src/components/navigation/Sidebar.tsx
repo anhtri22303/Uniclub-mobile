@@ -171,6 +171,12 @@ export default function Sidebar({ role }: SidebarProps) {
           label: 'Gift'
         },
         {
+          name: 'orders',
+          icon: 'receipt',
+          route: '/club-leader/orders',
+          label: 'Orders'
+        },
+        {
           name: 'points',
           icon: 'trophy',
           route: '/club-leader/points',

@@ -2,20 +2,20 @@ import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import {
-    type AttendanceRecord,
-    useMemberAttendanceHistory,
-    useMyMemberships
+  type AttendanceRecord,
+  useMemberAttendanceHistory,
+  useMyMemberships
 } from '@hooks/useQueryHooks';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -101,42 +101,20 @@ export default function StudentAttendancesPage() {
     }
   }, [myMemberships, selectedClubId]);
 
-  // Find current user's membershipId for selected club
-  const foundMembershipId = useMemo(() => {
-    console.log('=== Finding Membership ID ===');
-    console.log('My Memberships:', myMemberships);
-    console.log('Selected Club ID:', selectedClubId);
-    
-    if (!myMemberships || myMemberships.length === 0 || !selectedClubId) {
-      console.log('Early return: Missing data');
-      return null;
-    }
-    
-    // Find membership for selected club
-    const membership = myMemberships.find((m: any) => m.clubId === selectedClubId);
-    if (membership) {
-      console.log(`✅ Found membershipId: ${membership.membershipId} for club: ${selectedClubId}`);
-      return membership.membershipId;
-    }
-    console.warn(`❌ No membership found for club ${selectedClubId}`);
-    return null;
-  }, [myMemberships, selectedClubId]);
-
-  // Query 2: Get attendance history for the member
+  // Get attendance history for the selected club
   const {
     data: rawHistoryResponse,
     isLoading: isLoadingHistory,
     refetch: refetchHistory,
-  } = useMemberAttendanceHistory(foundMembershipId);
+  } = useMemberAttendanceHistory(selectedClubId);
 
   // Debug logging
   useEffect(() => {
     console.log('=== Attendance Debug Info ===');
     console.log('Selected Club ID:', selectedClubId);
-    console.log('Found Membership ID:', foundMembershipId);
     console.log('Raw History Response:', rawHistoryResponse);
     console.log('Is Loading History:', isLoadingHistory);
-  }, [selectedClubId, foundMembershipId, rawHistoryResponse, isLoadingHistory]);
+  }, [selectedClubId, rawHistoryResponse, isLoadingHistory]);
 
   // Extract attendance records
   const attendanceRecords = useMemo(() => {

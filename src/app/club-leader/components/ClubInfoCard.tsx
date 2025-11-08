@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
+import { Major } from '@services/major.service';
 import { Text, View } from 'react-native';
 
 interface ClubInfoCardProps {
@@ -10,10 +11,11 @@ interface ClubInfoCardProps {
     majorPolicyName: string;
     leaderName: string;
   } | null;
+  majorInfo: Major | null;
   isLoading: boolean;
 }
 
-export function ClubInfoCard({ club, isLoading }: ClubInfoCardProps) {
+export function ClubInfoCard({ club, majorInfo, isLoading }: ClubInfoCardProps) {
   if (isLoading) {
     return (
       <Card className="mb-6">
@@ -79,7 +81,7 @@ export function ClubInfoCard({ club, isLoading }: ClubInfoCardProps) {
               Policy
             </Text>
             <Text className="text-sm font-semibold text-purple-700">
-              {club.majorPolicyName}
+              {majorInfo?.policies?.[0]?.policyName || majorInfo?.policyName || club.majorPolicyName || '-'}
             </Text>
           </View>
         </View>

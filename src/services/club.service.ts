@@ -4,6 +4,7 @@ import { axiosClient } from '@configs/axios';
 export interface ClubApiResponse {
   id: number;
   name: string;
+  majorId?: number;
   majorName: string | null;
   leaderName: string | null;
   description: string | null;

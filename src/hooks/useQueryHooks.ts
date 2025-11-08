@@ -790,21 +790,21 @@ export interface MemberHistoryResponse {
 }
 
 /**
- * Hook to fetch attendance history for a specific member
- * @param membershipId - The member's membership ID (NOT userId or clubId)
+ * Hook to fetch attendance history for current user in a specific club
+ * @param clubId - The club ID to fetch attendance history for
  */
-export function useMemberAttendanceHistory(membershipId: number | null, enabled = true) {
+export function useMemberAttendanceHistory(clubId: number | null, enabled = true) {
   return useQuery<MemberHistoryResponse | null, Error>({
-    queryKey: ['attendances', 'member', membershipId],
+    queryKey: ['attendances', 'member', 'club', clubId],
     queryFn: async () => {
-      if (!membershipId) return null;
+      if (!clubId) return null;
       
       const { fetchMemberAttendanceHistory } = await import('@services/attendance.service');
-      const responseBody = await fetchMemberAttendanceHistory(membershipId);
+      const responseBody = await fetchMemberAttendanceHistory(clubId);
       
       return responseBody as MemberHistoryResponse;
     },
-    enabled: !!membershipId && enabled,
+    enabled: !!clubId && enabled,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });

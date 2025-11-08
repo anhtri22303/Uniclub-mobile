@@ -3,6 +3,7 @@ import Sidebar from '@components/navigation/Sidebar';
 import { fetchClubAttendanceHistory } from '@services/attendance.service';
 import { ClubService } from '@services/club.service';
 import { getEventByClubId, getEventCoHostByClubId } from '@services/event.service';
+import { Major, MajorService } from '@services/major.service';
 import { MemberApplicationService } from '@services/memberApplication.service';
 import { MembershipsService } from '@services/memberships.service';
 import { ProductService } from '@services/product.service';
@@ -15,11 +16,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    ClubInfoCard,
-    CoHostEventsList,
-    MembersByMajorChart,
-    RecentApplicationsList,
-    StatsCard,
+  ClubInfoCard,
+  CoHostEventsList,
+  MembersByMajorChart,
+  RecentApplicationsList,
+  StatsCard,
 } from './club-leader/components';
 
 // Helper function to check if event has expired
@@ -52,6 +53,7 @@ export default function ClubLeaderPage() {
   // State
   const [clubId, setClubId] = useState<number | null>(null);
   const [managedClub, setManagedClub] = useState<any>(null);
+  const [majorInfo, setMajorInfo] = useState<Major | null>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -105,6 +107,17 @@ export default function ClubLeaderPage() {
 
       if (clubResponse?.success && clubResponse.data) {
         setManagedClub(clubResponse.data);
+        
+        // Fetch major info if majorId exists
+        if (clubResponse.data.majorId) {
+          try {
+            const majorData = await MajorService.fetchMajorById(clubResponse.data.majorId);
+            setMajorInfo(majorData);
+          } catch (error) {
+            console.error('Error fetching major info:', error);
+            setMajorInfo(null);
+          }
+        }
       }
       
       setMembers(membersData.filter((m: any) => m.state === 'ACTIVE'));
@@ -281,7 +294,7 @@ export default function ClubLeaderPage() {
         }
       >
         {/* Club Information */}
-        <ClubInfoCard club={managedClub} isLoading={loading} />
+        <ClubInfoCard club={managedClub} majorInfo={majorInfo} isLoading={loading} />
 
         {/* Stats Cards Row 1 */}
         <View className="mb-4">

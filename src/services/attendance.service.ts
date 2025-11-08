@@ -117,9 +117,9 @@ export const markAttendanceBulk = async (sessionId: number, data: MarkBulkBody) 
   return response.data;
 };
 
-export const fetchMemberAttendanceHistory = async (membershipId: number) => {
+export const fetchMemberAttendanceHistory = async (clubId: number) => {
   const response = await axiosClient.get(
-    `/api/club-attendance/member/${membershipId}/history`
+    `/api/club-attendance/clubs/${clubId}/member/history`
   );
   return response.data;
 };
