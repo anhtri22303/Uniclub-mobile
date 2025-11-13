@@ -5,6 +5,7 @@ import {
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     GoogleLoginRequest,
+    GoogleLoginResponse,
     LoginCredentials,
     LoginResponse,
     SignUpCredentials,
@@ -119,7 +120,7 @@ export class AuthService {
   /**
    * Login with Google token - USE axiosPublic (no JWT token)
    */
-  static async loginWithGoogleToken(credentials: GoogleLoginRequest): Promise<LoginResponse> {
+  static async loginWithGoogleToken(credentials: GoogleLoginRequest): Promise<GoogleLoginResponse> {
     try {
       console.log('🚀 Sending Google token to backend:', {
         url: `${axiosPublic.defaults.baseURL}/auth/google`,
@@ -127,8 +128,14 @@ export class AuthService {
         tokenStart: credentials.token?.substring(0, 20) + '...',
       });
 
-      const response = await axiosPublic.post<LoginResponse>('/auth/google', credentials);
+      const response = await axiosPublic.post<GoogleLoginResponse>('/auth/google', credentials);
       console.log('✅ Google token login success:', response.data);
+      
+      // Check response format
+      if (!response.data.success || !response.data.data) {
+        throw new Error(response.data.message || 'Google authentication failed');
+      }
+      
       return response.data;
     } catch (error: any) {
       console.error('❌ Error during Google token login:', {

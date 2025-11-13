@@ -9,14 +9,16 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anhtri.uniclub"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anhtri.uniclub"
     },
     "web": {
       "bundler": "metro",
@@ -35,7 +37,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-barcode-scanner"
+      "expo-barcode-scanner",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true

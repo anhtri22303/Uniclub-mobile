@@ -49,6 +49,21 @@ export interface GoogleLoginRequest {
   token: string;
 }
 
+export interface GoogleLoginResponse {
+  success: boolean;
+  message: string;
+  data: {
+    token: string;
+    email: string;
+    fullName: string;
+    avatar?: string;
+    userId?: number | string;
+    role?: string;
+    staff?: boolean;
+    clubIds?: number[];
+  };
+}
+
 export interface ChangePasswordRequest {
   oldPassword: string;
   newPassword: string;

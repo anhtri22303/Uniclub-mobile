@@ -1,18 +1,18 @@
+import { useProfile } from '@contexts/ProfileContext';
 import { Ionicons } from '@expo/vector-icons';
-import UserService from '@services/user.service';
 import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -33,64 +33,23 @@ export default function Sidebar({ role }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { logout, user } = useAuthStore();
+  const { profile, refreshProfile, hasClub, userClubs, isLoading: loadingProfile } = useProfile();
   const [isOpen, setIsOpen] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-SIDEBAR_WIDTH));
   
-  // Profile widget state
-  const [userPoints, setUserPoints] = useState<number>(0);
-  const [avatarUrl, setAvatarUrl] = useState<string>('');
-  const [userName, setUserName] = useState<string>('');
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [loadingProfile, setLoadingProfile] = useState(false);
+  // Profile widget state (derived from context)
+  const userPoints = profile?.wallet?.balancePoints ?? 0;
+  const avatarUrl = profile?.avatarUrl || '';
+  const userName = profile?.fullName || user?.fullName || 'User';
+  const userEmail = profile?.email || user?.email || '';
 
-  // Load user profile data
+  // Refresh profile when sidebar opens
   useEffect(() => {
-    let mounted = true;
-    const loadProfile = async () => {
-      // Don't load if sidebar is closed or user is not logged in
-      if (!isOpen || !user) return;
-      
-      try {
-        setLoadingProfile(true);
-        const profileData = await UserService.fetchProfile();
-        
-        if (!mounted) return;
-        
-        console.log('=== SIDEBAR PROFILE DATA ===');
-        console.log('Full profile data:', JSON.stringify(profileData, null, 2));
-        console.log('Wallet object:', profileData?.wallet);
-        console.log('Balance points:', profileData?.wallet?.balancePoints);
-        console.log('===========================');
-        
-        setAvatarUrl(profileData?.avatarUrl || '');
-        setUserName(profileData?.fullName || user?.fullName || 'User');
-        setUserEmail(profileData?.email || user?.email || '');
-        
-        // Get wallet points from profile - handle multiple cases
-        const points = profileData?.wallet?.balancePoints ?? 0;
-        console.log('Setting userPoints to:', points);
-        setUserPoints(points);
-      } catch (err) {
-        console.error('Failed to load profile in Sidebar:', err);
-        // Fallback to auth store data
-        if (mounted) {
-          setUserName(user?.fullName || 'User');
-          setUserEmail(user?.email || '');
-          setUserPoints(0); // Reset to 0 on error
-        }
-      } finally {
-        if (mounted) {
-          setLoadingProfile(false);
-        }
-      }
-    };
-    
-    loadProfile();
-    
-    return () => {
-      mounted = false;
-    };
-  }, [isOpen, user]);
+    if (isOpen && user) {
+      console.log('🔄 Sidebar opened, refreshing profile...');
+      refreshProfile();
+    }
+  }, [isOpen, user, refreshProfile]);
 
   // Helper functions for points card styling
   const getPointsCardStyle = (points: number) => {
@@ -223,13 +182,12 @@ export default function Sidebar({ role }: SidebarProps) {
         }
       ];
     } else if (role === 'student') {
-      const hasClub = user?.clubIds && user.clubIds.length > 0;
+      // Use hasClub from ProfileContext (already computed)
       const isStaff = user?.staff === true;
       
       // Debug logging
-      console.log('=== SIDEBAR DEBUG ===');
-      console.log('User object:', JSON.stringify(user, null, 2));
-      console.log('clubIds:', user?.clubIds);
+      console.log('=== SIDEBAR MENU DEBUG ===');
+      console.log('User clubs from ProfileContext:', JSON.stringify(userClubs, null, 2));
       console.log('staff:', user?.staff);
       console.log('hasClub:', hasClub);
       console.log('isStaff:', isStaff);
@@ -248,17 +206,27 @@ export default function Sidebar({ role }: SidebarProps) {
           icon: 'time',
           route: '/student/history',
           label: 'History'
-        },
+        }
+      ];
+      
+      // Show "Events Public" only when student has NO club
+      const publicEventsItems: MenuItem[] = !hasClub ? [
+        {
+          name: 'events-public',
+          icon: 'globe',
+          route: '/student/events-public',
+          label: 'Events Public'
+        }
+      ] : [];
+      
+      // Items shown only if student has joined a club
+      const clubMemberItems: MenuItem[] = hasClub ? [
         {
           name: 'attendances',
           icon: 'checkmark-done-circle',
           route: '/student/attendances',
           label: 'Attendances'
-        }
-      ];
-      
-      // Items shown only if student has joined a club
-      const clubMemberItems: MenuItem[] = hasClub ? [
+        },
         {
           name: 'my-club',
           icon: 'people',
@@ -308,11 +276,12 @@ export default function Sidebar({ role }: SidebarProps) {
       ] : [];
       
       console.log('Base items count:', baseItems.length);
+      console.log('Public events items count:', publicEventsItems.length);
       console.log('Club member items count:', clubMemberItems.length);
       console.log('Staff items count:', staffItems.length);
-      console.log('Total menu items:', [...baseItems, ...clubMemberItems, ...staffItems].length);
+      console.log('Total menu items:', [...baseItems, ...publicEventsItems, ...clubMemberItems, ...staffItems].length);
       
-      return [...baseItems, ...clubMemberItems, ...staffItems];
+      return [...baseItems, ...publicEventsItems, ...clubMemberItems, ...staffItems];
     }
     return [];
   };
@@ -321,7 +290,7 @@ export default function Sidebar({ role }: SidebarProps) {
     const items = getMenuItems();
     console.log('Menu items recalculated. Total items:', items.length);
     return items;
-  }, [role, user?.clubIds, user?.staff]);
+  }, [role, hasClub, userClubs, user?.staff]);
 
   const toggleSidebar = () => {
     if (isOpen) {
@@ -343,6 +312,8 @@ export default function Sidebar({ role }: SidebarProps) {
   };
 
   const handleMenuPress = (route: string) => {
+    // Refresh profile before navigation to ensure latest data
+    refreshProfile();
     router.push(route as any);
     toggleSidebar();
   };

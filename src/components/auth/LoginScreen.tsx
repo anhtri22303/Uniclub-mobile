@@ -2,6 +2,7 @@ import { ENV } from '@configs/environment';
 import { Ionicons } from '@expo/vector-icons';
 import { SignUpCredentials } from '@models/auth/auth.types';
 import AuthService from '@services/auth.service';
+// import GoogleAuthService from '@services/googleAuth.service'; // Commented until Google Console setup
 import { useAuthStore } from '@stores/auth.store';
 import { getRoleRoute } from '@utils/roleRouting';
 import { useRouter } from 'expo-router';
@@ -41,6 +42,12 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showLoginError, setShowLoginError] = useState(false);
   const [isLoadingForgotPassword, setIsLoadingForgotPassword] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Initialize Google Sign-In configuration on component mount
+  // useEffect(() => {
+  //   GoogleAuthService.configure();
+  // }, []);
 
   const handleSubmit = async () => {
     if (isSignUpMode) {
@@ -317,6 +324,71 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    // Google Sign-In temporarily disabled - requires Google Console setup
+    Toast.show({
+      type: 'info',
+      text1: 'Coming Soon',
+      text2: 'Google Sign-In is currently being configured',
+      visibilityTime: 3000,
+      autoHide: true,
+    });
+    
+    /* Uncomment when Google Console is setup
+    setIsGoogleLoading(true);
+    
+    try {
+      console.log('🔵 Starting Google Sign-In...');
+      
+      // Sign in with Google and get user data from backend
+      const userData = await GoogleAuthService.signInWithGoogle();
+      
+      console.log('✅ Google Sign-In successful, logging in...');
+      
+      // Login to auth store with the user data
+      await login(userData);
+      
+      // Get the normalized role and redirect
+      const { user: authUser } = useAuthStore.getState();
+      const redirectPath = getRoleRoute(authUser?.role);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Welcome!',
+        text2: `Signed in as ${userData.fullName}`,
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      
+      router.replace(redirectPath as any);
+    } catch (error: any) {
+      console.error('❌ Google Sign-In failed:', error);
+      
+      let errorMessage = 'Google Sign-In failed. Please try again.';
+      
+      if (error.message.includes('cancelled')) {
+        errorMessage = 'Google Sign-In was cancelled';
+      } else if (error.message.includes('Play Services')) {
+        errorMessage = 'Google Play Services is not available or outdated';
+      } else if (error.message.includes('Network')) {
+        errorMessage = 'Network connection error. Please check your internet.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      Toast.show({
+        type: 'error',
+        text1: 'Google Sign-In Failed',
+        text2: errorMessage,
+        visibilityTime: 4000,
+        autoHide: true,
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+    */
+  };
+
   const resetForm = () => {
     setEmail('');
     setPassword('');
@@ -521,11 +593,21 @@ export default function LoginScreen() {
                 )}
 
                 {/* Google Sign-In Button */}
-                <TouchableOpacity className="border border-gray-300 rounded-xl py-4 flex-row items-center justify-center">
-                  <Ionicons name="logo-google" size={20} color="#DB4437" />
-                  <Text className="text-gray-700 font-medium ml-3">
-                    Đăng nhập bằng Google
-                  </Text>
+                <TouchableOpacity 
+                  onPress={handleGoogleSignIn}
+                  disabled={isGoogleLoading || isLoading}
+                  className="border border-gray-300 rounded-xl py-4 flex-row items-center justify-center"
+                >
+                  {isGoogleLoading ? (
+                    <ActivityIndicator color="#DB4437" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-google" size={20} color="#DB4437" />
+                      <Text className="text-gray-700 font-medium ml-3">
+                        Đăng nhập bằng Google
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 {/* Toggle Mode */}
