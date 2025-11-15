@@ -41,6 +41,7 @@ export interface UserProfile {
   bio: string | null;
   memberships: any[];
   clubs?: any[]; // Array of clubs the user is a member of
+  needCompleteProfile?: boolean; // Flag indicating if profile needs completion
 }
 
 // Membership wallet interface (for multiple club memberships)
@@ -63,9 +64,11 @@ export interface ProfileResponse {
 export interface EditProfileRequest {
   fullName?: string;
   phone?: string;
-  majorName?: string;
+  majorId?: number; // Changed from majorName to majorId
+  majorName?: string; // Keep for backward compatibility
   bio?: string;
   email?: string;
+  studentCode?: string; // Added studentCode field
 }
 
 export class UserService {

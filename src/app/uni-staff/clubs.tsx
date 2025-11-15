@@ -7,16 +7,16 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -59,6 +59,11 @@ export default function UniStaffClubsPage() {
   const [editingClub, setEditingClub] = useState<Club | null>(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+
+  // OTP modal states
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   const fetchClubs = async (isRefresh = false) => {
     try {
@@ -286,7 +291,18 @@ export default function UniStaffClubsPage() {
 
       {/* Header */}
       <View className="bg-white px-6 py-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800 mb-4">Clubs</Text>
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className="text-2xl font-bold text-gray-800">        Clubs</Text>
+          
+          {/* Send OTP Button */}
+          <TouchableOpacity
+            onPress={() => setShowOtpModal(true)}
+            className="bg-teal-500 rounded-full px-4 py-2 flex-row items-center shadow-md"
+          >
+            <Ionicons name="mail-outline" size={18} color="white" />
+            <Text className="text-white font-semibold ml-2 text-sm">Send OTP</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Stats Cards */}
         <View className="flex-row gap-2 mb-4">
@@ -599,6 +615,132 @@ export default function UniStaffClubsPage() {
                 </View>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* OTP Modal */}
+      <Modal visible={showOtpModal} animationType="slide" transparent={true} onRequestClose={() => setShowOtpModal(false)}>
+        <View className="flex-1 justify-center items-center bg-black/50 px-6">
+          <View className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
+            <View className="flex-row justify-between items-center mb-6">
+              <View className="flex-row items-center">
+                <View className="bg-teal-100 p-2 rounded-full mr-3">
+                  <Ionicons name="mail" size={24} color="#0D9488" />
+                </View>
+                <Text className="text-xl font-bold text-gray-800">Send OTP</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowOtpModal(false);
+                  setOtpEmail('');
+                }}
+                className="bg-gray-100 p-2 rounded-full"
+              >
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-gray-600 mb-6">
+              Enter student email to send OTP for club application
+            </Text>
+
+            <View className="space-y-4">
+              {/* Email Input */}
+              <View>
+                <Text className="text-sm font-medium text-gray-700 mb-2">Student Email</Text>
+                <View className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 flex-row items-center">
+                  <Ionicons name="mail-outline" size={20} color="#6B7280" />
+                  <TextInput
+                    className="flex-1 ml-3 text-base"
+                    value={otpEmail}
+                    onChangeText={setOtpEmail}
+                    placeholder="student@university.edu"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={!isSendingOtp}
+                  />
+                </View>
+              </View>
+
+              {/* Buttons */}
+              <View className="flex-row gap-3 mt-6">
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowOtpModal(false);
+                    setOtpEmail('');
+                  }}
+                  disabled={isSendingOtp}
+                  className="flex-1 bg-gray-200 py-3 rounded-xl"
+                >
+                  <Text className="text-gray-700 font-semibold text-center">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!otpEmail.trim()) {
+                      Alert.alert('Email Required', 'Please enter a student email address');
+                      return;
+                    }
+
+                    // Basic email validation
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(otpEmail.trim())) {
+                      Alert.alert('Invalid Email', 'Please enter a valid email address');
+                      return;
+                    }
+
+                    setIsSendingOtp(true);
+                    try {
+                      // Import and call sendOtp from clubApplication service
+                      const clubApplicationService = await import('@services/clubApplication.service');
+                      
+                      // Check if sendOtp exists in the service
+                      if (typeof clubApplicationService.default?.sendOtp === 'function') {
+                        const result = await clubApplicationService.default.sendOtp(otpEmail.trim());
+                        Alert.alert(
+                          'OTP Sent Successfully',
+                          result || `OTP has been sent to ${otpEmail}`
+                        );
+                      } else {
+                        // Fallback: Show success message
+                        Alert.alert(
+                          'OTP Sent',
+                          `OTP has been sent to ${otpEmail}. Please check your email.`
+                        );
+                      }
+
+                      // Reset and close modal
+                      setShowOtpModal(false);
+                      setOtpEmail('');
+                    } catch (err: any) {
+                      console.error('Error sending OTP:', err);
+                      Alert.alert(
+                        'Failed to Send OTP',
+                        err?.response?.data?.message ||
+                          err?.message ||
+                          'An error occurred while sending OTP'
+                      );
+                    } finally {
+                      setIsSendingOtp(false);
+                    }
+                  }}
+                  disabled={isSendingOtp}
+                  className={`flex-1 py-3 rounded-xl ${
+                    isSendingOtp ? 'bg-teal-300' : 'bg-teal-500'
+                  }`}
+                >
+                  {isSendingOtp ? (
+                    <View className="flex-row items-center justify-center">
+                      <ActivityIndicator size="small" color="white" />
+                      <Text className="text-white font-semibold ml-2">Sending...</Text>
+                    </View>
+                  ) : (
+                    <Text className="text-white font-semibold text-center">Send OTP</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>

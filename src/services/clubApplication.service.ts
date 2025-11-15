@@ -211,6 +211,37 @@ export async function createClubAccount(body: CreateClubAccountBody): Promise<st
   }
 }
 
+/**
+ * Send OTP to student email for club application
+ * POST /api/club-applications/send-otp
+ */
+export async function sendOtp(email: string): Promise<string> {
+  try {
+    const response = await axiosClient.post(
+      `/api/club-applications/send-otp`,
+      { email },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    // API response: { success, message, data }
+    const result = response.data as {
+      success: boolean;
+      message: string;
+      data?: string;
+    };
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to send OTP');
+    }
+
+    console.log('✅ OTP sent successfully to:', email);
+    return result.message || result.data || 'OTP sent successfully';
+  } catch (error: any) {
+    console.error('❌ Error sending OTP:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 export default {
   getClubApplications,
   postClubApplication,
@@ -218,4 +249,5 @@ export default {
   getMyClubApplications,
   processClubApplication,
   createClubAccount,
+  sendOtp,
 };

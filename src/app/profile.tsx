@@ -1,8 +1,11 @@
 import { AvatarCropModal } from '@components/AvatarCropModal';
 import { ChangePasswordModal } from '@components/ChangePasswordModal';
+import { CompleteProfileModal } from '@components/CompleteProfileModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import { Major, MajorService } from '@services/major.service';
 import UserService, { ApiMembershipWallet, EditProfileRequest, ProfileStats, UserProfile } from '@services/user.service';
 import { useAuthStore } from '@stores/auth.store';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,16 +14,16 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Image,
-    ImageBackground,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  ImageBackground,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -60,8 +63,14 @@ export default function ProfileScreen() {
   // Change password modal state
   const [showChangePassword, setShowChangePassword] = useState(false);
 
+  // Complete profile modal state
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
+
   // Wallet memberships state
   const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([]);
+
+  // Majors list state
+  const [majors, setMajors] = useState<Major[]>([]);
 
   // Profile stats state (real data from API)
   const [userStats, setUserStats] = useState<ProfileStats | null>(null);
@@ -104,8 +113,30 @@ export default function ProfileScreen() {
       setLoading(true);
       setError(null);
       
-      const profileData = await UserService.fetchProfile();
+      // Fetch profile and majors in parallel
+      const [profileData, majorsList] = await Promise.all([
+        UserService.fetchProfile(),
+        MajorService.fetchMajors()
+      ]);
+      
       setProfile(profileData);
+      
+      // Handle majors list - filter active majors but include user's current major if inactive
+      const activeMajors = majorsList.filter(m => m.active);
+      const currentMajorName = profileData.majorName;
+      const isCurrentMajorActive = activeMajors.some(m => m.name === currentMajorName);
+      
+      if (!isCurrentMajorActive && currentMajorName) {
+        // Add inactive major to list if it's the user's current major
+        const currentInactiveMajor = majorsList.find(m => m.name === currentMajorName);
+        if (currentInactiveMajor) {
+          setMajors([currentInactiveMajor, ...activeMajors]);
+        } else {
+          setMajors(activeMajors);
+        }
+      } else {
+        setMajors(activeMajors);
+      }
       
       // Update form data
       setFormData({
@@ -118,6 +149,11 @@ export default function ProfileScreen() {
       // Set avatar and background preview
       setAvatarPreview(profileData.avatarUrl);
       setBackgroundPreview(profileData.backgroundUrl || null);
+
+      // Check if profile needs to be completed (for students only)
+      if (profileData.needCompleteProfile && user?.role === 'student') {
+        setShowCompleteProfile(true);
+      }
 
       // Load wallet memberships for students and club leaders
       if (user?.role === 'student' || user?.role === 'club_leader') {
@@ -241,10 +277,14 @@ export default function ProfileScreen() {
     try {
       setSaving(true);
 
+      // Find majorId from majorName
+      const selectedMajor = majors.find(m => m.name === formData.majorName);
+      const majorId = selectedMajor ? selectedMajor.id : undefined;
+
       const updateData: EditProfileRequest = {
         fullName: formData.fullName,
         phone: formData.phone,
-        majorName: formData.majorName,
+        majorId: majorId, // Send majorId instead of majorName
         bio: formData.bio,
       };
 
@@ -417,6 +457,29 @@ export default function ProfileScreen() {
   const handleBackgroundCropCancel = () => {
     setShowBackgroundCropModal(false);
     setBackgroundImageToCrop('');
+  };
+
+  // Handle complete profile submission
+  const handleCompleteProfile = async (data: { studentCode: string; majorId: number }) => {
+    try {
+      const updateData: EditProfileRequest = {
+        studentCode: data.studentCode,
+        majorId: data.majorId,
+      };
+
+      const response = await UserService.editProfile(updateData);
+      
+      if (response && response.success) {
+        Alert.alert('Success', 'Your profile has been completed successfully!');
+        setShowCompleteProfile(false);
+        await loadProfile(); // Reload profile data
+      } else {
+        throw new Error(response?.message || 'Unable to complete profile');
+      }
+    } catch (err) {
+      console.error('Complete profile failed:', err);
+      throw err; // Re-throw to let modal handle the error
+    }
   };
 
   const getInitials = (name: string) => {
@@ -866,12 +929,22 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Major</Text>
-                    <TextInput
-                      value={formData.majorName}
-                      onChangeText={(text) => setFormData({ ...formData, majorName: text })}
-                      className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
-                      placeholder="Enter your major"
-                    />
+                    <View className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+                      <Picker
+                        selectedValue={formData.majorName}
+                        onValueChange={(itemValue) => setFormData({ ...formData, majorName: itemValue })}
+                        style={{ height: 50 }}
+                      >
+                        <Picker.Item label="Select a major" value="" />
+                        {majors.map((major) => (
+                          <Picker.Item
+                            key={major.id}
+                            label={`${major.name}${!major.active ? ' (Inactive)' : ''}`}
+                            value={major.name}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
                   </View>
                   
                   <View>
@@ -1021,12 +1094,22 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Major</Text>
-                    <TextInput
-                      value={formData.majorName}
-                      onChangeText={(text) => setFormData({ ...formData, majorName: text })}
-                      className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
-                      placeholder="Enter your major"
-                    />
+                    <View className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+                      <Picker
+                        selectedValue={formData.majorName}
+                        onValueChange={(itemValue) => setFormData({ ...formData, majorName: itemValue })}
+                        style={{ height: 50 }}
+                      >
+                        <Picker.Item label="Select a major" value="" />
+                        {majors.map((major) => (
+                          <Picker.Item
+                            key={major.id}
+                            label={`${major.name}${!major.active ? ' (Inactive)' : ''}`}
+                            value={major.name}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
                   </View>
                   
                   <View>
@@ -1191,6 +1274,20 @@ export default function ProfileScreen() {
       <ChangePasswordModal
         visible={showChangePassword}
         onClose={() => setShowChangePassword(false)}
+      />
+
+      {/* Complete Profile Modal */}
+      <CompleteProfileModal
+        visible={showCompleteProfile}
+        onClose={() => {
+          // Don't allow closing if profile is incomplete for students
+          if (!profile?.needCompleteProfile) {
+            setShowCompleteProfile(false);
+          }
+        }}
+        onComplete={handleCompleteProfile}
+        currentStudentCode={profile?.studentCode || ''}
+        currentMajorName={profile?.majorName || ''}
       />
     </SafeAreaView>
   );

@@ -15,6 +15,17 @@ interface ApiResponse<T> {
 export interface Tag {
   tagId: number;
   name: string;
+  description: string;
+  core: boolean;
+}
+
+/**
+ * Update tag DTO
+ */
+export interface UpdateTagDto {
+  name: string;
+  description: string;
+  core: boolean;
 }
 
 export class TagService {
@@ -51,6 +62,20 @@ export class TagService {
   }
 
   /**
+   * Update a tag
+   * PUT /api/tags/{id}
+   */
+  static async updateTag(tagId: number | string, data: UpdateTagDto): Promise<Tag> {
+    try {
+      const response = await axiosClient.put<ApiResponse<Tag>>(`/api/tags/${tagId}`, data);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error updating tag ${tagId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete a tag
    * DELETE /api/tags/{id}
    */
@@ -63,5 +88,14 @@ export class TagService {
       throw error;
     }
   }
+
+  /**
+   * Alias for getTags (for consistency with other services)
+   */
+  static async fetchTags(): Promise<Tag[]> {
+    return this.getTags();
+  }
 }
+
+export default TagService;
 

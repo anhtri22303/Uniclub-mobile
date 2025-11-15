@@ -41,6 +41,7 @@ export interface ClubToMemberTransaction {
   amount: number;
   description: string;
   createdAt: string;
+  signedAmount: string;
   senderName: string | null;
   receiverName: string | null;
 }
@@ -58,6 +59,26 @@ export interface RewardMembersResponse {
   success: boolean;
   message: string;
   data: RewardMembersTransaction[];
+}
+
+export interface UniToClubTransaction {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+  senderName: string | null;
+  receiverName: string | null;
+}
+
+export interface UniToEventTransaction {
+  id: number;
+  type: string;
+  signedAmount: string;
+  description: string;
+  createdAt: string;
+  senderName: string | null;
+  receiverName: string | null;
 }
 
 export class WalletService {
@@ -82,6 +103,27 @@ export class WalletService {
     } catch (error) {
       console.error('Error fetching wallet:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get wallet transaction history for current user
+   */
+  static async getWalletTransactions(): Promise<ClubToMemberTransaction[]> {
+    try {
+      const response = await axiosClient.get('/api/wallets/me/transactions');
+      console.log('getWalletTransactions:', response.data);
+      
+      // Handle nested data structure
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        const nestedData = (response.data as any).data;
+        return Array.isArray(nestedData) ? nestedData : [];
+      }
+      
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching wallet transactions:', error);
+      return [];
     }
   }
 
@@ -137,6 +179,32 @@ export class WalletService {
         success: false,
         message: error.response?.data?.message || 'Failed to distribute points',
       };
+    }
+  }
+
+  /**
+   * Reward points to multiple clubs (new API matching web)
+   * POST /api/wallets/reward/clubs
+   */
+  static async pointsToClubs(
+    targetIds: number[],
+    points: number,
+    reason?: string
+  ): Promise<RewardMembersResponse> {
+    try {
+      const response = await axiosClient.post<RewardMembersResponse>(
+        '/api/wallets/reward/clubs',
+        {
+          targetIds,
+          points,
+          reason: reason || '',
+        }
+      );
+      console.log(`pointsToClubs (targetIds: ${targetIds.length} clubs):`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to reward points to clubs', error);
+      throw error;
     }
   }
 
@@ -246,6 +314,48 @@ export class WalletService {
       return response.data;
     } catch (error) {
       console.error('Error fetching transaction history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get university to club transaction history
+   */
+  static async getUniToClubTransactions(): Promise<UniToClubTransaction[]> {
+    try {
+      const response = await axiosClient.get('/api/wallets/transactions/uni-to-club');
+      console.log('getUniToClubTransactions:', response.data);
+      
+      // Handle nested data structure
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        const nestedData = (response.data as any).data;
+        return Array.isArray(nestedData) ? nestedData : [];
+      }
+      
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching uni-to-club transactions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get university to event transaction history
+   */
+  static async getUniToEventTransactions(): Promise<UniToEventTransaction[]> {
+    try {
+      const response = await axiosClient.get('/api/wallets/transactions/uni-to-event');
+      console.log('getUniToEventTransactions:', response.data);
+      
+      // Handle nested data structure
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        const nestedData = (response.data as any).data;
+        return Array.isArray(nestedData) ? nestedData : [];
+      }
+      
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching uni-to-event transactions:', error);
       return [];
     }
   }

@@ -464,6 +464,80 @@ export const eventQR = async (eventId: string | number, phase: string): Promise<
   }
 };
 
+// Feedback interfaces
+export interface EventFeedback {
+  feedbackId: number;
+  eventId: number;
+  eventName: string;
+  clubName: string;
+  membershipId: string;
+  memberName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get feedbacks by membership (for students to view their own feedbacks)
+ */
+export const getFeedbacksByMembership = async (membershipId: string | number): Promise<EventFeedback[]> => {
+  try {
+    const response = await axiosClient.get(`/api/events/memberships/${membershipId}/feedbacks`);
+    const data: any = response.data;
+    console.log(`Fetched feedbacks for membership ${membershipId}:`, data);
+    
+    // Handle response structure
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching feedbacks for membership ${membershipId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get all feedbacks for an event
+ */
+export const getEventFeedbacks = async (eventId: string | number): Promise<EventFeedback[]> => {
+  try {
+    const response = await axiosClient.get(`/api/events/${eventId}/feedback`);
+    const data: any = response.data;
+    console.log(`Fetched feedbacks for event ${eventId}:`, data);
+    
+    // Handle response structure
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching feedbacks for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get my events (events user has registered for)
+ */
+export const getMyEvents = async (): Promise<Event[]> => {
+  try {
+    const response = await axiosClient.get('/api/events/my');
+    const data: any = response.data;
+    console.log('Fetched my events:', data);
+    
+    // Handle response structure
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching my events:', error);
+    throw error;
+  }
+};
+
 export default {
   fetchEvent,
   createEvent,
@@ -483,7 +557,10 @@ export default {
   completeEvent,
   registerForEvent,
   getMyEventRegistrations,
+  getMyEvents,
   eventQR,
   timeObjectToString,
-  timeStringToObject
+  timeStringToObject,
+  getFeedbacksByMembership,
+  getEventFeedbacks
 };

@@ -7,14 +7,14 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -276,7 +276,7 @@ export default function PublicEventsPage() {
         {/* Header */}
         <View className="py-4">
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-2xl font-bold text-gray-900">Public Events</Text>
+            <Text className="text-2xl font-bold text-gray-900">        Public Events</Text>
             <TouchableOpacity
               onPress={() => setFilterModalVisible(true)}
               className="bg-blue-500 px-4 py-2 rounded-lg"

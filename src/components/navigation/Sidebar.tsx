@@ -179,6 +179,42 @@ export default function Sidebar({ role }: SidebarProps) {
           icon: 'wallet',
           route: '/uni-staff/points',
           label: 'Points'
+        },
+        {
+          name: 'feedbacks',
+          icon: 'star',
+          route: '/uni-staff/feedbacks',
+          label: 'Feedbacks'
+        },
+        {
+          name: 'locations',
+          icon: 'location',
+          route: '/uni-staff/locations',
+          label: 'Locations'
+        },
+        {
+          name: 'tags',
+          icon: 'pricetags',
+          route: '/uni-staff/tags',
+          label: 'Tags'
+        },
+        {
+          name: 'multiplier-policy',
+          icon: 'trending-up',
+          route: '/uni-staff/multiplier-policy',
+          label: 'Multiplier Policy'
+        },
+        {
+          name: 'majors',
+          icon: 'book',
+          route: '/uni-staff/majors',
+          label: 'Majors'
+        },
+        {
+          name: 'points-req',
+          icon: 'document-text',
+          route: '/uni-staff/points-req',
+          label: 'Points Request'
         }
       ];
     } else if (role === 'student') {

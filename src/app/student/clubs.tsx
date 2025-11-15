@@ -59,7 +59,9 @@ export default function StudentClubsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newClubName, setNewClubName] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newVision, setNewVision] = useState('');
   const [newProposerReason, setNewProposerReason] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [majors, setMajors] = useState<Major[]>([]);
   const [creating, setCreating] = useState(false);
@@ -90,24 +92,23 @@ export default function StudentClubsPage() {
     loadMajors();
   }, []);
 
-  // Load user's applications
+  // Load user's applications first, then clubs
   useEffect(() => {
-    const loadMyApplications = async () => {
+    const loadData = async () => {
       try {
+        // Load applications first
         const applications = await MemberApplicationService.getMyMemberApplications();
         console.log('📋 Loaded user applications:', applications);
         setMyApplications(applications);
+        
+        // Then load clubs
+        await loadClubs();
       } catch (error) {
-        console.error('Failed to load my applications:', error);
+        console.error('Failed to load data:', error);
         setMyApplications([]);
       }
     };
-    loadMyApplications();
-  }, []);
-
-  // Load clubs
-  useEffect(() => {
-    loadClubs();
+    loadData();
   }, []);
 
   const loadClubs = async () => {
@@ -271,16 +272,25 @@ export default function StudentClubsPage() {
 
   // Handle create club application
   const submitCreateClubApplication = async () => {
-    if (!newClubName.trim() || !newDescription.trim() || !selectedMajorId || !newProposerReason.trim()) {
+    if (!newClubName.trim() || !newDescription.trim() || !newVision.trim() || !selectedMajorId || !newProposerReason.trim() || !otpCode.trim()) {
       Alert.alert('Missing Information', 'Please fill in all fields');
+      return;
+    }
+
+    if (otpCode.length !== 6) {
+      Alert.alert('Invalid OTP', 'OTP code must be 6 digits');
       return;
     }
 
     setCreating(true);
     try {
+      // TODO: Verify OTP code with backend before submitting application
+      // For now, we'll just validate the format
+      
       await postClubApplication({
         clubName: newClubName.trim(),
         description: newDescription.trim(),
+        vision: newVision.trim(),
         majorId: selectedMajorId,
         proposerReason: newProposerReason.trim(),
       });
@@ -289,7 +299,9 @@ export default function StudentClubsPage() {
       setShowCreateModal(false);
       setNewClubName('');
       setNewDescription('');
+      setNewVision('');
       setNewProposerReason('');
+      setOtpCode('');
       setSelectedMajorId(null);
     } catch (error: any) {
       console.error('Error creating club application:', error);
@@ -335,7 +347,7 @@ export default function StudentClubsPage() {
           {/* Header with Create Club Button */}
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-1">
-              <Text className="text-2xl font-bold text-gray-800">Club Directory</Text>
+              <Text className="text-2xl font-bold text-gray-800">       Club Directory</Text>
               <Text className="text-sm text-gray-500">
                 Discover and join clubs that match your interests
               </Text>
@@ -586,113 +598,166 @@ export default function StudentClubsPage() {
         animationType="slide"
         onRequestClose={() => setShowCreateModal(false)}
       >
-        <ScrollView className="flex-1 bg-black/50">
-          <View className="min-h-full justify-end">
-            <View className="bg-white rounded-t-3xl p-6">
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-xl font-bold text-gray-900">Create Club Application</Text>
-                <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                  <Ionicons name="close" size={24} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-3xl w-11/12 max-h-5/6">
+            <ScrollView showsVerticalScrollIndicator={true}>
+              <View className="p-6">
+                  <View className="flex-row items-center justify-between mb-4">
+                    <Text className="text-xl font-bold text-gray-900">Create Club Application</Text>
+                    <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                      <Ionicons name="close" size={24} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
 
-              <View className="space-y-4">
-                {/* Club Name */}
-                <View>
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">Club Name</Text>
-                  <TextInput
-                    placeholder="Enter club name"
-                    value={newClubName}
-                    onChangeText={setNewClubName}
-                    className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
+                  <View className="space-y-4">
+                    {/* Club Name */}
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">Club Name</Text>
+                      <TextInput
+                        placeholder="Enter club name"
+                        value={newClubName}
+                        onChangeText={setNewClubName}
+                        className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
 
-                {/* Description */}
-                <View>
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">Description</Text>
-                  <TextInput
-                    placeholder="Enter description"
-                    value={newDescription}
-                    onChangeText={setNewDescription}
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                    className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
+                    {/* Description */}
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">Description (0/300)</Text>
+                      <TextInput
+                        placeholder="Enter description"
+                        value={newDescription}
+                        onChangeText={(text) => {
+                          if (text.length <= 300) setNewDescription(text);
+                        }}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                        className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
+                        placeholderTextColor="#9CA3AF"
+                        maxLength={300}
+                      />
+                      <Text className="text-xs text-gray-500 mt-1 text-right">
+                        {newDescription.length}/300
+                      </Text>
+                    </View>
 
-                {/* Major Selection */}
-                <View>
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">Category (Major)</Text>
-                  <ScrollView className="bg-gray-50 rounded-xl p-3 max-h-40">
-                    {majors.map((major) => (
+                    {/* Vision */}
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">Vision (0/300)</Text>
+                      <TextInput
+                        placeholder="Enter the club's vision"
+                        value={newVision}
+                        onChangeText={(text) => {
+                          if (text.length <= 300) setNewVision(text);
+                        }}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                        className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
+                        placeholderTextColor="#9CA3AF"
+                        maxLength={300}
+                      />
+                      <Text className="text-xs text-gray-500 mt-1 text-right">
+                        {newVision.length}/300
+                      </Text>
+                    </View>
+
+                    {/* Major Selection */}
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">Major</Text>
+                      <ScrollView className="bg-gray-50 rounded-xl p-3 max-h-40" nestedScrollEnabled>
+                        {majors.map((major) => (
+                          <TouchableOpacity
+                            key={major.id}
+                            onPress={() => setSelectedMajorId(major.id)}
+                            className={`flex-row items-center justify-between p-3 rounded-lg mb-2 ${
+                              selectedMajorId === major.id ? 'bg-indigo-100' : 'bg-white'
+                            }`}
+                          >
+                            <Text
+                              className={`font-medium ${
+                                selectedMajorId === major.id ? 'text-indigo-700' : 'text-gray-700'
+                              }`}
+                            >
+                              {major.name}
+                            </Text>
+                            {selectedMajorId === major.id && (
+                              <Ionicons name="checkmark-circle" size={20} color="#6366F1" />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    {/* Proposer Reason */}
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        Why do you want to create this club?
+                      </Text>
+                      <TextInput
+                        placeholder="Share your motivation and vision for this club"
+                        value={newProposerReason}
+                        onChangeText={(text) => {
+                          if (text.length <= 300) setNewProposerReason(text);
+                        }}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                        className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
+                        placeholderTextColor="#9CA3AF"
+                        maxLength={300}
+                      />
+                      <Text className="text-xs text-gray-500 mt-1 text-right">
+                        {newProposerReason.length}/300
+                      </Text>
+                    </View>
+
+                    {/* OTP Code */}
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">OTP Code (6 digits)</Text>
+                      <TextInput
+                        placeholder="Enter 6-digit OTP"
+                        value={otpCode}
+                        onChangeText={(text) => {
+                          // Only allow numbers and max 6 digits
+                          const numericText = text.replace(/[^0-9]/g, '');
+                          if (numericText.length <= 6) setOtpCode(numericText);
+                        }}
+                        keyboardType="numeric"
+                        maxLength={6}
+                        className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+
+                    {/* Buttons */}
+                    <View className="flex-row gap-3 mt-4">
                       <TouchableOpacity
-                        key={major.id}
-                        onPress={() => setSelectedMajorId(major.id)}
-                        className={`flex-row items-center justify-between p-3 rounded-lg mb-2 ${
-                          selectedMajorId === major.id ? 'bg-indigo-100' : 'bg-white'
-                        }`}
+                        onPress={() => setShowCreateModal(false)}
+                        className="flex-1 bg-gray-100 py-3 rounded-xl"
+                        disabled={creating}
                       >
-                        <Text
-                          className={`font-medium ${
-                            selectedMajorId === major.id ? 'text-indigo-700' : 'text-gray-700'
-                          }`}
-                        >
-                          {major.name}
-                        </Text>
-                        {selectedMajorId === major.id && (
-                          <Ionicons name="checkmark-circle" size={20} color="#6366F1" />
+                        <Text className="text-gray-700 font-semibold text-center">Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={submitCreateClubApplication}
+                        className="flex-1 bg-indigo-500 py-3 rounded-xl"
+                        disabled={creating}
+                      >
+                        {creating ? (
+                          <ActivityIndicator color="white" />
+                        ) : (
+                          <Text className="text-white font-semibold text-center">Send</Text>
                         )}
                       </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                    </View>
+                  </View>
                 </View>
-
-                {/* Proposer Reason */}
-                <View>
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">
-                    Why do you want to create this club?
-                  </Text>
-                  <TextInput
-                    placeholder="Share your motivation and vision for this club"
-                    value={newProposerReason}
-                    onChangeText={setNewProposerReason}
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                    className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-
-                {/* Buttons */}
-                <View className="flex-row gap-3 mt-4">
-                  <TouchableOpacity
-                    onPress={() => setShowCreateModal(false)}
-                    className="flex-1 bg-gray-100 py-3 rounded-xl"
-                    disabled={creating}
-                  >
-                    <Text className="text-gray-700 font-semibold text-center">Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={submitCreateClubApplication}
-                    className="flex-1 bg-indigo-500 py-3 rounded-xl"
-                    disabled={creating}
-                  >
-                    {creating ? (
-                      <ActivityIndicator color="white" />
-                    ) : (
-                      <Text className="text-white font-semibold text-center">Send</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
+              </ScrollView>
             </View>
           </View>
-        </ScrollView>
       </Modal>
 
       {/* Navigation Bar */}

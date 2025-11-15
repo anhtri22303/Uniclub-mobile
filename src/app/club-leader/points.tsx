@@ -3,7 +3,7 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubApiResponse, ClubService } from '@services/club.service';
 import { ApiMembership, MembershipsService } from '@services/memberships.service';
-import PointRequestService from '@services/pointReq.service';
+import PointRequestService from '@services/point-request.service';
 import WalletService, { ClubToMemberTransaction } from '@services/wallet.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
@@ -51,6 +51,7 @@ export default function ClubLeaderPointsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({});
   const [rewardAmount, setRewardAmount] = useState('');
+  const [rewardReason, setRewardReason] = useState('');
   const [isDistributing, setIsDistributing] = useState(false);
   
   // Filter states
@@ -330,7 +331,7 @@ export default function ClubLeaderPointsPage() {
 
     setIsSubmittingRequest(true);
     try {
-      await PointRequestService.createPointRequest({
+      const response = await PointRequestService.createPointRequest({
         clubId,
         requestedPoints: points,
         reason: requestReason,
@@ -339,7 +340,7 @@ export default function ClubLeaderPointsPage() {
       Toast.show({
         type: 'success',
         text1: 'Request Submitted',
-        text2: 'Your request for points has been sent to the university staff for review.',
+        text2: response.message || 'Your request for points has been sent to the university staff for review.',
         visibilityTime: 4000,
         autoHide: true,
       });
@@ -349,10 +350,11 @@ export default function ClubLeaderPointsPage() {
       setRequestPoints('');
       setRequestReason('');
     } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err.message || 'Failed to submit point request.';
       Toast.show({
         type: 'error',
         text1: 'Submission Error',
-        text2: err?.response?.data?.message || 'Failed to submit point request.',
+        text2: errorMessage,
         visibilityTime: 3000,
         autoHide: true,
       });
@@ -376,6 +378,17 @@ export default function ClubLeaderPointsPage() {
       return;
     }
 
+    if (!rewardReason.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Reason Required',
+        text2: 'Please provide a reason for distributing points.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      return;
+    }
+
     if (selectedMembersList.length === 0) {
       Toast.show({
         type: 'error',
@@ -390,7 +403,7 @@ export default function ClubLeaderPointsPage() {
     // Confirmation alert
     Alert.alert(
       'Confirm Distribution',
-      `Distribute ${formatNumber(amount)} points to ${selectedMembersList.length} selected member(s)?`,
+      `Distribute ${formatNumber(amount)} points to ${selectedMembersList.length} selected member(s)?\n\nReason: ${rewardReason}`,
       [
         {
           text: 'Cancel',
@@ -405,11 +418,11 @@ export default function ClubLeaderPointsPage() {
               // Collect all membershipIds as numbers
               const targetIds = selectedMembersList.map((member) => Number(member.id));
 
-              // Call the batch reward API
+              // Call the batch reward API with reason
               const response = await WalletService.rewardPointsToMembers(
                 targetIds,
                 amount,
-                'Reward from Club Leader'
+                rewardReason.trim()
               );
 
               if (response.success) {
@@ -425,6 +438,7 @@ export default function ClubLeaderPointsPage() {
 
                 // Reset form
                 setRewardAmount('');
+                setRewardReason('');
                 setSelectedMembers((prev) => {
                   const newSelected = { ...prev };
                   Object.keys(newSelected).forEach((key) => {
@@ -449,11 +463,16 @@ export default function ClubLeaderPointsPage() {
               }
             } catch (error: any) {
               console.error('Distribution error:', error);
+              const errorMessage = error?.response?.data?.message || error?.message || 'An error occurred while distributing points.';
+              const isTimeout = error?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout');
+              
               Toast.show({
                 type: 'error',
-                text1: 'Distribution Failed',
-                text2: error?.response?.data?.message || error.message || 'An error occurred',
-                visibilityTime: 3000,
+                text1: isTimeout ? 'Request Timeout' : 'Distribution Failed',
+                text2: isTimeout 
+                  ? `The request took too long (processing ${selectedMembersList.length} members). The points may still be distributed successfully. Please check the transaction history.`
+                  : errorMessage,
+                visibilityTime: isTimeout ? 5000 : 3000,
                 autoHide: true,
               });
             } finally {
@@ -626,6 +645,25 @@ export default function ClubLeaderPointsPage() {
             </View>
           </View>
 
+          {/* Reason Input */}
+          <View className="mb-4">
+            <Text className="text-sm font-medium text-gray-700 mb-2">
+              Reason for Distribution
+            </Text>
+            <View className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+              <TextInput
+                className="text-base text-gray-800 min-h-[100px]"
+                placeholder="e.g., Event giving, Monthly bonus, Achievement reward..."
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={rewardReason}
+                onChangeText={setRewardReason}
+                editable={!isDistributing}
+              />
+            </View>
+          </View>
+
           {/* Selected Members Info */}
           <View className="bg-blue-50 rounded-xl p-4 mb-4">
             <View className="flex-row items-center justify-between">
@@ -643,12 +681,14 @@ export default function ClubLeaderPointsPage() {
               isDistributing ||
               !rewardAmount ||
               parseInt(rewardAmount) <= 0 ||
+              !rewardReason.trim() ||
               selectedMembersList.length === 0
             }
             className={`rounded-xl py-4 items-center ${
               isDistributing ||
               !rewardAmount ||
               parseInt(rewardAmount) <= 0 ||
+              !rewardReason.trim() ||
               selectedMembersList.length === 0
                 ? 'bg-gray-300'
                 : 'bg-blue-600'
