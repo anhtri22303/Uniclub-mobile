@@ -2,20 +2,21 @@ import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
-import { ApiMembership, MembershipsService } from '@services/memberships.service';
+import { ApiMembership, LeaveRequest, MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -55,6 +56,12 @@ export default function ClubLeaderMembersPage() {
   const [apiMembers, setApiMembers] = useState<ApiMembership[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
+
+  // Leave requests state
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false);
+  const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(false);
+  const [processingRequestId, setProcessingRequestId] = useState<number | null>(null);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -128,7 +135,7 @@ export default function ClubLeaderMembersPage() {
           clubId: m.clubId,
           fullName: m.fullName ?? `User ${m.userId}`,
           email: m.email ?? 'N/A',
-          phone: m.phone ?? 'N/A',
+          phone: 'N/A', // Phone not in API response
           studentCode: m.studentCode ?? 'N/A',
           majorName: m.major ?? 'N/A',
           avatarUrl: m.avatarUrl ?? '',
@@ -192,6 +199,93 @@ export default function ClubLeaderMembersPage() {
     return 'border-l-green-500';
   };
 
+  // Load leave requests
+  const loadLeaveRequests = async () => {
+    const clubId = user?.clubIds?.[0];
+    if (!clubId) return;
+    
+    setLoadingLeaveRequests(true);
+    try {
+      const requests = await MembershipsService.getLeaveRequests(clubId);
+      setLeaveRequests(requests);
+    } catch (error) {
+      console.error('Failed to load leave requests:', error);
+    } finally {
+      setLoadingLeaveRequests(false);
+    }
+  };
+
+  // Open leave request modal
+  const handleOpenLeaveRequestModal = () => {
+    loadLeaveRequests();
+    setShowLeaveRequestModal(true);
+  };
+
+  // Handle approve/reject leave request
+  const handleLeaveRequestAction = async (requestId: number, action: 'APPROVED' | 'REJECTED') => {
+    setProcessingRequestId(requestId);
+    try {
+      const message = await MembershipsService.processLeaveRequest(requestId, action);
+      Alert.alert(
+        'Success',
+        message || `Request has been ${action === 'APPROVED' ? 'approved' : 'rejected'}`
+      );
+      // Reload leave requests and members
+      await loadLeaveRequests();
+      await loadInitialData();
+    } catch (error: any) {
+      console.error('Failed to process leave request:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Could not process request'
+      );
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  // Count pending requests
+  const pendingRequestsCount = leaveRequests.filter(req => req.status === 'PENDING').length;
+
+  // Sort requests by createdAt (latest first)
+  const sortedLeaveRequests = [...leaveRequests].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // Handle delete member
+  const handleDeleteMember = async (membershipId: string) => {
+    const member = allClubMembers.find((m) => m.id === membershipId);
+    if (!member) return;
+
+    Alert.alert(
+      'Remove Member',
+      `Are you sure you want to remove ${member.fullName} from the club?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const membershipIdNum = typeof membershipId === 'string' 
+                ? parseInt(membershipId, 10) 
+                : membershipId;
+              await MembershipsService.deleteMember(membershipIdNum);
+              
+              Alert.alert('Success', `${member.fullName} has been removed from the club`);
+              await loadInitialData();
+            } catch (error: any) {
+              Alert.alert(
+                'Error',
+                error?.message || 'An error occurred while removing the member'
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -239,6 +333,24 @@ export default function ClubLeaderMembersPage() {
             </View>
           )}
         </View>
+
+        {/* Request Out Button */}
+        {managedClub && (
+          <View className="mt-4">
+            <TouchableOpacity
+              onPress={handleOpenLeaveRequestModal}
+              className="bg-orange-500 rounded-xl px-4 py-3 flex-row items-center justify-center"
+            >
+              <Ionicons name="log-out-outline" size={20} color="white" />
+              <Text className="text-white font-semibold ml-2">Request Out</Text>
+              {pendingRequestsCount > 0 && (
+                <View className="absolute -top-2 -right-2 bg-red-500 rounded-full w-6 h-6 items-center justify-center border-2 border-white">
+                  <Text className="text-white text-xs font-bold">{pendingRequestsCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Search and Filter */}
@@ -466,6 +578,193 @@ export default function ClubLeaderMembersPage() {
           ))
         )}
       </ScrollView>
+
+      {/* Leave Requests Modal */}
+      <Modal
+        visible={showLeaveRequestModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLeaveRequestModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl max-h-[80%]">
+            {/* Modal Header */}
+            <View className="px-6 py-4 border-b border-gray-200">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xl font-bold text-gray-900">Leave Requests</Text>
+                <TouchableOpacity onPress={() => setShowLeaveRequestModal(false)}>
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-gray-600 text-sm mt-1">
+                List of requests to leave the club from club members
+              </Text>
+            </View>
+
+            {/* Modal Content */}
+            <ScrollView className="px-6 py-4" showsVerticalScrollIndicator={false}>
+              {loadingLeaveRequests ? (
+                <View className="py-12 items-center">
+                  <ActivityIndicator size="large" color="#0D9488" />
+                  <Text className="text-gray-600 mt-4">Loading requests...</Text>
+                </View>
+              ) : sortedLeaveRequests.length === 0 ? (
+                <View className="py-12 items-center">
+                  <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
+                    <Ionicons name="log-out-outline" size={32} color="#9CA3AF" />
+                  </View>
+                  <Text className="text-lg font-semibold text-gray-900 mb-1">No Requests</Text>
+                  <Text className="text-gray-600 text-center">
+                    No members have requested to leave the club
+                  </Text>
+                </View>
+              ) : (
+                sortedLeaveRequests.map((request) => {
+                  const statusColors = {
+                    PENDING: 'bg-yellow-100 border-yellow-300',
+                    APPROVED: 'bg-green-100 border-green-300',
+                    REJECTED: 'bg-red-100 border-red-300',
+                  };
+
+                  const statusTextColors = {
+                    PENDING: 'text-yellow-800',
+                    APPROVED: 'text-green-800',
+                    REJECTED: 'text-red-800',
+                  };
+
+                  const statusText = {
+                    PENDING: 'Pending',
+                    APPROVED: 'Approved',
+                    REJECTED: 'Rejected',
+                  };
+
+                  return (
+                    <View
+                      key={request.requestId}
+                      className={`bg-white rounded-xl p-4 mb-3 border ${
+                        request.status === 'PENDING' ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-200'
+                      }`}
+                      style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}
+                    >
+                      <View className="flex-row items-start justify-between">
+                        <View className="flex-1">
+                          {/* Member Info */}
+                          <View className="flex-row items-center mb-2 flex-wrap">
+                            <Text className="text-base font-bold text-gray-900 mr-2">
+                              {request.memberName}
+                            </Text>
+                            <View className={`px-2 py-1 rounded-full border ${statusColors[request.status]}`}>
+                              <Text className={`text-xs font-semibold ${statusTextColors[request.status]}`}>
+                                {statusText[request.status]}
+                              </Text>
+                            </View>
+                            <View className="px-2 py-1 rounded-full border border-gray-300 bg-gray-100 ml-2">
+                              <Text className="text-xs font-semibold text-gray-700">
+                                {request.memberRole}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Contact & Date */}
+                          <View className="mb-2">
+                            <View className="flex-row items-center mb-1">
+                              <Ionicons name="mail" size={14} color="#3B82F6" />
+                              <Text className="text-sm text-gray-600 ml-2">{request.memberEmail}</Text>
+                            </View>
+                            <View className="flex-row items-center">
+                              <Ionicons name="calendar" size={14} color="#3B82F6" />
+                              <Text className="text-sm text-gray-600 ml-2">
+                                Sent: {new Date(request.createdAt).toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Reason */}
+                          <View className="pt-2 border-t border-gray-200">
+                            <Text className="text-xs font-semibold text-gray-700 mb-1">Reason:</Text>
+                            <Text className="text-sm text-gray-600 italic">"{request.reason}"</Text>
+                          </View>
+
+                          {request.processedAt && (
+                            <Text className="text-xs text-gray-500 mt-2">
+                              Processed: {new Date(request.processedAt).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Action Buttons */}
+                        {request.status === 'PENDING' && (
+                          <View className="ml-3">
+                            <TouchableOpacity
+                              onPress={() => handleLeaveRequestAction(request.requestId, 'APPROVED')}
+                              disabled={processingRequestId === request.requestId}
+                              className="bg-green-500 rounded-lg px-3 py-2 mb-2 items-center"
+                            >
+                              {processingRequestId === request.requestId ? (
+                                <ActivityIndicator size="small" color="white" />
+                              ) : (
+                                <>
+                                  <Ionicons name="checkmark" size={16} color="white" />
+                                  <Text className="text-white text-xs font-semibold">Approve</Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleLeaveRequestAction(request.requestId, 'REJECTED')}
+                              disabled={processingRequestId === request.requestId}
+                              className="bg-red-500 rounded-lg px-3 py-2 items-center"
+                            >
+                              {processingRequestId === request.requestId ? (
+                                <ActivityIndicator size="small" color="white" />
+                              ) : (
+                                <>
+                                  <Ionicons name="close" size={16} color="white" />
+                                  <Text className="text-white text-xs font-semibold">Reject</Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            {/* Modal Footer */}
+            <View className="px-6 py-4 border-t border-gray-200 flex-row justify-end gap-3">
+              <TouchableOpacity
+                onPress={() => setShowLeaveRequestModal(false)}
+                className="bg-gray-200 rounded-xl px-6 py-3"
+              >
+                <Text className="text-gray-800 font-semibold">Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={loadLeaveRequests}
+                disabled={loadingLeaveRequests}
+                className="bg-teal-600 rounded-xl px-6 py-3"
+              >
+                <Text className="text-white font-semibold">
+                  {loadingLeaveRequests ? 'Loading...' : 'Refresh'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <NavigationBar role={user?.role} user={user || undefined} />
     </SafeAreaView>

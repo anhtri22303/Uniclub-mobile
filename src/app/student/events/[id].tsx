@@ -2,13 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMyEventRegistrations, useRegisterForEvent } from '@hooks/useQueryHooks';
 import type { Event } from '@services/event.service';
 import { getEventById, timeObjectToString } from '@services/event.service';
+import FeedbackService, { Feedback } from '@services/feedback.service';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -21,6 +24,17 @@ export default function StudentEventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Feedback states
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [currentFeedbackPage, setCurrentFeedbackPage] = useState(1);
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
+  const FEEDBACKS_PER_PAGE = 5;
+
   // React Query hooks
   const { data: myRegistrations = [] } = useMyEventRegistrations();
   const { mutate: registerForEvent, isPending: isRegistering } = useRegisterForEvent();
@@ -32,6 +46,19 @@ export default function StudentEventDetailPage() {
       setLoading(true);
       const data = await getEventById(id);
       setEvent(data);
+
+      // Load feedbacks for APPROVED, ONGOING, or COMPLETED events
+      if (data.status === 'APPROVED' || data.status === 'ONGOING' || data.status === 'COMPLETED') {
+        try {
+          setFeedbackLoading(true);
+          const feedbackData = await FeedbackService.getFeedbackByEventId(id);
+          setFeedbacks(feedbackData);
+        } catch (feedbackError) {
+          console.error('Failed to load feedback:', feedbackError);
+        } finally {
+          setFeedbackLoading(false);
+        }
+      }
     } catch (error) {
       console.error('Failed to load event detail:', error);
       Toast.show({
@@ -79,6 +106,86 @@ export default function StudentEventDetailPage() {
         });
       },
     });
+  };
+
+  // Handle feedback submission
+  const handleFeedbackSubmit = async () => {
+    if (!event || !id) return;
+
+    if (feedbackComment.trim().length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter a comment',
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingFeedback(true);
+      await FeedbackService.postFeedback(id, {
+        rating: feedbackRating,
+        comment: feedbackComment.trim(),
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Your feedback has been submitted successfully!',
+      });
+
+      // Reset and close modal
+      setShowFeedbackModal(false);
+      setFeedbackRating(5);
+      setFeedbackComment('');
+
+      // Reload feedbacks
+      await loadEventDetail();
+    } catch (error: any) {
+      console.error('Failed to submit feedback:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error?.response?.data?.message || 'Failed to submit feedback. Please try again.',
+      });
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  // Filter and paginate feedbacks
+  const filteredFeedbacks = ratingFilter
+    ? feedbacks.filter((fb) => fb.rating === ratingFilter)
+    : feedbacks;
+
+  const totalFeedbackPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE);
+  const startIndex = (currentFeedbackPage - 1) * FEEDBACKS_PER_PAGE;
+  const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, startIndex + FEEDBACKS_PER_PAGE);
+
+  // Calculate average rating
+  const averageRating = feedbacks.length > 0
+    ? (feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length).toFixed(1)
+    : '0.0';
+
+  // Render star rating
+  const renderStars = (rating: number, interactive = false, onPress?: (rating: number) => void) => {
+    return (
+      <View className="flex-row gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <TouchableOpacity
+            key={star}
+            disabled={!interactive}
+            onPress={() => interactive && onPress && onPress(star)}
+          >
+            <Ionicons
+              name={star <= rating ? 'star' : 'star-outline'}
+              size={interactive ? 32 : 16}
+              color={star <= rating ? '#FBBF24' : '#D1D5DB'}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -271,6 +378,7 @@ export default function StudentEventDetailPage() {
   const statusBadge = getStatusBadge(event.status);
   const typeBadge = getTypeBadge(event.type);
   const showRegisterButton = canRegister();
+  const showFeedbackButton = event.status === 'APPROVED' || event.status === 'ONGOING' || event.status === 'COMPLETED';
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -288,6 +396,15 @@ export default function StudentEventDetailPage() {
               Event Details
             </Text>
           </View>
+          {showFeedbackButton && (
+            <TouchableOpacity
+              onPress={() => setShowFeedbackModal(true)}
+              className="bg-white/20 px-4 py-2 rounded-lg flex-row items-center"
+            >
+              <Ionicons name="chatbox-ellipses" size={18} color="white" />
+              <Text className="text-white font-semibold ml-2">Feedback</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -595,9 +712,200 @@ export default function StudentEventDetailPage() {
           </View>
         )}
 
+        {/* Feedback Section */}
+        {showFeedbackButton && (
+          <View className="bg-white m-4 rounded-xl shadow-sm">
+            <View className="p-6">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-lg font-semibold text-gray-900">Event Feedback</Text>
+                {feedbacks.length > 0 && (
+                  <View className="items-center">
+                    <View className="flex-row items-center">
+                      <Ionicons name="star" size={24} color="#FBBF24" />
+                      <Text className="text-2xl font-bold ml-1">{averageRating}</Text>
+                    </View>
+                    <Text className="text-xs text-gray-500">
+                      {feedbacks.length} {feedbacks.length === 1 ? 'review' : 'reviews'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {feedbackLoading ? (
+                <View className="py-8 items-center">
+                  <ActivityIndicator size="large" color="#0D9488" />
+                  <Text className="text-gray-500 mt-2">Loading feedback...</Text>
+                </View>
+              ) : feedbacks.length === 0 ? (
+                <View className="py-8 items-center">
+                  <Ionicons name="chatbox-outline" size={48} color="#D1D5DB" />
+                  <Text className="text-gray-500 mt-2">No feedback yet</Text>
+                </View>
+              ) : (
+                <>
+                  {/* Rating Filter */}
+                  <View className="flex-row gap-2 mb-4 flex-wrap">
+                    <TouchableOpacity
+                      onPress={() => setRatingFilter(null)}
+                      className={`px-3 py-2 rounded-lg ${
+                        ratingFilter === null ? 'bg-teal-500' : 'bg-gray-100'
+                      }`}
+                    >
+                      <Text className={ratingFilter === null ? 'text-white font-semibold' : 'text-gray-700'}>
+                        All ({feedbacks.length})
+                      </Text>
+                    </TouchableOpacity>
+                    {[5, 4, 3, 2, 1].map((rating) => {
+                      const count = feedbacks.filter((fb) => fb.rating === rating).length;
+                      if (count === 0) return null;
+                      return (
+                        <TouchableOpacity
+                          key={rating}
+                          onPress={() => setRatingFilter(rating)}
+                          className={`px-3 py-2 rounded-lg ${
+                            ratingFilter === rating ? 'bg-teal-500' : 'bg-gray-100'
+                          }`}
+                        >
+                          <Text className={ratingFilter === rating ? 'text-white font-semibold' : 'text-gray-700'}>
+                            {rating}★ ({count})
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Feedback List */}
+                  {paginatedFeedbacks.map((feedback) => (
+                    <View
+                      key={feedback.feedbackId}
+                      className="bg-gray-50 p-4 rounded-lg mb-3 border border-gray-200"
+                    >
+                      <View className="flex-row items-start justify-between mb-2">
+                        <View className="flex-row items-center">
+                          <View className="w-8 h-8 bg-teal-100 rounded-full items-center justify-center mr-2">
+                            <Ionicons name="person" size={16} color="#0D9488" />
+                          </View>
+                          <View>
+                            <Text className="font-medium text-gray-900">
+                              Member #{feedback.membershipId}
+                            </Text>
+                            <Text className="text-xs text-gray-500">
+                              {new Date(feedback.createdAt).toLocaleDateString()}
+                            </Text>
+                          </View>
+                        </View>
+                        {renderStars(feedback.rating)}
+                      </View>
+                      <Text className="text-gray-700 text-sm leading-relaxed">{feedback.comment}</Text>
+                      {feedback.updatedAt && (
+                        <Text className="text-xs text-gray-400 mt-2">
+                          Updated: {new Date(feedback.updatedAt).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+
+                  {/* Pagination */}
+                  {totalFeedbackPages > 1 && (
+                    <View className="flex-row items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                      <Text className="text-sm text-gray-500">
+                        Page {currentFeedbackPage} of {totalFeedbackPages}
+                      </Text>
+                      <View className="flex-row gap-2">
+                        <TouchableOpacity
+                          onPress={() => setCurrentFeedbackPage((p) => Math.max(1, p - 1))}
+                          disabled={currentFeedbackPage === 1}
+                          className={`px-3 py-2 rounded-lg ${
+                            currentFeedbackPage === 1 ? 'bg-gray-100' : 'bg-teal-500'
+                          }`}
+                        >
+                          <Text className={currentFeedbackPage === 1 ? 'text-gray-400' : 'text-white font-semibold'}>
+                            Previous
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setCurrentFeedbackPage((p) => Math.min(totalFeedbackPages, p + 1))}
+                          disabled={currentFeedbackPage === totalFeedbackPages}
+                          className={`px-3 py-2 rounded-lg ${
+                            currentFeedbackPage === totalFeedbackPages ? 'bg-gray-100' : 'bg-teal-500'
+                          }`}
+                        >
+                          <Text className={currentFeedbackPage === totalFeedbackPages ? 'text-gray-400' : 'text-white font-semibold'}>
+                            Next
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Bottom Spacing */}
         <View className="h-8" />
       </ScrollView>
+
+      {/* Feedback Modal */}
+      <Modal
+        visible={showFeedbackModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFeedbackModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-6">
+            {/* Header */}
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-gray-900">Give Feedback</Text>
+              <TouchableOpacity onPress={() => setShowFeedbackModal(false)}>
+                <Ionicons name="close" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Event Name */}
+            <Text className="text-sm text-gray-600 mb-4">
+              For: <Text className="font-semibold">{event?.name}</Text>
+            </Text>
+
+            {/* Rating */}
+            <View className="mb-4">
+              <Text className="text-base font-semibold text-gray-900 mb-2">Rating</Text>
+              {renderStars(feedbackRating, true, setFeedbackRating)}
+            </View>
+
+            {/* Comment */}
+            <View className="mb-6">
+              <Text className="text-base font-semibold text-gray-900 mb-2">Comment</Text>
+              <TextInput
+                value={feedbackComment}
+                onChangeText={setFeedbackComment}
+                placeholder="Share your experience..."
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-900"
+              />
+            </View>
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              onPress={handleFeedbackSubmit}
+              disabled={isSubmittingFeedback}
+              className={`py-3 rounded-lg items-center ${
+                isSubmittingFeedback ? 'bg-gray-300' : 'bg-teal-600'
+              }`}
+            >
+              {isSubmittingFeedback ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-semibold text-base">Submit Feedback</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

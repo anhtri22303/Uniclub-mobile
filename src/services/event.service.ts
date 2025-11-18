@@ -538,6 +538,80 @@ export const getMyEvents = async (): Promise<Event[]> => {
   }
 };
 
+/**
+ * Cancel event registration
+ * PUT /api/events/{eventId}/cancel
+ */
+export const cancelEventRegistration = async (eventId: string | number): Promise<{ success: boolean; message: string; data: string }> => {
+  try {
+    const response = await axiosClient.put(`/api/events/${eventId}/cancel`);
+    const data: any = response.data;
+    console.log(`Cancelled registration for event ${eventId}:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error cancelling registration for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Extend event time
+ * PUT /api/events/{eventId}/extend
+ */
+export interface EventTimeExtendPayload {
+  newDate: string;       // Format: YYYY-MM-DD
+  newStartTime: string;  // Format: HH:mm (e.g., 09:00)
+  newEndTime: string;    // Format: HH:mm (e.g., 23:59)
+  reason: string;        // Reason for extension
+}
+
+export const eventTimeExtend = async (eventId: string | number, payload: EventTimeExtendPayload): Promise<Event> => {
+  try {
+    const response = await axiosClient.put(`/api/events/${eventId}/extend`, payload);
+    const data: any = response.data;
+    console.log(`Extended time for event ${eventId}:`, data);
+    if (data?.data) return data.data;
+    return data;
+  } catch (error) {
+    console.error(`Error extending time for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Reject event (University Staff or Admin)
+ * PUT /api/events/{eventId}/reject
+ */
+export const rejectEvent = async (eventId: string | number, reason: string) => {
+  try {
+    const response = await axiosClient.put(`/api/events/${eventId}/reject`, null, {
+      params: { reason }
+    });
+    const data: any = response.data;
+    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error rejecting event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Settle a completed event
+ * POST /api/events/{eventId}/settle
+ */
+export const eventSettle = async (eventId: string | number) => {
+  try {
+    const response = await axiosClient.post(`/api/events/${eventId}/settle`);
+    const data: any = response.data;
+    console.log(`Settled event ${eventId}:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error settling event ${eventId}:`, error);
+    throw error;
+  }
+};
+
 export default {
   fetchEvent,
   createEvent,
@@ -562,5 +636,9 @@ export default {
   timeObjectToString,
   timeStringToObject,
   getFeedbacksByMembership,
-  getEventFeedbacks
+  getEventFeedbacks,
+  cancelEventRegistration,
+  eventTimeExtend,
+  rejectEvent,
+  eventSettle
 };

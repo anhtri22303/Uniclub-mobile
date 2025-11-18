@@ -24,6 +24,7 @@ import { Tag, TagService } from '@services/tag.service';
 
 // Components
 import NavigationBar from '@components/navigation/NavigationBar';
+import Sidebar from '@components/navigation/Sidebar';
 import { useAuthStore } from '@stores/auth.store';
 
 // Types
@@ -38,6 +39,48 @@ const initialFormState: AddProductPayload = {
   type: 'CLUB_ITEM',
   tagIds: [],
   eventId: 0,
+};
+
+// Fixed tag IDs interface
+interface FixedTagIds {
+  clubTagId: number | null;
+  eventTagId: number | null;
+}
+
+// Description length limit
+const MAX_DESCRIPTION_LENGTH = 500;
+
+// Parse API error helper
+const parseApiError = (error: any): string => {
+  const defaultMessage = 'Failed to create product. Please try again.';
+
+  if (error?.response?.data) {
+    const data = error.response.data;
+
+    if (data.message && typeof data.message === 'string') {
+      return data.message;
+    }
+
+    if (data.error && typeof data.error === 'string') {
+      const parts = data.error.split(':');
+      if (parts.length > 1) {
+        const fieldName = parts[0].trim();
+        const errorMessage = parts.slice(1).join(':').trim();
+        const friendlyFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+        return `${friendlyFieldName}: ${errorMessage}`;
+      }
+      return data.error;
+    }
+  }
+
+  if (error.message && typeof error.message === 'string') {
+    if (error.message.includes('code 400')) {
+      return 'Bad request. Please check your input.';
+    }
+    return error.message;
+  }
+
+  return defaultMessage;
 };
 
 export default function ClubLeaderGiftPage() {
@@ -68,13 +111,13 @@ export default function ClubLeaderGiftPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Fixed tag IDs
-  const [fixedTagIds, setFixedTagIds] = useState<{
-    clubTagId: number | null;
-    eventTagId: number | null;
-  }>({
+  const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
     clubTagId: null,
     eventTagId: null,
   });
+
+  // Description validation
+  const isDescriptionTooLong = form.description.length > MAX_DESCRIPTION_LENGTH;
 
   // Get clubId from user
   useEffect(() => {
@@ -148,7 +191,7 @@ export default function ClubLeaderGiftPage() {
     await loadData();
   };
 
-  // Filter available events
+  // Filter available events (APPROVED and ONGOING only)
   const availableEvents = useMemo(() => {
     if (!events) return [];
 
@@ -159,8 +202,11 @@ export default function ClubLeaderGiftPage() {
       const parts = event.date.split('-').map(Number);
       const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
-      if (event.status === 'ONGOING') return true;
-      if (event.status === 'APPROVED' && eventDate >= today) return true;
+      // Normalize status to handle "ONGOING" and "ON-GOING"
+      const normalizedStatus = (event.status || '').toString().toUpperCase().replace(/-/g, '');
+
+      if (normalizedStatus === 'ONGOING') return true;
+      if (normalizedStatus === 'APPROVED' && eventDate >= today) return true;
 
       return false;
     });
@@ -221,6 +267,16 @@ export default function ClubLeaderGiftPage() {
     setForm((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  // Handler for numeric fields with formatting
+  const handleNumericChange = (name: string, text: string) => {
+    const cleanValue = text.replace(/[^0-9]/g, '');
+    const numValue = cleanValue === '' ? 0 : parseInt(cleanValue, 10);
+    setForm((prev) => ({
+      ...prev,
+      [name]: numValue,
     }));
   };
 
@@ -302,7 +358,8 @@ export default function ClubLeaderGiftPage() {
       // Reload data
       await loadData();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to create product');
+      console.error('Create product error:', err.response || err);
+      Alert.alert('Error', parseApiError(err));
     } finally {
       setSubmitting(false);
     }
@@ -326,6 +383,7 @@ export default function ClubLeaderGiftPage() {
     return (
       <View className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
+        <Sidebar role={user?.role} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#8B5CF6" />
           <Text className="text-gray-600 mt-4">Loading products...</Text>
@@ -339,6 +397,7 @@ export default function ClubLeaderGiftPage() {
     return (
       <View className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
+        <Sidebar role={user?.role} />
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
           <Text className="text-lg font-bold text-gray-800 mt-4">Club ID Not Found</Text>
@@ -362,12 +421,13 @@ export default function ClubLeaderGiftPage() {
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 bg-gray-50">
         <StatusBar style="light" />
+        <Sidebar role={user?.role} />
 
         {/* Header */}
         <View className="px-6 pt-12 pb-4 bg-blue-600">
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
-            <Text className="text-2xl font-bold text-white">Gift Products</Text>
+            <Text className="text-2xl font-bold text-white">       Gift Products</Text>
             <Text className="text-sm text-white opacity-90 mt-1">Manage club items and events</Text>
           </View>
           <TouchableOpacity
@@ -666,8 +726,25 @@ export default function ClubLeaderGiftPage() {
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
-                  className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                  className={`border rounded-lg px-4 py-3 text-base ${
+                    isDescriptionTooLong ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                <View className="flex-row items-center justify-between mt-1">
+                  <View className="flex-1">
+                    {isDescriptionTooLong && (
+                      <Text className="text-xs text-red-600 font-medium">
+                        Description exceeds maximum {MAX_DESCRIPTION_LENGTH} characters. 
+                        Please shorten by {form.description.length - MAX_DESCRIPTION_LENGTH} characters.
+                      </Text>
+                    )}
+                  </View>
+                  <Text className={`text-xs ml-2 ${
+                    isDescriptionTooLong ? 'text-red-600 font-semibold' : 'text-gray-500'
+                  }`}>
+                    {form.description.length} / {MAX_DESCRIPTION_LENGTH}
+                  </Text>
+                </View>
               </View>
 
               {/* Price and Stock */}
@@ -676,8 +753,8 @@ export default function ClubLeaderGiftPage() {
                   <Text className="text-sm font-semibold text-gray-700 mb-2">Price (Points)</Text>
                   <TextInput
                     placeholder="0"
-                    value={form.pointCost.toString()}
-                    onChangeText={(text) => handleChange('pointCost', Number(text) || 0)}
+                    value={form.pointCost.toLocaleString('en-US')}
+                    onChangeText={(text) => handleNumericChange('pointCost', text)}
                     keyboardType="numeric"
                     className="border border-gray-300 rounded-lg px-4 py-3 text-base"
                   />
@@ -686,8 +763,8 @@ export default function ClubLeaderGiftPage() {
                   <Text className="text-sm font-semibold text-gray-700 mb-2">Stock</Text>
                   <TextInput
                     placeholder="0"
-                    value={form.stockQuantity.toString()}
-                    onChangeText={(text) => handleChange('stockQuantity', Number(text) || 0)}
+                    value={form.stockQuantity.toLocaleString('en-US')}
+                    onChangeText={(text) => handleNumericChange('stockQuantity', text)}
                     keyboardType="numeric"
                     className="border border-gray-300 rounded-lg px-4 py-3 text-base"
                   />
@@ -754,8 +831,10 @@ export default function ClubLeaderGiftPage() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleCreate}
-                disabled={submitting}
-                className="flex-1 py-3 rounded-lg bg-purple-600"
+                disabled={submitting || isDescriptionTooLong}
+                className={`flex-1 py-3 rounded-lg ${
+                  submitting || isDescriptionTooLong ? 'bg-gray-400' : 'bg-purple-600'
+                }`}
               >
                 {submitting ? (
                   <ActivityIndicator color="white" />

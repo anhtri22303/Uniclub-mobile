@@ -26,6 +26,25 @@ export interface ApiMembership {
 
 export class MembershipsService {
   /**
+   * Get current user's clubs (all clubs the user is a member of)
+   * Uses the dedicated API endpoint /api/users/me/clubs
+   */
+  static async getMyClubs(): Promise<ApiMembership[]> {
+    try {
+      const response = await axiosClient.get('/api/users/me/clubs');
+      const body: any = response.data;
+      
+      console.log('Fetched my clubs:', body);
+
+      // Backend returns { success, message, data }
+      return body?.data || [];
+    } catch (error) {
+      console.error('Error fetching my clubs:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get current user's club members (my club members)
    * This is used by club leaders to see their club's members
    */
@@ -117,12 +136,98 @@ export class MembershipsService {
       throw error;
     }
   }
+
+  /**
+   * Delete a membership (leader removes member)
+   */
+  static async deleteMember(membershipId: number): Promise<{ message: string }> {
+    try {
+      const response = await axiosClient.delete(`/api/memberships/${membershipId}`);
+      const body: any = response.data;
+
+      if (!body?.success) {
+        throw new Error(body?.message || 'Failed to remove member');
+      }
+      return body.data || { message: 'Member removed successfully' };
+    } catch (error) {
+      console.error('Error removing member:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get leave requests for a club (leader only)
+   * GET /api/clubs/{clubId}/leave-requests
+   */
+  static async getLeaveRequests(clubId: number): Promise<LeaveRequest[]> {
+    try {
+      const response = await axiosClient.get(`/api/clubs/${clubId}/leave-requests`);
+      const body: any = response.data;
+      
+      console.log('Fetched leave requests:', body);
+
+      if (!body?.success) {
+        throw new Error(body?.message || 'Failed to fetch leave requests');
+      }
+
+      return body.data || [];
+    } catch (error) {
+      console.error('Error fetching leave requests:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process leave request (approve/reject)
+   * PUT /api/clubs/leave-request/{requestId}?action={APPROVED|REJECTED}
+   */
+  static async processLeaveRequest(
+    requestId: number,
+    action: 'APPROVED' | 'REJECTED'
+  ): Promise<string> {
+    try {
+      const response = await axiosClient.put(
+        `/api/clubs/leave-request/${requestId}`,
+        null,
+        {
+          params: { action },
+        }
+      );
+      const body: any = response.data;
+
+      if (!body?.success) {
+        throw new Error(body?.message || 'Failed to process leave request');
+      }
+
+      return body.data || body.message || 'Leave request processed successfully';
+    } catch (error) {
+      console.error('Error processing leave request:', error);
+      throw error;
+    }
+  }
+}
+
+// Leave request interface
+export interface LeaveRequest {
+  requestId: number;
+  membershipId: number;
+  memberName: string;
+  memberEmail: string;
+  memberRole: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  processedAt: string | null;
 }
 
 // Default export for convenience
 export default {
+  getMyClubs: MembershipsService.getMyClubs,
   getMyClubMembers: MembershipsService.getMyClubMembers,
   getMembersByClubId: MembershipsService.getMembersByClubId,
   getMyMemberships: MembershipsService.getMyMemberships,
   applyToClub: MembershipsService.applyToClub,
+  deleteMember: MembershipsService.deleteMember,
+  getLeaveRequests: MembershipsService.getLeaveRequests,
+  processLeaveRequest: MembershipsService.processLeaveRequest,
 };

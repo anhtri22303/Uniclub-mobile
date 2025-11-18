@@ -1,22 +1,21 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
-import { ClubService } from '@services/club.service';
-import { Product, ProductService } from '@services/product.service';
+import { queryKeys, useClubs, useProductsByClubId, useProfile } from '@hooks/useQueryHooks';
 import { useAuthStore } from '@stores/auth.store';
-import { Stack, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 type TabType = 'CLUB_ITEM' | 'EVENT_ITEM';
@@ -31,101 +30,99 @@ interface Club {
 export default function StudentGiftPage() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { clubId: clubIdParam } = useLocalSearchParams<{ clubId?: string }>();
 
   // States
-  const [userClubIds, setUserClubIds] = useState<number[]>([]);
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null);
   const [selectedTab, setSelectedTab] = useState<TabType>('CLUB_ITEM');
   const [searchTerm, setSearchTerm] = useState('');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [clubs, setClubs] = useState<Club[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [redeemingProductId, setRedeemingProductId] = useState<number | null>(null);
 
-  // Get club IDs from user
+  // Fetch data using React Query
+  const { data: profile = [], isLoading: profileLoading } = useProfile(true);
+  const { data: clubsData = [], isLoading: clubsLoading } = useClubs();
+
+  // Get products for selected club
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    isFetching,
+  } = useProductsByClubId(
+    Number(selectedClubId),
+    !!selectedClubId
+  );
+
+  // Extract user club IDs and details from profile
+  const userClubIds = useMemo(() => {
+    return profile.map((m) => m.clubId);
+  }, [profile]);
+
+  const userClubsDetails = useMemo(() => {
+    if (!clubsData.length || !userClubIds.length) return [];
+    return userClubIds
+      .map((id) => clubsData.find((club: any) => club.id === id))
+      .filter(Boolean);
+  }, [userClubIds, clubsData]);
+
+  // Initialize selected club from URL or user's first club
   useEffect(() => {
-    if (user?.clubIds && user.clubIds.length > 0) {
-      setUserClubIds(user.clubIds);
-      setSelectedClubId(user.clubIds[0]);
-    }
-  }, [user]);
-
-  // Load clubs data
-  const loadClubs = useCallback(async () => {
     if (userClubIds.length === 0) return;
 
-    console.log('🔄 Loading clubs for IDs:', userClubIds);
-    try {
-      const clubsData = await Promise.all(
-        userClubIds.map(async (id) => {
-          try {
-            console.log(`📥 Fetching club ID: ${id}`);
-            const club = await ClubService.getClubById(id);
-            console.log(`✅ Loaded club:`, club);
-            return club;
-          } catch (err) {
-            console.error(`❌ Failed to load club ${id}:`, err);
-            return null;
-          }
-        })
-      );
-      const validClubs = clubsData.filter(Boolean) as Club[];
-      console.log(`✅ Total clubs loaded: ${validClubs.length}/${userClubIds.length}`, validClubs);
-      setClubs(validClubs);
-    } catch (error) {
-      console.error('❌ Error loading clubs:', error);
-      Alert.alert('Error', 'Failed to load clubs information');
+    const validClubIds = userClubsDetails.map((c: any) => c.id);
+
+    // If clubId from URL and it's valid, use it
+    if (clubIdParam && validClubIds.includes(Number(clubIdParam))) {
+      if (selectedClubId !== Number(clubIdParam)) {
+        setSelectedClubId(Number(clubIdParam));
+      }
+      return;
     }
-  }, [userClubIds]);
 
-  // Load products for selected club
-  const loadProducts = useCallback(async () => {
-    if (!selectedClubId) return;
-
-    try {
-      setLoading(true);
-      const data = await ProductService.getProducts(selectedClubId, {
-        includeInactive: false,
-        includeArchived: false,
-      });
-      setProducts(data.filter((p) => p.status === 'ACTIVE'));
-    } catch (error) {
-      console.error('Error loading products:', error);
-      Alert.alert('Error', 'Failed to load products');
-    } finally {
-      setLoading(false);
+    // If current selection is valid, keep it
+    if (selectedClubId && validClubIds.includes(selectedClubId)) {
+      return;
     }
-  }, [selectedClubId]);
 
-  useEffect(() => {
-    loadClubs();
-  }, [loadClubs]);
+    // Otherwise, select first club
+    if (validClubIds.length > 0) {
+      setSelectedClubId(validClubIds[0]);
+    }
+  }, [userClubIds, userClubsDetails, clubIdParam, selectedClubId]);
 
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
-
+  // Refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadProducts();
+    await queryClient.invalidateQueries({ queryKey: queryKeys.userProfile() });
+    if (selectedClubId) {
+      await queryClient.invalidateQueries({ 
+        queryKey: queryKeys.productsByClubId(selectedClubId) 
+      });
+    }
     setRefreshing(false);
   };
 
-  // Filter products by tab and search
+  // Filter products by tab and search (always filter ACTIVE first)
   const filteredProducts = useMemo(() => {
-    let filtered = products.filter((p) => p.type === selectedTab);
+    const activeProducts = products.filter((p) => p.status === 'ACTIVE');
+    const typeFilteredProducts = activeProducts.filter((p) => p.type === selectedTab);
 
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchLower) ||
-          p.description.toLowerCase().includes(searchLower)
-      );
+    if (!searchTerm) {
+      return typeFilteredProducts;
     }
 
-    return filtered;
-  }, [products, selectedTab, searchTerm]);
+    const searchLower = searchTerm.toLowerCase();
+    return typeFilteredProducts.filter((p) => {
+      return (
+        p.name.toLowerCase().includes(searchLower) ||
+        p.description.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [products, searchTerm, selectedTab]);
+
+  // Loading state
+  const isLoading = clubsLoading || profileLoading || (productsLoading && !selectedClubId);
 
   return (
     <>
@@ -222,7 +219,7 @@ export default function StudentGiftPage() {
                 showsHorizontalScrollIndicator={false}
                 className="flex-row gap-2"
               >
-                {clubs.map((club) => (
+                {userClubsDetails.map((club: any) => (
                   <TouchableOpacity
                     key={club.id}
                     onPress={() => setSelectedClubId(club.id)}
@@ -246,10 +243,15 @@ export default function StudentGiftPage() {
           </View>
 
           {/* Products Grid */}
-          {loading ? (
+          {isLoading || profileLoading ? (
             <View className="bg-white rounded-lg border border-gray-200 p-16">
               <ActivityIndicator size="large" color="#3B82F6" />
               <Text className="text-center text-gray-600 mt-4">Loading Amazing Gifts...</Text>
+            </View>
+          ) : isFetching ? (
+            <View className="bg-white rounded-lg border border-gray-200 p-16">
+              <ActivityIndicator size="large" color="#A855F7" />
+              <Text className="text-center text-gray-600 mt-4">Loading Products...</Text>
             </View>
           ) : userClubIds.length === 0 ? (
             <View className="bg-orange-50 rounded-lg border border-orange-200 p-16">

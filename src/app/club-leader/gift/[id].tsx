@@ -8,21 +8,24 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type TabType = 'details' | 'media' | 'stock' | 'redemptions';
+
+// Description length limit
+const MAX_DESCRIPTION_LENGTH = 500;
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -55,6 +58,9 @@ export default function ProductDetailPage() {
     status: 'ACTIVE',
     tagIds: [],
   });
+
+  // Description validation
+  const isDescriptionTooLong = formData.description.length > MAX_DESCRIPTION_LENGTH;
   
   // Stock update modal
   const [showStockModal, setShowStockModal] = useState(false);
@@ -443,8 +449,10 @@ export default function ProductDetailPage() {
                   <>
                     <TouchableOpacity
                       onPress={handleSave}
-                      disabled={saving}
-                      className="flex-1 bg-green-500 px-4 py-3 rounded-lg flex-row items-center justify-center"
+                      disabled={saving || isDescriptionTooLong}
+                      className={`flex-1 px-4 py-3 rounded-lg flex-row items-center justify-center ${
+                        saving || isDescriptionTooLong ? 'bg-gray-400' : 'bg-green-500'
+                      }`}
                     >
                       {saving ? (
                         <ActivityIndicator size="small" color="white" />
@@ -541,7 +549,9 @@ export default function ProductDetailPage() {
 
                     <Text className="text-sm font-semibold text-gray-700 mb-2">Description</Text>
                     <TextInput
-                      className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
+                      className={`bg-gray-50 border rounded-lg px-4 py-3 mb-2 ${
+                        isDescriptionTooLong ? 'border-red-500' : 'border-gray-200'
+                      }`}
                       value={formData.description}
                       onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
                       editable={isEditing}
@@ -550,12 +560,31 @@ export default function ProductDetailPage() {
                       numberOfLines={4}
                       textAlignVertical="top"
                     />
+                    <View className="flex-row items-center justify-between mb-4">
+                      <View className="flex-1">
+                        {isDescriptionTooLong && (
+                          <Text className="text-xs text-red-600 font-medium">
+                            Description exceeds {MAX_DESCRIPTION_LENGTH} characters. 
+                            Shorten by {formData.description.length - MAX_DESCRIPTION_LENGTH} characters.
+                          </Text>
+                        )}
+                      </View>
+                      <Text className={`text-xs ml-2 ${
+                        isDescriptionTooLong ? 'text-red-600 font-semibold' : 'text-gray-500'
+                      }`}>
+                        {formData.description.length} / {MAX_DESCRIPTION_LENGTH}
+                      </Text>
+                    </View>
 
                     <Text className="text-sm font-semibold text-gray-700 mb-2">Point Cost</Text>
                     <TextInput
                       className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
-                      value={formData.pointCost.toString()}
-                      onChangeText={(text) => setFormData(prev => ({ ...prev, pointCost: parseInt(text) || 0 }))}
+                      value={formData.pointCost.toLocaleString('en-US')}
+                      onChangeText={(text) => {
+                        const cleanValue = text.replace(/[^0-9]/g, '');
+                        const numValue = cleanValue === '' ? 0 : parseInt(cleanValue, 10);
+                        setFormData(prev => ({ ...prev, pointCost: numValue }));
+                      }}
                       editable={isEditing}
                       placeholder="Enter point cost"
                       keyboardType="numeric"
@@ -564,8 +593,12 @@ export default function ProductDetailPage() {
                     <Text className="text-sm font-semibold text-gray-700 mb-2">Stock Quantity</Text>
                     <TextInput
                       className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
-                      value={formData.stockQuantity.toString()}
-                      onChangeText={(text) => setFormData(prev => ({ ...prev, stockQuantity: parseInt(text) || 0 }))}
+                      value={formData.stockQuantity.toLocaleString('en-US')}
+                      onChangeText={(text) => {
+                        const cleanValue = text.replace(/[^0-9]/g, '');
+                        const numValue = cleanValue === '' ? 0 : parseInt(cleanValue, 10);
+                        setFormData(prev => ({ ...prev, stockQuantity: numValue }));
+                      }}
                       editable={isEditing}
                       placeholder="Enter stock quantity"
                       keyboardType="numeric"

@@ -69,6 +69,16 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('locations');
 
+  // Debug: Log props
+  React.useEffect(() => {
+    console.log('📋 DataSummaryTables Props:', {
+      locations: locations?.length || 0,
+      tags: tags?.length || 0,
+      majors: majors?.length || 0,
+      policies: multiplierPolicies?.length || 0
+    });
+  }, [locations, tags, majors, multiplierPolicies]);
+
   const tabs = [
     { key: 'locations' as TabType, label: 'Locations', count: locations.length, icon: '📍' },
     { key: 'tags' as TabType, label: 'Tags', count: tags.length, icon: '🏷️' },
@@ -335,7 +345,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
       <View>
         {activeTab === 'locations' &&
           (locations.length > 0 ? (
-            locations.map(renderLocationCard)
+            locations.map((location) => renderLocationCard(location))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">📍</Text>
@@ -350,7 +360,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
         {activeTab === 'tags' &&
           (tags.length > 0 ? (
-            tags.map(renderTagCard)
+            tags.map((tag) => renderTagCard(tag))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">🏷️</Text>
@@ -365,7 +375,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
         {activeTab === 'majors' &&
           (majors.length > 0 ? (
-            majors.map(renderMajorCard)
+            majors.map((major) => renderMajorCard(major))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">🎓</Text>
@@ -380,7 +390,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
         {activeTab === 'policies' &&
           (multiplierPolicies.length > 0 ? (
-            multiplierPolicies.map(renderPolicyCard)
+            multiplierPolicies.map((policy) => renderPolicyCard(policy))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">⚙️</Text>

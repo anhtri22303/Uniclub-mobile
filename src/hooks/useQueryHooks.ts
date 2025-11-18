@@ -7,6 +7,7 @@ import { ClubService } from '@services/club.service';
 import { getClubApplications } from '@services/clubApplication.service';
 import { fetchEvent } from '@services/event.service';
 import { MajorService } from '@services/major.service';
+import { ApiMembership, MembershipsService } from '@services/memberships.service';
 import { PolicyService } from '@services/policy.service';
 import { UserService } from '@services/user.service';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +34,11 @@ export const queryKeys = {
   eventsByClub: (clubId: number) => [...queryKeys.events, 'club', clubId] as const,
   eventsCoHostByClub: (clubId: number) => [...queryKeys.events, 'cohost', clubId] as const,
   myRegistrations: () => [...queryKeys.events, 'my-registrations'] as const,
+  eventStats: (eventId: number) => [...queryKeys.events, 'stats', eventId] as const,
+  eventFraud: (eventId: number) => [...queryKeys.events, 'fraud', eventId] as const,
+  eventStaff: (eventId: number) => [...queryKeys.events, 'staff', eventId] as const,
+  staffEvaluations: (eventId: number) => [...queryKeys.events, 'evaluations', eventId] as const,
+  topStaff: (eventId: number) => [...queryKeys.events, 'top-staff', eventId] as const,
 
   // Locations
   locations: ['locations'] as const,
@@ -97,18 +103,18 @@ export function useUser(userId: number | string, enabled = true) {
 }
 
 /**
- * Hook to fetch current user profile
+ * Hook to fetch current user's clubs (all clubs the user is a member of)
+ * Returns all clubs the user is a member of with membership details
  */
 export function useProfile(enabled = true) {
-  return useQuery({
+  return useQuery<ApiMembership[], Error>({
     queryKey: queryKeys.userProfile(),
     queryFn: async () => {
-      const profile = await UserService.fetchProfile();
-      return profile;
+      const myClubs = await MembershipsService.getMyClubs();
+      return myClubs;
     },
     enabled,
     staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
   });
 }
 
@@ -417,6 +423,220 @@ export function useDeleteEvent() {
     onSuccess: () => {
       // Invalidate and refetch events list
       queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to extend event time
+ */
+export function useExtendEventTime() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      payload,
+    }: {
+      eventId: number | string;
+      payload: { newDate: string; newStartTime: string; newEndTime: string; reason: string };
+    }) => {
+      const { eventTimeExtend } = await import('@services/event.service');
+      return await eventTimeExtend(eventId, payload);
+    },
+    onSuccess: (_data: any, variables: any) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventDetail(Number(variables.eventId)) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to reject event (university staff)
+ */
+export function useRejectEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ eventId, reason }: { eventId: number | string; reason: string }) => {
+      const { rejectEvent } = await import('@services/event.service');
+      return await rejectEvent(eventId, reason);
+    },
+    onSuccess: (_data: any, variables: any) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventDetail(Number(variables.eventId)) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to settle event
+ */
+export function useSettleEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventId: number | string) => {
+      const { eventSettle } = await import('@services/event.service');
+      return await eventSettle(eventId);
+    },
+    onSuccess: (_data: any, variables: any) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventDetail(Number(variables.eventId)) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() });
+    },
+  });
+}
+
+// ============================================
+// EVENT STATS & FRAUD QUERIES
+// ============================================
+
+/**
+ * Hook to fetch event attendance statistics
+ * GET /api/attendance/stats/{eventId}
+ */
+export function useEventStats(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventStats(eventId),
+    queryFn: async () => {
+      const { getEventAttendStats } = await import('@services/eventAttend.service');
+      const response = await getEventAttendStats(eventId);
+      return response.data; // Extract data from wrapper
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes - stats may update frequently during events
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch event fraud records
+ * GET /api/attendance/fraud/{eventId}
+ */
+export function useEventFraud(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventFraud(eventId),
+    queryFn: async () => {
+      const { getEventAttendFraud } = await import('@services/eventAttend.service');
+      const response = await getEventAttendFraud(eventId);
+      return response.data; // Extract data array from wrapper
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+// ============================================
+// EVENT STAFF QUERIES & MUTATIONS
+// ============================================
+
+/**
+ * Hook to fetch event staff list
+ * GET /api/events/{eventId}/staffs
+ */
+export function useEventStaff(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventStaff(eventId),
+    queryFn: async () => {
+      const { getEventStaff } = await import('@services/eventStaff.service');
+      const staff = await getEventStaff(eventId);
+      return staff;
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to assign staff to event
+ * POST /api/events/{eventId}/staffs
+ */
+export function useAssignEventStaff() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      membershipId,
+      duty,
+    }: {
+      eventId: number;
+      membershipId: number;
+      duty: string;
+    }) => {
+      const { postEventStaff } = await import('@services/eventStaff.service');
+      return await postEventStaff(eventId, membershipId, duty);
+    },
+    onSuccess: (_data: any, variables: any) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.eventStaff(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Hook to fetch staff evaluations for an event
+ * GET /api/events/{eventId}/staff/evaluates
+ */
+export function useStaffEvaluations(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.staffEvaluations(eventId),
+    queryFn: async () => {
+      const { getEvaluateEventStaff } = await import('@services/eventStaff.service');
+      const evaluations = await getEvaluateEventStaff(eventId);
+      return evaluations;
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes - evaluations don't change often
+    gcTime: 15 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch top evaluated staff for an event
+ * GET /api/events/{eventId}/staff/evaluations/top
+ */
+export function useTopEvaluatedStaff(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.topStaff(eventId),
+    queryFn: async () => {
+      const { getTopEvaluatedStaff } = await import('@services/eventStaff.service');
+      const topStaff = await getTopEvaluatedStaff(eventId);
+      return topStaff;
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to evaluate event staff
+ * POST /api/events/{eventId}/staff/evaluate
+ */
+export function useEvaluateStaff() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      payload,
+    }: {
+      eventId: number;
+      payload: {
+        membershipId: number;
+        eventId: number;
+        performance: 'POOR' | 'AVERAGE' | 'GOOD' | 'EXCELLENT';
+        note: string;
+      };
+    }) => {
+      const { evaluateEventStaff } = await import('@services/eventStaff.service');
+      return await evaluateEventStaff(eventId, payload);
+    },
+    onSuccess: (_data: any, variables: any) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staffEvaluations(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.topStaff(variables.eventId) });
     },
   });
 }
@@ -1101,6 +1321,117 @@ export function useUpdateStock() {
       // Invalidate product to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.productDetail(variables.clubId, variables.productId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(variables.clubId) });
+    },
+  });
+}
+
+// ============================================
+// FEEDBACKS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch feedbacks by club ID
+ * GET /api/events/clubs/{clubId}/feedbacks
+ */
+export function useFeedbacksByClubId(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['feedbacks', 'club', clubId],
+    queryFn: async () => {
+      const { FeedbackService } = await import('@services/feedback.service');
+      const feedbacks = await FeedbackService.getFeedbackByClubId(clubId);
+      return feedbacks;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 3 * 60 * 1000, // 3 minutes
+  });
+}
+
+/**
+ * Hook to fetch feedbacks by event ID
+ * GET /api/events/{eventId}/feedback
+ */
+export function useFeedbacksByEventId(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['feedbacks', 'event', eventId],
+    queryFn: async () => {
+      const { FeedbackService } = await import('@services/feedback.service');
+      const feedbacks = await FeedbackService.getFeedbackByEventId(eventId);
+      return feedbacks;
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 3 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch current user's feedbacks
+ * GET /api/events/my-feedbacks
+ */
+export function useMyFeedbacks(enabled = true) {
+  return useQuery({
+    queryKey: ['feedbacks', 'my'],
+    queryFn: async () => {
+      const { FeedbackService } = await import('@services/feedback.service');
+      const feedbacks = await FeedbackService.getMyFeedbacks();
+      return feedbacks;
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+/**
+ * Hook to fetch feedback summary for an event
+ * GET /api/events/{eventId}/feedback/summary
+ */
+export function useFeedbackSummary(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['feedbacks', 'event', eventId, 'summary'],
+    queryFn: async () => {
+      const { FeedbackService } = await import('@services/feedback.service');
+      const summary = await FeedbackService.getFeedbackSummary(eventId);
+      return summary;
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to post feedback for an event
+ * POST /api/events/{eventId}/feedback
+ */
+export function usePostFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ eventId, rating, comment }: { eventId: number; rating: number; comment: string }) => {
+      const { FeedbackService } = await import('@services/feedback.service');
+      return await FeedbackService.postFeedback(eventId, { rating, comment });
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate feedback queries
+      queryClient.invalidateQueries({ queryKey: ['feedbacks', 'event', variables.eventId] });
+      queryClient.invalidateQueries({ queryKey: ['feedbacks', 'my'] });
+    },
+  });
+}
+
+/**
+ * Mutation hook to update feedback
+ * PUT /api/events/feedback/{feedbackId}
+ */
+export function useUpdateFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ feedbackId, rating, comment }: { feedbackId: number; rating: number; comment: string }) => {
+      const { FeedbackService } = await import('@services/feedback.service');
+      return await FeedbackService.updateFeedback(feedbackId, { rating, comment });
+    },
+    onSuccess: () => {
+      // Invalidate all feedback queries
+      queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
     },
   });
 }

@@ -128,6 +128,46 @@ export class FeedbackService {
       throw error;
     }
   }
+
+  /**
+   * Update feedback for an event
+   * PUT /api/events/feedback/{feedbackId}
+   */
+  static async updateFeedback(
+    feedbackId: string | number,
+    feedbackData: PostFeedbackRequest
+  ): Promise<Feedback> {
+    try {
+      const response = await axiosClient.put<PostFeedbackApiResponse>(
+        `/api/events/feedback/${feedbackId}`,
+        feedbackData
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to update feedback ${feedbackId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get feedback summary for an event
+   * GET /api/events/{eventId}/feedback/summary
+   */
+  static async getFeedbackSummary(
+    eventId: string | number
+  ): Promise<Record<string, number>> {
+    try {
+      const response = await axiosClient.get<{
+        success: boolean;
+        message: string;
+        data: Record<string, number>;
+      }>(`/api/events/${eventId}/feedback/summary`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch feedback summary for event ${eventId}:`, error);
+      throw error;
+    }
+  }
 }
 
 export default FeedbackService;

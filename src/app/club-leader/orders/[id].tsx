@@ -2,27 +2,27 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import {
-    completeRedeemOrder,
-    getClubRedeemOrders,
-    RedeemOrder,
-    refundPartialRedeemOrder,
-    RefundPayload,
-    refundRedeemOrder,
+  completeRedeemOrder,
+  getClubRedeemOrders,
+  RedeemOrder,
+  refundPartialRedeemOrder,
+  RefundPayload,
+  refundRedeemOrder,
 } from '@services/redeem.service';
 import { useAuthStore } from '@stores/auth.store';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -139,7 +139,7 @@ export default function OrderDetailPage() {
 
     // Validate input
     if (!refundReason.trim()) {
-      Alert.alert('Error', 'Please enter a reason for the refund');
+      Alert.alert('Validation Error', 'Please enter a reason for the refund');
       return;
     }
 
@@ -148,18 +148,18 @@ export default function OrderDetailPage() {
       
       // Validate quantity
       if (isNaN(qty) || qty <= 0) {
-        Alert.alert('Error', 'Please enter a valid quantity greater than 0');
+        Alert.alert('Validation Error', 'Please enter a valid quantity greater than 0');
         return;
       }
       
       if (qty >= order.quantity) {
-        Alert.alert('Error', `Quantity must be less than ${order.quantity}. Use Full Refund instead.`);
+        Alert.alert('Validation Error', `Quantity must be less than ${order.quantity}. Use Full Refund instead.`);
         return;
       }
 
       // Check if order only has 1 item
       if (order.quantity === 1) {
-        Alert.alert('Error', 'Cannot do partial refund for order with only 1 item. Use Full Refund instead.');
+        Alert.alert('Validation Error', 'Cannot do partial refund for order with only 1 item. Use Full Refund instead.');
         return;
       }
     }
@@ -177,15 +177,17 @@ export default function OrderDetailPage() {
       let updatedOrder: RedeemOrder;
       if (refundType === 'full') {
         updatedOrder = await refundRedeemOrder(payload);
+        Alert.alert('Success', 'Order has been successfully cancelled and refunded.');
       } else {
         updatedOrder = await refundPartialRedeemOrder(payload);
+        Alert.alert('Success', `Successfully refunded ${parseInt(quantityToRefund, 10)} item(s).`);
       }
 
       setOrder(updatedOrder);
       setShowRefundModal(false);
       setRefundReason('');
       setQuantityToRefund('');
-      Alert.alert('Success', 'Refund processed successfully');
+      setRefundType('full');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to process refund');
     } finally {
@@ -598,6 +600,13 @@ export default function OrderDetailPage() {
                     keyboardType="numeric"
                     className="border border-gray-300 rounded-lg px-4 py-3 text-base"
                   />
+                  {quantityToRefund && order && parseInt(quantityToRefund) > 0 && parseInt(quantityToRefund) < order.quantity && (
+                    <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                      <Text className="text-xs text-blue-700 font-semibold">
+                        Points to be refunded: {Math.round((order.totalPoints / order.quantity) * parseInt(quantityToRefund)).toLocaleString()} pts
+                      </Text>
+                    </View>
+                  )}
                   {order && order.quantity === 1 && (
                     <View className="bg-red-50 border border-red-200 rounded-lg p-2 mt-2">
                       <Text className="text-xs text-red-700">

@@ -24,7 +24,7 @@ export interface RedeemOrder {
   productType?: string;
   status: string; // (PENDING, COMPLETED, REFUNDED, PARTIALLY_REFUNDED)
   createdAt: string;
-  completedAt?: string; // Có thể null
+  completedAt: string; // Changed to non-optional (always string from backend)
   clubName: string;
   memberName: string;
   reasonRefund?: string;

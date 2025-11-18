@@ -146,6 +146,12 @@ export default function Sidebar({ role }: SidebarProps) {
           icon: 'checkmark-done',
           route: '/club-leader/attendances',
           label: 'Attendances'
+        },
+        {
+          name: 'feedbacks',
+          icon: 'star',
+          route: '/club-leader/feedbacks',
+          label: 'Feedbacks'
         }
       ];
     } else if (role === 'uni_staff') {

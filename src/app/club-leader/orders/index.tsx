@@ -5,13 +5,13 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 // Services
@@ -187,11 +187,17 @@ export default function ClubLeaderOrdersPage() {
           </View>
         );
       case 'REFUNDED':
-      case 'PARTIALLY_REFUNDED':
         return (
           <View className="bg-blue-100 px-2 py-1 rounded-md flex-row items-center">
             <Ionicons name="arrow-undo-outline" size={12} color="#1E40AF" />
             <Text className="text-blue-700 text-xs font-semibold ml-1">Refunded</Text>
+          </View>
+        );
+      case 'PARTIALLY_REFUNDED':
+        return (
+          <View className="bg-blue-100 px-2 py-1 rounded-md flex-row items-center">
+            <Ionicons name="arrow-undo-outline" size={12} color="#1E40AF" />
+            <Text className="text-blue-700 text-xs font-semibold ml-1">Partial Refund</Text>
           </View>
         );
       default:

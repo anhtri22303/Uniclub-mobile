@@ -1,26 +1,29 @@
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
+import { queryKeys, useProfile } from '@hooks/useQueryHooks';
 import { Product, ProductMedia, ProductService } from '@services/product.service';
 import { redeemClubProduct, redeemEventProduct, RedeemPayload } from '@services/redeem.service';
 import { useAuthStore } from '@stores/auth.store';
+import { useQueryClient } from '@tanstack/react-query';
 import { ResizeMode, Video } from 'expo-av';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 export default function StudentProductDetailPage() {
   const router = useRouter();
@@ -29,6 +32,7 @@ export default function StudentProductDetailPage() {
   const clubIdFromQuery = clubIdParam ? parseInt(clubIdParam, 10) : null;
   const { user } = useAuthStore();
   const videoRef = useRef<Video>(null);
+  const queryClient = useQueryClient();
 
   // States
   const [product, setProduct] = useState<Product | null>(null);
@@ -41,11 +45,36 @@ export default function StudentProductDetailPage() {
   const [showMediaViewer, setShowMediaViewer] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<ProductMedia | null>(null);
 
-  // Get user's membership for this club
+  // Fetch profile with React Query
+  const { data: profile = [], isLoading: profileLoading } = useProfile(true);
+
+  // Get user's membership for this club (using profile data)
   const currentMembership = useMemo(() => {
-    if (!product || !user?.clubIds) return null;
-    return user.clubIds.includes(product.clubId);
-  }, [product, user]);
+    if (!product || !profile) {
+      console.log('Waiting for product or profile data...');
+      return null;
+    }
+
+    console.log('CHECKING MEMBERSHIP:');
+    console.log('Product belongs to clubId:', product.clubId);
+    console.log('All memberships from profile:', profile);
+
+    // Find membership directly in profile array
+    const foundMembership = profile.find((membership: any) => membership.clubId === product.clubId);
+
+    if (!foundMembership) {
+      console.error(`[LOGIC ERROR] You are not a member of clubId: ${product.clubId}`);
+      return null;
+    }
+
+    if (!foundMembership.membershipId) {
+      console.error(`[API ERROR] Profile data is MISSING 'membershipId' for club ${product.clubId}!`);
+    } else {
+      console.log(`[SUCCESS] Found membership:`, foundMembership);
+    }
+
+    return foundMembership;
+  }, [product, profile]);
 
   // Fetch product data
   const fetchProduct = useCallback(async () => {
@@ -86,6 +115,8 @@ export default function StudentProductDetailPage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchProduct();
+    // Refresh profile data
+    await queryClient.invalidateQueries({ queryKey: queryKeys.userProfile() });
     setRefreshing(false);
   };
 
@@ -133,7 +164,20 @@ export default function StudentProductDetailPage() {
   // Handle redeem
   const handleRedeem = async () => {
     if (!product || !currentMembership) {
-      Alert.alert('Error', 'You must be a member of this club to redeem.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Cannot redeem. Product or membership data is missing.',
+      });
+      return;
+    }
+
+    if (!currentMembership.membershipId) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Membership ID not found. Cannot redeem.',
+      });
       return;
     }
 
@@ -141,7 +185,7 @@ export default function StudentProductDetailPage() {
     const payload: RedeemPayload = {
       productId: product.id,
       quantity: quantity,
-      membershipId: 0, // This should be fetched from user's membership data
+      membershipId: currentMembership.membershipId,
     };
 
     try {
@@ -154,18 +198,23 @@ export default function StudentProductDetailPage() {
         throw new Error('Invalid product data. Cannot determine redeem endpoint.');
       }
 
-      Alert.alert(
-        'Success',
-        `You have successfully redeemed ${redeemedOrder.quantity} x ${redeemedOrder.productName}.`
-      );
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: `You have successfully redeemed ${redeemedOrder.quantity} x ${redeemedOrder.productName}.`,
+      });
       setIsConfirmOpen(false);
       setQuantity(1);
+
+      // Refresh profile data and product
+      await queryClient.invalidateQueries({ queryKey: queryKeys.userProfile() });
       await fetchProduct();
     } catch (error: any) {
-      Alert.alert(
-        'Redemption Failed',
-        error.message || 'Not enough points or product is out of stock.'
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Redemption Failed',
+        text2: error.message || 'Not enough points or product is out of stock.',
+      });
     } finally {
       setIsRedeeming(false);
     }
@@ -203,7 +252,7 @@ export default function StudentProductDetailPage() {
     }
   };
 
-  if (loading && !product) {
+  if (loading && !product || profileLoading) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -245,7 +294,7 @@ export default function StudentProductDetailPage() {
   }
 
   const isAvailable = product.status === 'ACTIVE' && product.stockQuantity > 0;
-  const canRedeem = isAvailable && currentMembership;
+  const canRedeem = isAvailable && currentMembership != null && !profileLoading;
 
   return (
     <>
@@ -468,7 +517,7 @@ export default function StudentProductDetailPage() {
               </View>
             </View>
           )}
-          {isAvailable && !currentMembership && (
+          {isAvailable && !currentMembership && !profileLoading && (
             <View className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
               <View className="flex-row items-center gap-2">
                 <Ionicons name="alert-circle" size={20} color="#F59E0B" />
@@ -482,13 +531,18 @@ export default function StudentProductDetailPage() {
           {/* Redeem Button */}
           <TouchableOpacity
             onPress={() => setIsConfirmOpen(true)}
-            disabled={!canRedeem || isRedeeming}
+            disabled={!canRedeem || isRedeeming || profileLoading}
             className={`py-4 rounded-xl ${
-              !canRedeem || isRedeeming ? 'bg-gray-300' : 'bg-blue-600'
+              !canRedeem || isRedeeming || profileLoading ? 'bg-gray-300' : 'bg-blue-600'
             }`}
           >
             <View className="flex-row items-center justify-center gap-2">
-              {isRedeeming ? (
+              {profileLoading ? (
+                <>
+                  <ActivityIndicator size="small" color="white" />
+                  <Text className="text-white text-lg font-bold">Loading membership...</Text>
+                </>
+              ) : isRedeeming ? (
                 <>
                   <ActivityIndicator size="small" color="white" />
                   <Text className="text-white text-lg font-bold">Processing...</Text>

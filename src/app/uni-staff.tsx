@@ -64,7 +64,6 @@ export default function UniStaffPage() {
   const [majors, setMajors] = useState<any[]>([]);
   const [multiplierPolicies, setMultiplierPolicies] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'data'>('overview');
   const [attendanceYear, setAttendanceYear] = useState<number>(new Date().getFullYear());
 
   // Statistics
@@ -139,7 +138,7 @@ export default function UniStaffPage() {
 
       // Fetch system data (locations, tags, majors, multiplier policies)
       const [locationsResponse, tagsData, majorsData, policiesData] = await Promise.all([
-        LocationService.fetchLocations(),
+        LocationService.fetchLocations({ page: 0, size: 100 }), // Increase size to get more items
         TagService.fetchTags(),
         MajorService.fetchMajors(),
         MultiplierPolicyService.getMultiplierPolicies(),
@@ -149,6 +148,14 @@ export default function UniStaffPage() {
       setTags(tagsData);
       setMajors(majorsData);
       setMultiplierPolicies(policiesData);
+
+      // Debug: Log System Data
+      console.log('🔍 System Data Loaded:', {
+        locations: locationsResponse.content?.length || 0,
+        tags: tagsData?.length || 0,
+        majors: majorsData?.length || 0,
+        policies: policiesData?.length || 0
+      });
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -270,92 +277,42 @@ export default function UniStaffPage() {
         </Text>
       </View>
 
-      {/* Tabs - Moved to top */}
-      <View className="px-4 pt-3 pb-2 bg-white border-b border-gray-100">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="flex-row bg-gray-50 rounded-xl p-1">
-            <TouchableOpacity
-              className={`px-5 py-2.5 rounded-lg ${activeTab === 'overview' ? 'bg-teal-500 shadow-sm' : ''}`}
-              onPress={() => setActiveTab('overview')}
-              activeOpacity={0.7}
-            >
-              <Text
-                className={`text-center text-sm font-semibold ${
-                  activeTab === 'overview' ? 'text-white' : 'text-gray-600'
-                }`}
-              >
-                📊 Overview
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className={`px-5 py-2.5 rounded-lg ml-1 ${activeTab === 'analytics' ? 'bg-teal-500 shadow-sm' : ''}`}
-              onPress={() => setActiveTab('analytics')}
-              activeOpacity={0.7}
-            >
-              <Text
-                className={`text-center text-sm font-semibold ${
-                  activeTab === 'analytics' ? 'text-white' : 'text-gray-600'
-                }`}
-              >
-                📈 Analytics
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className={`px-5 py-2.5 rounded-lg ml-1 ${activeTab === 'data' ? 'bg-teal-500 shadow-sm' : ''}`}
-              onPress={() => setActiveTab('data')}
-              activeOpacity={0.7}
-            >
-              <Text
-                className={`text-center text-sm font-semibold ${
-                  activeTab === 'data' ? 'text-white' : 'text-gray-600'
-                }`}
-              >
-                ⚙️ System Data
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </View>
-
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       >
-        {/* Statistics Cards - Only show in Overview tab */}
-        {activeTab === 'overview' && (
-          <View className="p-4">
-            <StatisticsCards
-              totalClubs={totalClubs}
-              totalPolicies={totalPolicies}
-              totalClubApplications={totalClubApplications}
-              pendingClubApplications={pendingClubApplications}
-              completedClubApplications={approvedClubApplications}
-              rejectedClubApplications={rejectedClubApplications}
-              totalEventRequests={totalEventRequests}
-              pendingEvents={totalPendingEvents}
-              approvedEvents={approvedEvents}
-              completedEvents={completedEvents}
-              rejectedEvents={rejectedEvents}
-              totalLocations={locations.length}
-              totalTags={tags.length}
-              coreTags={tags.filter((t: any) => t.core).length}
-              totalMajors={majors.length}
-              totalFeedbacks={0}
-              avgRating={0}
-              totalMultiplierPolicies={multiplierPolicies.length}
-              totalPointRequests={0}
-              pendingPointRequests={0}
-              onClubsPress={() => router.push('/uni-staff/clubs' as any)}
-              onApplicationsPress={() => router.push('/uni-staff/clubs-req' as any)}
-              onEventsPress={() => router.push('/uni-staff/events-req' as any)}
-            />
-          </View>
-        )}
+        {/* Statistics Cards */}
+        <View className="p-4">
+          <StatisticsCards
+            totalClubs={totalClubs}
+            totalPolicies={totalPolicies}
+            totalClubApplications={totalClubApplications}
+            pendingClubApplications={pendingClubApplications}
+            completedClubApplications={approvedClubApplications}
+            rejectedClubApplications={rejectedClubApplications}
+            totalEventRequests={totalEventRequests}
+            pendingEvents={totalPendingEvents}
+            approvedEvents={approvedEvents}
+            completedEvents={completedEvents}
+            rejectedEvents={rejectedEvents}
+            totalLocations={locations.length}
+            totalTags={tags.length}
+            coreTags={tags.filter((t: any) => t.core).length}
+            totalMajors={majors.length}
+            totalFeedbacks={0}
+            avgRating={0}
+            totalMultiplierPolicies={multiplierPolicies.length}
+            totalPointRequests={0}
+            pendingPointRequests={0}
+            onClubsPress={() => router.push('/uni-staff/clubs' as any)}
+            onApplicationsPress={() => router.push('/uni-staff/clubs-req' as any)}
+            onEventsPress={() => router.push('/uni-staff/events-req' as any)}
+          />
+        </View>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <View className="p-4 space-y-4">
+        {/* Overview Content */}
+        <View className="p-4 space-y-4">
             {/* Recent Club Applications Section */}
             <View>
               <View className="flex-row items-center justify-between mb-3">
@@ -450,11 +407,9 @@ export default function UniStaffPage() {
               </View>
             )}
           </View>
-        )}
 
-        {/* Analytics Tab */}
-        {activeTab === 'analytics' && (
-          <View className="p-4 space-y-4">
+        {/* Analytics Section */}
+        <View className="p-4 space-y-4">
             {/* Club Applications Analytics */}
             <View className="bg-white rounded-2xl p-4 shadow-sm">
               <Text className="text-lg font-bold text-gray-800 mb-4">
@@ -734,19 +689,16 @@ export default function UniStaffPage() {
               />
             )}
           </View>
-        )}
 
-        {/* Data Tab - System Data Management */}
-        {activeTab === 'data' && (
-          <View className="p-4">
-            <DataSummaryTables
-              locations={locations}
-              tags={tags}
-              majors={majors}
-              multiplierPolicies={multiplierPolicies}
-            />
-          </View>
-        )}
+        {/* System Data Section */}
+        <View className="p-4">
+          <DataSummaryTables
+            locations={locations}
+            tags={tags}
+            majors={majors}
+            multiplierPolicies={multiplierPolicies}
+          />
+        </View>
 
         {/* Bottom spacing for navigation bar */}
         <View className="h-20" />

@@ -9,14 +9,14 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -42,6 +42,8 @@ export default function StudentEventsPage() {
   const [showRegisteredOnly, setShowRegisteredOnly] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [clubSelectorVisible, setClubSelectorVisible] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<Event | null>(null);
 
   // React Query hooks
   const { data: myRegistrations = [], isLoading: registrationsLoading } = useMyEventRegistrations();
@@ -295,8 +297,21 @@ export default function StudentEventsPage() {
     router.push(`/student/events/${eventId}`);
   };
 
-  // Handle event registration
-  const handleRegister = (eventId: number) => {
+  // Handle event registration button click - show confirmation modal
+  const handleRegisterClick = (event: Event) => {
+    console.log('Selected event for registration:', event);
+    console.log('commitPointCost:', event.budgetPoints);
+    setSelectedEventForRegistration(event);
+    setShowConfirmModal(true);
+  };
+
+  // Handle confirmed registration
+  const handleConfirmRegister = () => {
+    if (!selectedEventForRegistration) return;
+    
+    const eventId = selectedEventForRegistration.id;
+    setShowConfirmModal(false);
+    
     registerForEvent(eventId, {
       onSuccess: (data) => {
         Toast.show({
@@ -304,6 +319,7 @@ export default function StudentEventsPage() {
           text1: 'Success',
           text2: data.message || 'Successfully registered for the event!',
         });
+        setSelectedEventForRegistration(null);
       },
       onError: (error: any) => {
         console.error('Error registering for event:', error);
@@ -312,6 +328,7 @@ export default function StudentEventsPage() {
           text1: 'Error',
           text2: error?.response?.data?.message || 'Failed to register for the event',
         });
+        setSelectedEventForRegistration(null);
       },
     });
   };
@@ -477,6 +494,16 @@ export default function StudentEventsPage() {
                           </View>
                         )}
 
+                        {/* Point Cost */}
+                        {event.budgetPoints !== undefined && event.budgetPoints > 0 && (
+                          <View className="flex-row items-center">
+                            <Text className="text-gray-400 mr-2">🏆</Text>
+                            <Text className="text-sm text-gray-600">
+                              Cost: <Text className="font-semibold text-amber-600">{event.budgetPoints}</Text> points
+                            </Text>
+                          </View>
+                        )}
+
                         {/* Registration Status */}
                         {isRegistered && (
                           <View className="flex-row items-center">
@@ -501,7 +528,7 @@ export default function StudentEventsPage() {
                         
                         {!isExpired && (event.status === 'APPROVED' || event.status === 'ONGOING') && (
                           <TouchableOpacity
-                            onPress={() => handleRegister(event.id)}
+                            onPress={() => handleRegisterClick(event)}
                             disabled={isRegistering || isRegistered}
                             className={`flex-1 py-3 rounded-lg items-center ${
                               isRegistered
@@ -746,6 +773,75 @@ export default function StudentEventsPage() {
                 </View>
               )}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Registration Confirmation Modal */}
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowConfirmModal(false);
+          setSelectedEventForRegistration(null);
+        }}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center px-4">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-md">
+            {selectedEventForRegistration && (
+              <>
+                {/* Header */}
+                <View className="items-center mb-4">
+                  <Text className="text-xl font-bold text-gray-900 text-center mb-2">
+                    Confirm Event Registration
+                  </Text>
+                  <Text className="text-base font-semibold text-gray-800 text-center">
+                    {selectedEventForRegistration.name}
+                  </Text>
+                  <Text className="text-sm text-gray-600 text-center mt-1">
+                    {selectedEventForRegistration.hostClub?.name}
+                  </Text>
+                </View>
+
+                {/* Point Cost Warning */}
+                <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <View className="flex-row items-start">
+                    <Text className="text-2xl mr-3">🏆</Text>
+                    <View className="flex-1">
+                      <Text className="font-bold text-yellow-900 mb-2">
+                        Point Cost: {selectedEventForRegistration.budgetPoints || 0} points
+                      </Text>
+                      <Text className="text-sm text-yellow-800 mb-2">
+                        <Text className="font-semibold">{selectedEventForRegistration.budgetPoints || 0} points</Text> will be received back along with bonus points if you fully participate in the event.
+                      </Text>
+                      <Text className="text-sm text-yellow-800">
+                        Otherwise, they will be <Text className="font-semibold">lost and not refunded</Text>.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View className="flex-row gap-3">
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowConfirmModal(false);
+                      setSelectedEventForRegistration(null);
+                    }}
+                    className="flex-1 py-3 rounded-lg bg-gray-100 items-center"
+                  >
+                    <Text className="font-semibold text-gray-700">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleConfirmRegister}
+                    className="flex-1 py-3 rounded-lg bg-blue-500 items-center"
+                  >
+                    <Text className="font-semibold text-white">Confirm Registration</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>

@@ -1,7 +1,12 @@
+import AddStaffModal from '@components/AddStaffModal';
+import EvaluateStaffModal from '@components/EvaluateStaffModal';
+import EvaluationDetailModal from '@components/EvaluationDetailModal';
 import PhaseSelectionModal from '@components/PhaseSelectionModal';
 import QRModal from '@components/QRModal';
+import TimeExtensionModal from '@components/TimeExtensionModal';
 import WalletHistoryModal from '@components/WalletHistoryModal';
 import { Ionicons } from '@expo/vector-icons';
+import { useAssignEventStaff, useEvaluateStaff, useEventStaff, useExtendEventTime, useStaffEvaluations } from '@hooks/useQueryHooks';
 import type { Event, EventSummary } from '@services/event.service';
 import {
   coHostRespond,
@@ -11,12 +16,15 @@ import {
   submitForUniversityApproval,
   timeObjectToString
 } from '@services/event.service';
+import type { EventStaff } from '@services/eventStaff.service';
+import { MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
@@ -45,6 +53,35 @@ export default function EventDetailPage() {
   const [isRejectingCoHost, setIsRejectingCoHost] = useState(false);
   const [isEndingEvent, setIsEndingEvent] = useState(false);
   const [myCoHostStatus, setMyCoHostStatus] = useState<string | null>(null);
+
+  // Staff management states
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [showEvaluateModal, setShowEvaluateModal] = useState(false);
+  const [showEvaluationDetailModal, setShowEvaluationDetailModal] = useState(false);
+  const [showTimeExtensionModal, setShowTimeExtensionModal] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<EventStaff | null>(null);
+  const [clubMembers, setClubMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  // Fetch staff data
+  const {
+    data: staffList = [],
+    isLoading: staffLoading,
+    refetch: refetchStaff,
+  } = useEventStaff(Number(id), !!id);
+
+  // Fetch evaluations
+  const {
+    data: evaluations = [],
+    isLoading: evaluationsLoading,
+    refetch: refetchEvaluations,
+  } = useStaffEvaluations(Number(id), !!id);
+
+  // Mutations
+  const assignStaffMutation = useAssignEventStaff();
+  const evaluateStaffMutation = useEvaluateStaff();
+  const extendTimeMutation = useExtendEventTime();
 
   const loadEventDetail = async () => {
     if (!id) return;
@@ -364,6 +401,113 @@ export default function EventDetailPage() {
         },
       ]
     );
+  };
+
+  // Staff management handlers
+  const handleShowStaffList = async () => {
+    if (!userClubId) return;
+    setLoadingMembers(true);
+    try {
+      const members = await MembershipsService.getMembersByClubId(userClubId);
+      setClubMembers(members || []);
+      setShowStaffModal(true);
+    } catch (error) {
+      console.error('Failed to load club members:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Unable to load club members',
+      });
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleAddStaff = async (membershipId: number, duty: string) => {
+    if (!id) return;
+    try {
+      await assignStaffMutation.mutateAsync({
+        eventId: Number(id),
+        membershipId,
+        duty,
+      });
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Staff member assigned successfully',
+      });
+      await refetchStaff();
+      setShowAddStaffModal(false);
+    } catch (error: any) {
+      console.error('Failed to assign staff:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error?.response?.data?.message || 'Failed to assign staff',
+      });
+    }
+  };
+
+  const handleEvaluateStaff = async (
+    membershipId: number,
+    eventId: number,
+    performance: 'POOR' | 'AVERAGE' | 'GOOD' | 'EXCELLENT',
+    note: string
+  ) => {
+    try {
+      await evaluateStaffMutation.mutateAsync({
+        eventId: Number(id),
+        payload: {
+          membershipId,
+          eventId,
+          performance,
+          note,
+        },
+      });
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Staff evaluation submitted',
+      });
+      await refetchEvaluations();
+      setShowEvaluateModal(false);
+    } catch (error: any) {
+      console.error('Failed to evaluate staff:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error?.response?.data?.message || 'Failed to submit evaluation',
+      });
+    }
+  };
+
+  const handleExtendTime = async (newDate: string, newStartTime: string, newEndTime: string, reason: string) => {
+    if (!id) return;
+    try {
+      await extendTimeMutation.mutateAsync({
+        eventId: Number(id),
+        payload: { newDate, newStartTime, newEndTime, reason },
+      });
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Event time extended successfully',
+      });
+      await loadEventDetail();
+      setShowTimeExtensionModal(false);
+    } catch (error: any) {
+      console.error('Failed to extend event time:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error?.response?.data?.message || 'Failed to extend time',
+      });
+    }
+  };
+
+  const handleViewStats = () => {
+    if (!id) return;
+    router.push(`/club-leader/events/${id}/stats` as any);
   };
 
   if (loading) {
@@ -702,6 +846,76 @@ export default function EventDetailPage() {
           </View>
         </View>
 
+        {/* Staff Management Section */}
+        {(event.status === 'PENDING_COCLUB' || event.status === 'PENDING_UNISTAFF' || event.status === 'APPROVED' || event.status === 'ONGOING' || event.status === 'COMPLETED') && (
+          <View className="bg-white m-4 rounded-xl shadow-sm">
+            <View className="p-6">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-lg font-semibold text-gray-900">Staff Management</Text>
+                {staffList.length > 0 && (
+                  <View className="bg-teal-100 px-3 py-1 rounded-full">
+                    <Text className="text-teal-800 text-xs font-semibold">{staffList.length} Staff</Text>
+                  </View>
+                )}
+              </View>
+
+              <View className="flex-row gap-2 mb-3">
+                <TouchableOpacity
+                  onPress={handleShowStaffList}
+                  disabled={loadingMembers}
+                  className="flex-1 bg-teal-600 rounded-lg py-3 items-center"
+                >
+                  <View className="flex-row items-center">
+                    {loadingMembers ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <>
+                        <Ionicons name="people" size={18} color="white" />
+                        <Text className="text-white font-semibold ml-2">View Staff List</Text>
+                      </>
+                    )}
+                  </View>
+                </TouchableOpacity>
+                {event.status === 'COMPLETED' && evaluations.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setShowEvaluationDetailModal(true)}
+                    className="flex-1 bg-blue-600 rounded-lg py-3 items-center"
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons name="star" size={18} color="white" />
+                      <Text className="text-white font-semibold ml-2">View Evaluations</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {event.status === 'ONGOING' && (
+                <TouchableOpacity
+                  onPress={() => setShowTimeExtensionModal(true)}
+                  className="bg-orange-600 rounded-lg py-3 items-center mb-3"
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="time" size={18} color="white" />
+                    <Text className="text-white font-semibold ml-2">Request More Time</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {(event.status === 'APPROVED' || event.status === 'ONGOING' || event.status === 'COMPLETED') && (
+                <TouchableOpacity
+                  onPress={handleViewStats}
+                  className="bg-purple-600 rounded-lg py-3 items-center"
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="stats-chart" size={18} color="white" />
+                    <Text className="text-white font-semibold ml-2">View Statistics</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Co-hosted Clubs */}
         {event.coHostedClubs && event.coHostedClubs.length > 0 && (
           <View className="bg-white m-4 rounded-xl shadow-sm">
@@ -920,6 +1134,157 @@ export default function EventDetailPage() {
           onClose={() => setShowWalletHistoryModal(false)}
           eventId={event.id}
           budgetPoints={event.budgetPoints || 0}
+        />
+      )}
+
+      {/* Staff List Modal */}
+      <Modal visible={showStaffModal} animationType="slide" transparent onRequestClose={() => setShowStaffModal(false)}>
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className="bg-white rounded-2xl w-11/12 max-w-2xl max-h-5/6">
+            <View className="flex-row items-center justify-between p-6 border-b border-gray-200">
+              <Text className="text-xl font-bold text-gray-900">Event Staff</Text>
+              <TouchableOpacity onPress={() => setShowStaffModal(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView className="flex-1 p-6">
+              {staffLoading ? (
+                <View className="flex-1 items-center justify-center py-12">
+                  <ActivityIndicator size="large" color="#0D9488" />
+                  <Text className="mt-4 text-gray-500">Loading staff...</Text>
+                </View>
+              ) : staffList.length === 0 ? (
+                <View className="flex-1 items-center justify-center py-12">
+                  <Ionicons name="people-outline" size={64} color="#9CA3AF" />
+                  <Text className="mt-4 text-lg font-semibold text-gray-900">No Staff Assigned</Text>
+                  <Text className="mt-2 text-sm text-gray-600 text-center">
+                    Add staff members to help manage this event
+                  </Text>
+                </View>
+              ) : (
+                <View className="space-y-3">
+                  {staffList.map((staff) => (
+                    <View key={staff.id} className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <View className="flex-row items-start justify-between mb-2">
+                        <View className="flex-1">
+                          <Text className="font-semibold text-gray-900">{staff.memberName}</Text>
+                          <Text className="text-sm text-gray-600 mt-1">{staff.duty}</Text>
+                        </View>
+                        <View className={`px-2 py-1 rounded ${staff.state === 'ACTIVE' ? 'bg-green-100' : 'bg-gray-100'}`}>
+                          <Text className={`text-xs font-semibold ${staff.state === 'ACTIVE' ? 'text-green-800' : 'text-gray-800'}`}>
+                            {staff.state}
+                          </Text>
+                        </View>
+                      </View>
+                      {event?.status === 'COMPLETED' && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedStaff(staff);
+                            setShowStaffModal(false);
+                            setShowEvaluateModal(true);
+                          }}
+                          className="mt-3 bg-blue-600 rounded-lg py-2 items-center"
+                        >
+                          <Text className="text-white font-medium">Evaluate Performance</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+
+            <View className="p-6 border-t border-gray-200 flex-row gap-3">
+              {event?.status !== 'COMPLETED' && (
+                <TouchableOpacity
+                  className="flex-1 bg-teal-600 rounded-lg py-3 items-center"
+                  onPress={() => {
+                    setShowStaffModal(false);
+                    setShowAddStaffModal(true);
+                  }}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="add-circle" size={20} color="white" />
+                    <Text className="text-white font-medium ml-2">Add Staff</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
+                onPress={() => setShowStaffModal(false)}
+              >
+                <Text className="text-gray-700 font-medium">Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Staff Modal */}
+      {event && (
+        <AddStaffModal
+          visible={showAddStaffModal}
+          onClose={() => setShowAddStaffModal(false)}
+          onSubmit={handleAddStaff}
+          clubMembers={clubMembers.map((m) => ({
+            id: m.id,
+            membershipId: m.id,
+            memberName: m.member?.name || 'Unknown',
+            memberEmail: m.member?.email || '',
+          }))}
+          eventName={event.name}
+          existingStaffIds={staffList.map((s) => s.membershipId)}
+        />
+      )}
+
+      {/* Evaluate Staff Modal */}
+      {event && selectedStaff && (
+        <EvaluateStaffModal
+          visible={showEvaluateModal}
+          onClose={() => {
+            setShowEvaluateModal(false);
+            setSelectedStaff(null);
+          }}
+          onSubmit={handleEvaluateStaff}
+          staffMember={{
+            membershipId: selectedStaff.membershipId,
+            memberName: selectedStaff.memberName,
+            duty: selectedStaff.duty,
+          }}
+          eventId={event.id}
+          eventName={event.name}
+        />
+      )}
+
+      {/* Evaluation Detail Modal */}
+      {event && (
+        <EvaluationDetailModal
+          visible={showEvaluationDetailModal}
+          onClose={() => setShowEvaluationDetailModal(false)}
+          evaluations={evaluations.map((evaluation: any) => {
+            const staff = staffList.find((s) => s.membershipId === evaluation.membershipId);
+            return {
+              memberName: staff?.memberName || 'Unknown',
+              memberEmail: undefined,
+              duty: staff?.duty || 'N/A',
+              evaluation: evaluation,
+            };
+          })}
+          eventName={event.name}
+        />
+      )}
+
+      {/* Time Extension Modal */}
+      {event && (
+        <TimeExtensionModal
+          visible={showTimeExtensionModal}
+          onClose={() => setShowTimeExtensionModal(false)}
+          onSubmit={handleExtendTime}
+          currentDate={event.date}
+          currentStartTime={timeObjectToString(event.startTime)}
+          currentEndTime={timeObjectToString(event.endTime)}
+          eventName={event.name}
         />
       )}
     </View>
