@@ -65,6 +65,10 @@ export const queryKeys = {
   productDetail: (clubId: number, productId: number | string) =>
     [...queryKeys.products, 'detail', clubId, productId] as const,
   productTags: () => [...queryKeys.products, 'tags'] as const,
+
+  // Attendances
+  attendances: ['attendances'] as const,
+  memberAttendanceHistory: (clubId: number | null) => [...queryKeys.attendances, 'club', clubId, 'member-history'] as const,
 };
 
 // ============================================
@@ -690,9 +694,11 @@ export function useCreateClubApplication() {
       majorId?: number | null;
       vision?: string;
       proposerReason?: string;
+      otp: string;
     }) => {
       const { postClubApplication } = await import('@services/clubApplication.service');
-      return await postClubApplication(payload);
+      const { otp, ...body } = payload;
+      return await postClubApplication(body, otp);
     },
     onSuccess: () => {
       // Invalidate club applications list to refetch
@@ -836,21 +842,11 @@ export function useClubMembers(clubId: number, enabled = true) {
 }
 
 /**
- * Hook to fetch current user's memberships
+ * Hook to fetch current user's memberships (alias for useProfile)
  * Returns all clubs the user is a member of
  */
 export function useMyMemberships(enabled = true) {
-  return useQuery({
-    queryKey: ['memberships', 'my'],
-    queryFn: async () => {
-      const { MembershipsService } = await import('@services/memberships.service');
-      const memberships = await MembershipsService.getMyMemberships();
-      return memberships;
-    },
-    enabled,
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    gcTime: 10 * 60 * 1000,
-  });
+  return useProfile(enabled);
 }
 
 /**
@@ -1015,7 +1011,7 @@ export interface MemberHistoryResponse {
  */
 export function useMemberAttendanceHistory(clubId: number | null, enabled = true) {
   return useQuery<MemberHistoryResponse | null, Error>({
-    queryKey: ['attendances', 'member', 'club', clubId],
+    queryKey: queryKeys.memberAttendanceHistory(clubId),
     queryFn: async () => {
       if (!clubId) return null;
       

@@ -48,13 +48,8 @@ export interface CreateCardRequest {
  * GET /api/cards/club/{clubId} -> returns card design for a specific club
  */
 const getCardByClubId = async (clubId: number): Promise<CardDesign> => {
-  try {
-    const response = await axiosClient.get<CardApiResponse>(`/api/cards/club/${clubId}`);
-    return response.data.data;
-  } catch (error: any) {
-    console.error('Failed to fetch card design:', error.response?.data || error.message);
-    throw error;
-  }
+  const response = await axiosClient.get<CardApiResponse>(`/api/cards/club/${clubId}`);
+  return response.data.data;
 };
 
 /**

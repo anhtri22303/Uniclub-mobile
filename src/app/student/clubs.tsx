@@ -101,8 +101,8 @@ export default function StudentClubsPage() {
         console.log('📋 Loaded user applications:', applications);
         setMyApplications(applications);
         
-        // Then load clubs
-        await loadClubs();
+        // Then load clubs with the applications data
+        await loadClubs(applications);
       } catch (error) {
         console.error('Failed to load data:', error);
         setMyApplications([]);
@@ -111,11 +111,14 @@ export default function StudentClubsPage() {
     loadData();
   }, []);
 
-  const loadClubs = async () => {
+  const loadClubs = async (applications?: any[]) => {
     setLoading(true);
     try {
       const response = await ClubService.fetchClubs(0, 100);
       console.log('Fetched clubs:', response);
+
+      // Use provided applications or fall back to state
+      const applicationsToUse = applications !== undefined ? applications : myApplications;
 
       // Load member counts for all clubs
       const clubsWithCounts = await Promise.all(
@@ -128,7 +131,7 @@ export default function StudentClubsPage() {
             majorName: club.category || '',
             members: memberCount.activeMemberCount,
             majorPolicyName: club.policy || '',
-            status: getClubStatus(club.id) as 'member' | 'pending' | 'none',
+            status: getClubStatus(club.id, applicationsToUse) as 'member' | 'pending' | 'none',
           };
         })
       );
@@ -147,7 +150,7 @@ export default function StudentClubsPage() {
     }
   };
 
-  const getClubStatus = (clubId: number): 'member' | 'pending' | 'none' => {
+  const getClubStatus = (clubId: number, applications?: any[]): 'member' | 'pending' | 'none' => {
     // Check if club is in pending list (optimistic UI)
     if (pendingClubIds.includes(clubId)) {
       return 'pending';
@@ -158,8 +161,11 @@ export default function StudentClubsPage() {
       return 'member';
     }
 
+    // Use provided applications or fall back to state
+    const applicationsToUse = applications !== undefined ? applications : myApplications;
+
     // ✅ Check if user has a pending application from API
-    const hasPendingApplication = myApplications.some(
+    const hasPendingApplication = applicationsToUse.some(
       (app: any) => app.clubId === clubId && app.status === 'PENDING'
     );
     if (hasPendingApplication) {
@@ -197,19 +203,15 @@ export default function StudentClubsPage() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      // Reload both clubs and applications
-      await Promise.all([
-        loadClubs(),
-        (async () => {
-          try {
-            const applications = await MemberApplicationService.getMyMemberApplications();
-            console.log('📋 Refreshed user applications:', applications);
-            setMyApplications(applications);
-          } catch (error) {
-            console.error('Failed to refresh applications:', error);
-          }
-        })()
-      ]);
+      // Refresh applications first, then reload clubs with the fresh data
+      const applications = await MemberApplicationService.getMyMemberApplications();
+      console.log('📋 Refreshed user applications:', applications);
+      setMyApplications(applications);
+      
+      // Reload clubs with the fresh applications data
+      await loadClubs(applications);
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
     } finally {
       setRefreshing(false);
     }
@@ -248,19 +250,17 @@ export default function StudentClubsPage() {
       setApplicationText('');
       setSelectedClub(null);
 
-      // Refresh both clubs and applications to get updated status
-      await Promise.all([
-        loadClubs(),
-        (async () => {
-          try {
-            const applications = await MemberApplicationService.getMyMemberApplications();
-            console.log('📋 Refreshed user applications after submission:', applications);
-            setMyApplications(applications);
-          } catch (error) {
-            console.error('Failed to refresh applications:', error);
-          }
-        })()
-      ]);
+      // Refresh applications first, then reload clubs with the new data
+      try {
+        const applications = await MemberApplicationService.getMyMemberApplications();
+        console.log('📋 Refreshed user applications after submission:', applications);
+        setMyApplications(applications);
+        
+        // Reload clubs with the fresh applications data
+        await loadClubs(applications);
+      } catch (error) {
+        console.error('Failed to refresh data:', error);
+      }
     } catch (error: any) {
       console.error('Error submitting application:', error);
       const message = error?.response?.data?.message || error?.message || 'Failed to submit application';
@@ -293,7 +293,7 @@ export default function StudentClubsPage() {
         vision: newVision.trim(),
         majorId: selectedMajorId,
         proposerReason: newProposerReason.trim(),
-      });
+      }, otpCode.trim()); // Pass OTP as second parameter
 
       Alert.alert('Success', `Your club application for "${newClubName}" has been submitted`);
       setShowCreateModal(false);

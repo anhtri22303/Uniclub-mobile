@@ -11,8 +11,8 @@ export interface TimeObject {
 
 export interface CreateSessionBody {
   date: string; // "YYYY-MM-DD"
-  startTime: TimeObject;
-  endTime: TimeObject;
+  startTime: string; // Changed from TimeObject to string (e.g., "14:30:00")
+  endTime: string;   // Changed from TimeObject to string (e.g., "16:30:00")
   note: string;
 }
 

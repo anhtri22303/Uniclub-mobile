@@ -36,12 +36,18 @@ export function ClubInfoCard({ club, majorInfo, isLoading }: ClubInfoCardProps) 
     return (
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>
-            <Text className="text-center text-red-600">
-              Could not load club information
+          <CardTitle className="flex-row items-center gap-2">
+            <Ionicons name="people" size={24} color="#9CA3AF" />
+            <Text className="text-xl font-bold text-gray-600">
+              No club information
             </Text>
           </CardTitle>
         </CardHeader>
+        <CardContent>
+          <Text className="text-sm text-gray-500 text-center py-4">
+            Club information is not available at this time.
+          </Text>
+        </CardContent>
       </Card>
     );
   }

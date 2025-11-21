@@ -219,29 +219,26 @@ export default function VirtualCardScreen() {
 
       try {
         setLoadingCard(true);
-        console.log('🎨 Fetching card design for clubId:', selectedClubId);
+        console.log('  Fetching card design for clubId:', selectedClubId);
         const design = await CardService.getCardByClubId(selectedClubId);
-        console.log('🎨 Card design fetched:', JSON.stringify(design, null, 2));
+        console.log('  Card design fetched:', JSON.stringify(design, null, 2));
         
         // Debug: Show parsed colors
         const colors = parseGradientColors(design.gradient);
-        console.log('🎨 Parsed gradient colors:', colors);
-        console.log('🎨 Border radius:', design.borderRadius, '→', parseBorderRadius(design.borderRadius));
-        console.log('🎨 Pattern:', design.pattern);
-        console.log('🎨 Pattern opacity:', design.patternOpacity);
-        console.log('🎨 Card opacity:', design.cardOpacity);
-        console.log('🎨 QR size:', design.qrSize);
-        console.log('🎨 Show logo:', design.showLogo);
-        console.log('🎨 Logo URL:', design.logoUrl);
+        console.log('  Parsed gradient colors:', colors);
+        console.log('  Border radius:', design.borderRadius, '→', parseBorderRadius(design.borderRadius));
+        console.log('  Pattern:', design.pattern);
+        console.log('  Pattern opacity:', design.patternOpacity);
+        console.log('  Card opacity:', design.cardOpacity);
+        console.log('  QR size:', design.qrSize);
+        console.log('  Show logo:', design.showLogo);
+        console.log('  Logo URL:', design.logoUrl);
         
         setCardDesign(design);
-      } catch (cardError) {
-        console.error('❌ Failed to fetch card design:', cardError);
+      } catch {
+        // Silently use default design if card design is not found
+        console.log('  No custom card design found, using default template');
         setCardDesign(null);
-        Alert.alert(
-          'Using Default Design',
-          "Unable to load club's card design. Using default template."
-        );
       } finally {
         setLoadingCard(false);
       }

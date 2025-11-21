@@ -584,7 +584,7 @@ export default function ProfileScreen() {
       
       {/* Header with view card */}
       <View className="flex-row justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800">Profile</Text>
+        <Text className="text-2xl font-bold text-gray-800">        Profile</Text>
         <TouchableOpacity
           onPress={() => router.push('/virtual-card' as any)}
           className="flex-row items-center px-4 py-2 rounded-xl"

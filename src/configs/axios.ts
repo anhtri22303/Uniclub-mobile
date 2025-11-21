@@ -44,7 +44,7 @@ axiosPublic.interceptors.request.use(
         return config;
     },
     (error) => {
-        console.error('❌ Public request interceptor error:', error);
+        console.log('Public request interceptor error:', error);
         return Promise.reject(error);
     }
 );
@@ -63,7 +63,7 @@ axiosClient.interceptors.request.use(
         return config;
     },
     (error) => {
-        console.error('❌ Authenticated request interceptor error:', error);
+        console.log('Authenticated request interceptor error:', error);
         return Promise.reject(error);
     }
 );
@@ -75,8 +75,8 @@ axiosPublic.interceptors.response.use(
         return response;
     },
     (error) => {
-        console.error('❌ Public API Response error:', error.response?.status, error.message);
-        console.error('❌ Error details:', error.response?.data);
+        console.log('Public API Response error:', error.response?.status, error.message);
+        console.log('Error details:', error.response?.data);
         return Promise.reject(error);
     }
 );
@@ -88,8 +88,8 @@ axiosClient.interceptors.response.use(
         return response;
     },
     (error) => {
-        console.error('❌ Authenticated API Response error:', error.response?.status, error.message);
-        console.error('❌ Error details:', error.response?.data);
+        console.log('Authenticated API Response error:', error.response?.status, error.message);
+        console.log('Error details:', error.response?.data);
         return Promise.reject(error);
     }
 );
@@ -132,11 +132,11 @@ axiosPrivate.interceptors.response.use(
 // Xử lý lỗi toàn cục
 const handleError = (error: AxiosError) => {
     if (error.response) {
-        console.error('Server Error:', error.response.data);
+        console.log('Server Error:', error.response.data);
     } else if (error.request) {
-        console.error('No Response:', error.request);
+        console.log('No Response:', error.request);
     } else {
-        console.error('Error:', error.message);
+        console.log('Error:', error.message);
     }
     return Promise.reject(error);
 };

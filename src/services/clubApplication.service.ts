@@ -60,16 +60,25 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
 /**
  * Create a new club application.
  * The backend expects a JSON body with clubName, description, majorId, vision, proposerReason
+ * @param body - Club application data
+ * @param otp - 6-digit OTP code sent to user's email
  */
-export async function postClubApplication(body: { 
-  clubName: string; 
-  description: string;
-  majorId?: number | null;
-  vision?: string;
-  proposerReason?: string;
-}): Promise<ClubApplication> {
+export async function postClubApplication(
+  body: { 
+    clubName: string; 
+    description: string;
+    majorId?: number | null;
+    vision?: string;
+    proposerReason?: string;
+  },
+  otp: string
+): Promise<ClubApplication> {
   try {
-    const response = await axiosClient.post<ClubApplication>(
+    const response = await axiosClient.post<{
+      success: boolean;
+      message: string;
+      data: ClubApplication;
+    }>(
       "/api/club-applications",
       {
         clubName: body.clubName,
@@ -79,13 +88,22 @@ export async function postClubApplication(body: {
         proposerReason: body.proposerReason,
       },
       {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        params: { otp } // Pass OTP as query parameter
       }
     );
+    
     console.log('✅ Club application created:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error("❌ Error creating club application:", error);
+    
+    // Backend returns: { success, message, data }
+    const result = response.data;
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to create club application');
+    }
+    
+    return result.data; // Return only the data part
+  } catch (error: any) {
+    console.error("❌ Error creating club application:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -214,13 +232,17 @@ export async function createClubAccount(body: CreateClubAccountBody): Promise<st
 /**
  * Send OTP to student email for club application
  * POST /api/club-applications/send-otp
+ * @param studentEmail - Email của sinh viên
  */
-export async function sendOtp(email: string): Promise<string> {
+export async function sendOtp(studentEmail: string): Promise<string> {
   try {
     const response = await axiosClient.post(
       `/api/club-applications/send-otp`,
-      { email },
-      { headers: { 'Content-Type': 'application/json' } }
+      null, // No body needed
+      { 
+        headers: { 'Content-Type': 'application/json' },
+        params: { studentEmail } // Send as query parameter
+      }
     );
 
     // API response: { success, message, data }
@@ -234,7 +256,7 @@ export async function sendOtp(email: string): Promise<string> {
       throw new Error(result.message || 'Failed to send OTP');
     }
 
-    console.log('✅ OTP sent successfully to:', email);
+    console.log('✅ OTP sent successfully to:', studentEmail);
     return result.message || result.data || 'OTP sent successfully';
   } catch (error: any) {
     console.error('❌ Error sending OTP:', error.response?.data || error.message);

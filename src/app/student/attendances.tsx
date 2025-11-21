@@ -2,9 +2,9 @@ import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  type AttendanceRecord,
   useMemberAttendanceHistory,
-  useMyMemberships
+  useMyMemberships,
+  type AttendanceRecord
 } from '@hooks/useQueryHooks';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
@@ -80,7 +80,6 @@ export default function StudentAttendancesPage() {
   const {
     data: myMemberships = [],
     isLoading: isLoadingMemberships,
-    error: membershipsError,
     refetch: refetchMemberships,
   } = useMyMemberships();
 
@@ -116,11 +115,17 @@ export default function StudentAttendancesPage() {
     console.log('Is Loading History:', isLoadingHistory);
   }, [selectedClubId, rawHistoryResponse, isLoadingHistory]);
 
-  // Extract attendance records
+  // Extract and sort attendance records (newest first)
   const attendanceRecords = useMemo(() => {
     const records = rawHistoryResponse?.data?.attendanceHistory || [];
-    console.log('Extracted Attendance Records:', records);
-    return records;
+    // Sort by date descending (newest first) - same as web
+    const sorted = [...records].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA; // Descending: newest first
+    });
+    console.log('Extracted & Sorted Attendance Records:', sorted);
+    return sorted;
   }, [rawHistoryResponse]);
 
   // Loading state
@@ -235,23 +240,6 @@ export default function StudentAttendancesPage() {
               <ActivityIndicator size="large" color="#0D9488" />
               <Text className="text-gray-500 mt-4">Loading attendance records...</Text>
             </View>
-          ) : membershipsError ? (
-            <View className="items-center py-20">
-              <Ionicons name="alert-circle" size={64} color="#EF4444" />
-              <Text className="text-lg font-semibold text-red-700 mb-2 mt-4">
-                Error loading memberships
-              </Text>
-              <Text className="text-gray-600 text-center px-8">
-                {(membershipsError as Error)?.message ||
-                  'Unable to load your club memberships. Please try again.'}
-              </Text>
-              <TouchableOpacity
-                onPress={onRefresh}
-                className="mt-4 bg-teal-600 px-6 py-3 rounded-lg"
-              >
-                <Text className="text-white font-semibold">Try Again</Text>
-              </TouchableOpacity>
-            </View>
           ) : myMemberships.length === 0 ? (
             <View className="items-center py-20">
               <Ionicons name="people-outline" size={64} color="#9CA3AF" />
@@ -266,7 +254,7 @@ export default function StudentAttendancesPage() {
             <View className="items-center py-20">
               <Ionicons name="calendar-outline" size={64} color="#9CA3AF" />
               <Text className="text-lg font-semibold text-gray-900 mb-2 mt-4">
-                No attendance records found
+                No data Attendance
               </Text>
               <Text className="text-gray-600 text-center px-8">
                 There are no attendance records for this club yet.
