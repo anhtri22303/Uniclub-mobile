@@ -3,22 +3,22 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import {
-    MemberApplication,
-    MemberApplicationService,
+  MemberApplication,
+  MemberApplicationService,
 } from '@services/memberApplication.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -288,9 +288,7 @@ export default function ClubLeaderApplicationPage() {
 
       {/* Header */}
       <View className="bg-white px-6 py-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800">
-          Membership Applications
-        </Text>
+        <Text className="text-2xl font-bold text-gray-800">        Membership Applications</Text>
         <Text className="text-sm text-gray-600 mt-1">
           Review and manage new applications
           {managedClubName ? ` for "${managedClubName}"` : ''}

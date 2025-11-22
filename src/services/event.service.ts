@@ -30,12 +30,14 @@ export interface Event {
   date: string;
   startTime: TimeObject | string;
   endTime: TimeObject | string;
+  registrationDeadline?: string; // NEW: Registration deadline
   status: "PENDING_COCLUB" | "PENDING_UNISTAFF" | "APPROVED" | "REJECTED" | "CANCELLED" | "WAITING" | "ONGOING" | "COMPLETED" | string;
   checkInCode: string;
   locationName: string;
   maxCheckInCount: number;
   currentCheckInCount: number;
   budgetPoints: number;
+  commitPointCost?: number; // NEW: Commit point cost (ticket price)
   hostClub: {
     id: number;
     name: string;
@@ -92,15 +94,17 @@ export interface EventSummary {
 
 export interface CreateEventPayload {
   hostClubId: number;
+  coHostClubIds?: number[];
   name: string;
   description: string;
-  type: "PUBLIC" | "PRIVATE";
-  date: string;
-  startTime: string;
-  endTime: string;
+  type: "PUBLIC" | "PRIVATE" | "SPECIAL";
+  date: string; // Format: YYYY-MM-DD
+  startTime: string;  // Format: HH:MM (e.g., "09:00")
+  endTime: string;    // Format: HH:MM (e.g., "15:00")
+  registrationDeadline: string; // Format: YYYY-MM-DD
   locationId: number;
   maxCheckInCount: number;
-  coHostClubIds?: number[];
+  commitPointCost: number; // Ticket price in points
 }
 
 export interface Location {

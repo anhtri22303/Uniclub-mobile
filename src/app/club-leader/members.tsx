@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import { ApiMembership, LeaveRequest, MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
@@ -49,6 +50,7 @@ type FilterType = 'all' | 'LEADER' | 'MEMBER' | 'staff' | 'non-staff';
 
 export default function ClubLeaderMembersPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
 
   const [managedClub, setManagedClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
@@ -334,12 +336,19 @@ export default function ClubLeaderMembersPage() {
           )}
         </View>
 
-        {/* Request Out Button */}
+        {/* Action Buttons */}
         {managedClub && (
-          <View className="mt-4">
+          <View className="mt-4 flex-row gap-3">
+            <TouchableOpacity
+              onPress={() => router.push('/club-leader/event-staff' as any)}
+              className="flex-1 bg-blue-500 rounded-xl px-4 py-3 flex-row items-center justify-center"
+            >
+              <Ionicons name="clipboard-outline" size={20} color="white" />
+              <Text className="text-white font-semibold ml-2">List Staff</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={handleOpenLeaveRequestModal}
-              className="bg-orange-500 rounded-xl px-4 py-3 flex-row items-center justify-center"
+              className="flex-1 bg-orange-500 rounded-xl px-4 py-3 flex-row items-center justify-center relative"
             >
               <Ionicons name="log-out-outline" size={20} color="white" />
               <Text className="text-white font-semibold ml-2">Request Out</Text>

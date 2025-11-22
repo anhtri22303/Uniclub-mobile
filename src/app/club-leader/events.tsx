@@ -1,3 +1,4 @@
+import CalendarModal from '@components/CalendarModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import PhaseSelectionModal from '@components/PhaseSelectionModal';
@@ -20,11 +21,14 @@ type ClubLeaderEvent = {
   startTime?: string;
   endTime?: string;
   time?: string;
+  registrationDeadline?: string; // NEW: Registration deadline
   status: string;
   locationId?: number;
   locationName?: string;
   checkInCode?: string;
   points?: number;
+  budgetPoints?: number;
+  commitPointCost?: number; // NEW: Commit point cost (ticket price)
   hostClub?: {
     id: number;
     name: string;
@@ -43,8 +47,8 @@ type ClubLeaderEvent = {
 
 // Helper function to check if event has expired (past endTime) or is COMPLETED
 function isEventExpired(event: ClubLeaderEvent): boolean {
-  // COMPLETED status is always considered expired
-  if (event.status === "COMPLETED") return true;
+  // COMPLETED, REJECTED, CANCELLED status are always considered expired
+  if (["COMPLETED", "REJECTED", "CANCELLED"].includes(event.status)) return true;
 
   if (!event.date || !event.endTime) return false;
 
@@ -55,7 +59,6 @@ function isEventExpired(event: ClubLeaderEvent): boolean {
 
     // Parse event date (format: YYYY-MM-DD)
     const [year, month, day] = event.date.split('-').map(Number);
-    
     // Parse endTime (format: HH:MM:SS or HH:MM)
     const [hours, minutes] = event.endTime.split(':').map(Number);
 
@@ -88,22 +91,34 @@ function isEventActive(event: ClubLeaderEvent): boolean {
 }
 
 // Helper function to get event status based on date and time
-function getEventStatus(eventDate: string, eventTime: string): string {
-  if (!eventDate) return 'Finished';
+function getEventStatus(event: ClubLeaderEvent): string {
+  // ONGOING status from API takes priority (matching web implementation)
+  if (event.status === "ONGOING") return "Now";
+  
+  if (!event.date) return 'Finished';
   
   // Get current time in Vietnam timezone (UTC+7)
   const now = new Date();
   const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
   
   // Parse event date and time
-  const [hour = '00', minute = '00'] = (eventTime || '00:00').split(':');
-  const [year, month, day] = eventDate.split('-').map(Number);
-  const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0);
+  const timeStr = event.startTime || event.time || '00:00';
+  const [hour = '00', minute = '00'] = timeStr.split(':');
+  const [year, month, day] = event.date.split('-').map(Number);
+  const eventStart = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0);
 
-  // Event duration: assume 2 hours for "Now" window
-  const EVENT_DURATION_MS = 2 * 60 * 60 * 1000;
-  const start = event.getTime();
-  const end = start + EVENT_DURATION_MS;
+  // Parse event end time
+  let eventEnd = eventStart;
+  if (event.endTime) {
+    const [endHour = '00', endMinute = '00'] = event.endTime.split(':');
+    eventEnd = new Date(year, month - 1, day, Number(endHour), Number(endMinute), 0, 0);
+  } else {
+    // If no end time, assume 2 hours duration
+    eventEnd = new Date(eventStart.getTime() + 2 * 60 * 60 * 1000);
+  }
+
+  const start = eventStart.getTime();
+  const end = eventEnd.getTime();
 
   if (vnTime.getTime() < start) {
     // If event starts within next 7 days, it's "Soon"
@@ -149,15 +164,21 @@ export default function Events() {
   
   // View mode state
   const [viewMode, setViewMode] = useState<'hosted' | 'cohost'>('hosted');
-  
+  // Status dropdown modal state
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+
+  // Status filter state
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+
   // Fetch data using React Query hooks
   const { data: managedClub, isLoading: clubLoading } = useClub(clubId || 0, !!clubId);
   const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClub(clubId || 0, !!clubId && viewMode === 'hosted');
   const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClub(clubId || 0, !!clubId && viewMode === 'cohost');
-  
+
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showPhaseModal, setShowPhaseModal] = useState<boolean>(false);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [showCalendarModal, setShowCalendarModal] = useState<boolean>(false);
   const [selectedEvent, setSelectedEvent] = useState<ClubLeaderEvent | null>(null);
   const [selectedPhase, setSelectedPhase] = useState<'START' | 'END' | 'MID'>('START');
   const [showExpiredEvents, setShowExpiredEvents] = useState<boolean>(false);
@@ -197,19 +218,28 @@ export default function Events() {
     return sortEventsByDateTime(normalized);
   }, [viewMode, rawEvents, rawCoHostEvents, clubId]);
 
-  // Filter events by search term and expiration status
+  // Get all unique statuses from events
+  const allStatuses = useMemo(() => {
+    const statusSet = new Set<string>();
+    events.forEach(ev => {
+      if (ev.status) statusSet.add(ev.status);
+    });
+    return Array.from(statusSet);
+  }, [events]);
+
+  // Filter events by search term, expiration status, and selected status
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       // Search term filter
       const matchesSearch = String(event.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-      
       // Expiration filter
       const expired = isEventExpired(event);
       const matchesExpirationFilter = showExpiredEvents || !expired;
-      
-      return matchesSearch && matchesExpirationFilter;
+      // Status filter
+      const matchesStatus = selectedStatus === 'ALL' || event.status === selectedStatus;
+      return matchesSearch && matchesExpirationFilter && matchesStatus;
     });
-  }, [events, searchTerm, showExpiredEvents]);
+  }, [events, searchTerm, showExpiredEvents, selectedStatus]);
 
   // Create event handler - disabled for mobile, redirect to web
   const handleCreateEvent = () => {
@@ -240,7 +270,7 @@ export default function Events() {
       <View className="flex-1">
         {/* Header */}
         <View className="px-4 pt-4 pb-2">
-          <Text className="text-2xl font-bold text-gray-800">Events</Text>
+          <Text className="text-2xl font-bold text-gray-800">         Events</Text>
           {clubLoading ? (
             <View className="h-5 w-48 bg-gray-200 rounded mt-1" />
           ) : (
@@ -299,7 +329,7 @@ export default function Events() {
           </View>
         </View>
 
-        {/* Search and Create Button */}
+        {/* Search, Status Filter, and Create Button */}
         <View className="px-4 pb-2 flex-row items-center gap-2">
           <TextInput
             className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 text-gray-800"
@@ -307,15 +337,56 @@ export default function Events() {
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
+          {/* Status Dropdown Filter */}
+          <View style={{ minWidth: 120 }}>
+            <TouchableOpacity
+              className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 flex-row items-center"
+              onPress={() => setShowStatusDropdown(true)}
+            >
+              <Ionicons name="filter" size={18} color="#0D9488" />
+              <Text className="ml-2 text-gray-700 text-sm font-medium">
+                {selectedStatus === 'ALL' ? 'All Status' : selectedStatus}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#6B7280" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+            {/* Dropdown Modal */}
+            {showStatusDropdown && (
+              <View style={{ position: 'absolute', top: 44, left: 0, right: 0, zIndex: 10, backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8 }}>
+                <TouchableOpacity
+                  style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}
+                  onPress={() => { setSelectedStatus('ALL'); setShowStatusDropdown(false); }}
+                >
+                  <Text style={{ color: '#0D9488', fontWeight: 'bold' }}>All Status</Text>
+                </TouchableOpacity>
+                {allStatuses.map((status) => (
+                  <TouchableOpacity
+                    key={status}
+                    style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}
+                    onPress={() => { setSelectedStatus(status); setShowStatusDropdown(false); }}
+                  >
+                    <Text style={{ color: status === selectedStatus ? '#0D9488' : '#374151', fontWeight: status === selectedStatus ? 'bold' : 'normal' }}>{status}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+          <TouchableOpacity
+            className="bg-blue-600 rounded-lg px-3 py-2"
+            onPress={() => setShowCalendarModal(true)}
+          >
+            <Ionicons name="calendar" size={20} color="#fff" />
+          </TouchableOpacity>
           {viewMode === 'hosted' && (
             <TouchableOpacity
-              className="bg-teal-600 rounded-lg px-4 py-2"
+              className="bg-teal-600 rounded-lg px-3 py-2"
               onPress={handleCreateEvent}
             >
               <Ionicons name="add" size={20} color="#fff" />
             </TouchableOpacity>
           )}
         </View>
+  // Status dropdown modal state
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
         {/* Filter Toggle */}
         <View className="px-4 pb-3">
@@ -369,7 +440,7 @@ export default function Events() {
             {filteredEvents.map((event) => {
               const isCompleted = event.status === "COMPLETED";
               const expired = isCompleted || isEventExpired(event);
-              const status = expired ? 'Finished' : getEventStatus(event.date, event.time ?? '');
+              const status = expired ? 'Finished' : getEventStatus(event);
               
               // Border color logic - expired events and different statuses
               let borderColor = '#e5e7eb';
@@ -569,6 +640,26 @@ export default function Events() {
                         </View>
                       )}
 
+                      {/* Commit Point Cost (Ticket Price) - NEW */}
+                      {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
+                        <View className="flex-row items-center">
+                          <Ionicons name="pricetag" size={16} color="#F59E0B" />
+                          <Text className="text-sm text-gray-600 ml-2">
+                            <Text className="font-semibold text-amber-600">{event.commitPointCost}</Text> points (ticket)
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Registration Deadline - NEW */}
+                      {event.registrationDeadline && (
+                        <View className="flex-row items-center">
+                          <Ionicons name="time-outline" size={16} color="#EF4444" />
+                          <Text className="text-sm text-gray-600 ml-2">
+                            Reg. deadline: {new Date(event.registrationDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </Text>
+                        </View>
+                      )}
+
                       {/* Check-in Count */}
                       {event.maxCheckInCount && (
                         <View className="flex-row items-center">
@@ -610,6 +701,19 @@ export default function Events() {
                       </TouchableOpacity>
                     </View>
 
+                      {/* Stats Button - chuyển qua trang stats */}
+                      <View className="flex-row gap-2 mt-2">
+                        <TouchableOpacity
+                          className="flex-1 bg-teal-100 rounded-lg py-2 items-center"
+                          onPress={() => router.push(`/club-leader/events/${event.id}/stats` as any)}
+                        >
+                          <View className="flex-row items-center">
+                            <Ionicons name="stats-chart" size={16} color="#0D9488" />
+                            <Text className="text-teal-700 font-semibold ml-1">Stats</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+
                     {/* QR Code Button - Only show if ONGOING and event is still active */}
                     {isEventActive(event) && (
                       <TouchableOpacity
@@ -649,6 +753,17 @@ export default function Events() {
           eventName={selectedEvent?.name || ''}
           eventId={selectedEvent?.id}
           phase={selectedPhase}
+        />
+
+        {/* Calendar Modal */}
+        <CalendarModal
+          visible={showCalendarModal}
+          onClose={() => setShowCalendarModal(false)}
+          events={events}
+          onEventClick={(event) => {
+            setShowCalendarModal(false);
+            router.push(`/club-leader/events/${event.id}` as any);
+          }}
         />
       </View>
       <NavigationBar role={user?.role} user={user || undefined} />

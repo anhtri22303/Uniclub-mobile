@@ -28,13 +28,7 @@ export interface UserProfile {
     roleName: string;
     description: string;
   } | null;
-  wallet: {
-    balancePoints: number;
-    walletId?: number;
-    ownerType?: string;
-    userId?: number;
-    userFullName?: string;
-  } | null;
+  wallet: Wallet | null;
   wallets?: ApiMembershipWallet[]; // Array of membership wallets
   studentCode: string | null;
   majorName: string | null;
@@ -42,6 +36,17 @@ export interface UserProfile {
   memberships: any[];
   clubs?: any[]; // Array of clubs the user is a member of
   needCompleteProfile?: boolean; // Flag indicating if profile needs completion
+}
+
+// Wallet interface for single wallet
+export interface Wallet {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string; // "CLUB" or "USER"
+  clubId?: number;
+  clubName?: string;
+  userId: number;
+  userFullName: string;
 }
 
 // Membership wallet interface (for multiple club memberships)
@@ -64,11 +69,10 @@ export interface ProfileResponse {
 export interface EditProfileRequest {
   fullName?: string;
   phone?: string;
-  majorId?: number; // Changed from majorName to majorId
-  majorName?: string; // Keep for backward compatibility
   bio?: string;
-  email?: string;
-  studentCode?: string; // Added studentCode field
+  majorId?: number; // Send majorId (number) instead of majorName (string)
+  studentCode?: string;
+  // Do NOT send: email, avatarUrl, backgroundUrl (handled by separate endpoints)
 }
 
 export class UserService {
@@ -112,13 +116,15 @@ export class UserService {
 
   /**
    * Upload avatar image
+   * @param fileUri - Object with uri, type, and name for React Native file upload
    */
-  static async uploadAvatar(file: any): Promise<any> {
+  static async uploadAvatar(fileUri: { uri: string; type: string; name: string }): Promise<any> {
     try {
-      console.log('Uploading avatar file:', file.name || 'file');
+      console.log('Uploading avatar file:', fileUri.name);
       
       const formData = new FormData();
-      formData.append('file', file);
+      // For React Native, append file with proper structure
+      formData.append('file', fileUri as any);
       
       const response = await axiosClient.post('/api/users/profile/avatar', formData, {
         headers: {
@@ -138,13 +144,15 @@ export class UserService {
 
   /**
    * Upload background image
+   * @param fileUri - Object with uri, type, and name for React Native file upload
    */
-  static async uploadBackground(file: any): Promise<any> {
+  static async uploadBackground(fileUri: { uri: string; type: string; name: string }): Promise<any> {
     try {
-      console.log('Uploading background file:', file.name || 'file');
+      console.log('Uploading background file:', fileUri.name);
       
       const formData = new FormData();
-      formData.append('file', file);
+      // For React Native, append file with proper structure
+      formData.append('file', fileUri as any);
       
       const response = await axiosClient.post('/api/users/profile/background', formData, {
         headers: {

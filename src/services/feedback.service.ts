@@ -168,6 +168,26 @@ export class FeedbackService {
       throw error;
     }
   }
+
+  /**
+   * Update feedback for an event
+   * PUT /api/events/feedback/{feedbackId}
+   */
+  static async putFeedback(
+    feedbackId: string | number,
+    feedbackData: PostFeedbackRequest
+  ): Promise<Feedback> {
+    try {
+      const response = await axiosClient.put<PostFeedbackApiResponse>(
+        `/api/events/feedback/${feedbackId}`,
+        feedbackData
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to update feedback ${feedbackId}:`, error);
+      throw error;
+    }
+  }
 }
 
 export default FeedbackService;

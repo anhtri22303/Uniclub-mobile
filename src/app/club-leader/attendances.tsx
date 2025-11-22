@@ -199,20 +199,19 @@ export default function ClubLeaderAttendancesPage() {
 
             if (!attendanceData || !attendanceData.sessionId) {
               const now = new Date();
+              const endTime = new Date(now.getTime() + 60 * 60 * 1000); // Add 1 hour
+              
+              const formatTime = (date: Date): string => {
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = '00';
+                return `${hours}:${minutes}:${seconds}`;
+              };
+              
               const newSessionBody: CreateSessionBody = {
                 date: formattedDate,
-                startTime: {
-                  hour: now.getHours(),
-                  minute: now.getMinutes(),
-                  second: 0,
-                  nano: 0,
-                },
-                endTime: {
-                  hour: now.getHours() + 1,
-                  minute: now.getMinutes(),
-                  second: 0,
-                  nano: 0,
-                },
+                startTime: formatTime(now),
+                endTime: formatTime(endTime),
                 note: 'Auto-created session by mobile app',
               };
 

@@ -536,8 +536,7 @@ export default function ClubLeaderPointsPage() {
       {/* Header */}
       <View className="px-6 py-4 bg-white border-b border-gray-200">
         <View className="flex-row items-center mb-2">
-          <Ionicons name="trophy" size={28} color="#EAB308" />
-          <Text className="text-2xl font-bold text-gray-800 ml-2">Reward Distribution</Text>
+          <Text className="text-2xl font-bold text-gray-800 ml-2">       Reward Distribution</Text>
         </View>
         <Text className="text-gray-600">
           Distribute bonus points from club funds to members of{' '}

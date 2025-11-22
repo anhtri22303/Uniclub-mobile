@@ -1,5 +1,7 @@
+import CalendarModal from '@components/CalendarModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { Ionicons } from '@expo/vector-icons';
 import { useMyEventRegistrations, useRegisterForEvent } from '@hooks/useQueryHooks';
 import { ClubService } from '@services/club.service';
 import { Event, fetchEvent, getEventByClubId, timeObjectToString } from '@services/event.service';
@@ -9,14 +11,14 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -43,6 +45,7 @@ export default function StudentEventsPage() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [clubSelectorVisible, setClubSelectorVisible] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<Event | null>(null);
 
   // React Query hooks
@@ -300,7 +303,7 @@ export default function StudentEventsPage() {
   // Handle event registration button click - show confirmation modal
   const handleRegisterClick = (event: Event) => {
     console.log('Selected event for registration:', event);
-    console.log('commitPointCost:', event.budgetPoints);
+    console.log('commitPointCost:', event.commitPointCost);
     setSelectedEventForRegistration(event);
     setShowConfirmModal(true);
   };
@@ -375,8 +378,8 @@ export default function StudentEventsPage() {
         </View>
 
         {/* Search Bar */}
-        <View className="mb-4">
-          <View className="flex-row items-center bg-white rounded-lg px-4 py-3 shadow-sm">
+        <View className="mb-4 flex-row gap-2">
+          <View className="flex-1 flex-row items-center bg-white rounded-lg px-4 py-3 shadow-sm">
             <Text className="text-gray-400 mr-2">🔍</Text>
             <TextInput
               placeholder="Search events..."
@@ -391,6 +394,13 @@ export default function StudentEventsPage() {
               </TouchableOpacity>
             )}
           </View>
+          
+          <TouchableOpacity
+            onPress={() => setShowCalendarModal(true)}
+            className="bg-blue-600 rounded-lg px-4 py-3 shadow-sm justify-center"
+          >
+            <Ionicons name="calendar" size={20} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         {/* Events List */}
@@ -495,11 +505,11 @@ export default function StudentEventsPage() {
                         )}
 
                         {/* Point Cost */}
-                        {event.budgetPoints !== undefined && event.budgetPoints > 0 && (
+                        {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
                           <View className="flex-row items-center">
                             <Text className="text-gray-400 mr-2">🏆</Text>
                             <Text className="text-sm text-gray-600">
-                              Cost: <Text className="font-semibold text-amber-600">{event.budgetPoints}</Text> points
+                              Cost: <Text className="font-semibold text-amber-600">{event.commitPointCost}</Text> points
                             </Text>
                           </View>
                         )}
@@ -810,10 +820,10 @@ export default function StudentEventsPage() {
                     <Text className="text-2xl mr-3">🏆</Text>
                     <View className="flex-1">
                       <Text className="font-bold text-yellow-900 mb-2">
-                        Point Cost: {selectedEventForRegistration.budgetPoints || 0} points
+                        Point Cost: {selectedEventForRegistration.commitPointCost || 0} points
                       </Text>
-                      <Text className="text-sm text-yellow-800 mb-2">
-                        <Text className="font-semibold">{selectedEventForRegistration.budgetPoints || 0} points</Text> will be received back along with bonus points if you fully participate in the event.
+                      <Text className="text-sm text-gray-600 mt-3">
+                        <Text className="font-semibold">{selectedEventForRegistration.commitPointCost || 0} points</Text> will be received back along with bonus points if you fully participate in the event.
                       </Text>
                       <Text className="text-sm text-yellow-800">
                         Otherwise, they will be <Text className="font-semibold">lost and not refunded</Text>.
@@ -845,6 +855,17 @@ export default function StudentEventsPage() {
           </View>
         </View>
       </Modal>
+
+      {/* Calendar Modal */}
+      <CalendarModal
+        visible={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        events={filteredEvents}
+        onEventClick={(event) => {
+          setShowCalendarModal(false);
+          router.push(`/student/events/${event.id}` as any);
+        }}
+      />
 
       <NavigationBar role={user?.role} user={user || undefined} />
     </SafeAreaView>

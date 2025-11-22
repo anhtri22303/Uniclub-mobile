@@ -103,13 +103,20 @@ export default function EventDetailPage() {
       if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
         try {
           setSummaryLoading(true);
+          console.log("📊 Fetching event summary for event:", id);
           const summaryData = await getEventSummary(id);
+          console.log("📊 Event summary received:", summaryData);
           setEventSummary(summaryData);
         } catch (summaryError) {
-          console.error("Failed to load event summary:", summaryError);
+          console.error("❌ Failed to load event summary:", summaryError);
+          // Reset summary on error to avoid showing stale data
+          setEventSummary(null);
         } finally {
           setSummaryLoading(false);
         }
+      } else {
+        // Reset summary if status is not APPROVED, ONGOING, or COMPLETED
+        setEventSummary(null);
       }
     } catch (error) {
       console.error('Failed to load event detail:', error);
@@ -583,8 +590,8 @@ export default function EventDetailPage() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-teal-600 pt-12 pb-6 px-6">
-        <View className="flex-row items-center justify-between mb-4">
+      <View className="bg-teal-600 pt-12 pb-3 px-6">
+        <View className="flex-row items-center justify-between mb-2">
           <View className="flex-row items-center flex-1">
             <TouchableOpacity
               onPress={() => router.back()}
@@ -597,7 +604,21 @@ export default function EventDetailPage() {
             </Text>
           </View>
           {/* Action buttons */}
-          <View className="flex-row gap-2">
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            {/* View Staff List button - show for PENDING_COCLUB, PENDING_UNISTAFF, APPROVED, ONGOING, COMPLETED */}
+            {(event.status === 'PENDING_COCLUB' ||
+              event.status === 'PENDING_UNISTAFF' ||
+              event.status === 'APPROVED' ||
+              event.status === 'ONGOING' ||
+              event.status === 'COMPLETED') && (
+              <TouchableOpacity
+                onPress={() => setShowAddStaffModal(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.18)' }}
+              >
+                <Ionicons name="people" size={20} color="white" style={{ marginRight: 6 }} />
+                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Staff</Text>
+              </TouchableOpacity>
+            )}
             {myCoHostStatus === 'PENDING' && (
               <>
                 <TouchableOpacity
@@ -655,9 +676,7 @@ export default function EventDetailPage() {
               <Text className="text-2xl font-bold text-gray-900 flex-1 mr-4">
                 {event.name}
               </Text>
-              <View className="bg-gray-100 px-3 py-1 rounded-lg">
-                <Text className="text-gray-600 text-xs font-mono">#{event.id}</Text>
-              </View>
+              
             </View>
 
             {/* Badges */}
@@ -700,7 +719,7 @@ export default function EventDetailPage() {
               </View>
             </View>
 
-            <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
+            <View className="bg-gray-50 p-4 rounded-lg flex-row items-center mb-3">
               <View className="bg-teal-100 p-3 rounded-lg mr-4">
                 <Ionicons name="time" size={20} color="#0D9488" />
               </View>
@@ -713,6 +732,21 @@ export default function EventDetailPage() {
                 <Text className="text-gray-500 text-sm">Event Duration</Text>
               </View>
             </View>
+
+            {/* Commit Point Cost (Ticket Price) */}
+            {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
+              <View className="bg-amber-50 p-4 rounded-lg flex-row items-center">
+                <View className="bg-amber-100 p-3 rounded-lg mr-4">
+                  <Ionicons name="pricetag" size={20} color="#F59E0B" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-900 font-medium">
+                    <Text className="font-bold text-amber-600">{event.commitPointCost}</Text> points
+                  </Text>
+                  <Text className="text-gray-500 text-sm">Ticket Price</Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Divider */}
@@ -764,17 +798,25 @@ export default function EventDetailPage() {
                 </Text>
               </View>
               <View className="flex-1 bg-green-50 p-4 rounded-lg">
-                <Text className="text-green-600 text-xs font-medium mb-1">Checked In</Text>
+                <Text className="text-green-600 text-xs font-medium mb-1">
+                  {eventSummary ? 'Registered' : 'Checked In'}
+                </Text>
                 <Text className="text-green-900 text-xl font-bold">
-                  {summaryLoading ? '...' : eventSummary ? eventSummary.registrationsCount : event.currentCheckInCount}
+                  {summaryLoading 
+                    ? '...' 
+                    : eventSummary?.registrationsCount !== undefined 
+                      ? eventSummary.registrationsCount 
+                      : event.currentCheckInCount || 0}
                 </Text>
               </View>
               <View className="flex-1 bg-orange-50 p-4 rounded-lg">
                 <Text className="text-orange-600 text-xs font-medium mb-1">Remaining</Text>
                 <Text className="text-orange-900 text-xl font-bold">
-                  {summaryLoading ? '...' : eventSummary 
-                    ? event.maxCheckInCount - eventSummary.registrationsCount 
-                    : event.maxCheckInCount - event.currentCheckInCount}
+                  {summaryLoading 
+                    ? '...' 
+                    : eventSummary?.registrationsCount !== undefined
+                      ? event.maxCheckInCount - eventSummary.registrationsCount 
+                      : event.maxCheckInCount - (event.currentCheckInCount || 0)}
                 </Text>
               </View>
             </View>
@@ -802,13 +844,13 @@ export default function EventDetailPage() {
                 <View className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <Text className="text-blue-700 text-xs font-medium mb-1">Total Registrations</Text>
                   <Text className="text-blue-900 text-xl font-bold">
-                    {summaryLoading ? '...' : eventSummary.registrationsCount}
+                    {summaryLoading ? '...' : eventSummary.registrationsCount || 0}
                   </Text>
                 </View>
                 <View className="flex-1 bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <Text className="text-amber-700 text-xs font-medium mb-1">Refunded</Text>
                   <Text className="text-amber-900 text-xl font-bold">
-                    {summaryLoading ? '...' : eventSummary.refundedCount}
+                    {summaryLoading ? '...' : eventSummary.refundedCount || 0}
                   </Text>
                 </View>
               </View>
@@ -1226,15 +1268,7 @@ export default function EventDetailPage() {
         <AddStaffModal
           visible={showAddStaffModal}
           onClose={() => setShowAddStaffModal(false)}
-          onSubmit={handleAddStaff}
-          clubMembers={clubMembers.map((m) => ({
-            id: m.id,
-            membershipId: m.id,
-            memberName: m.member?.name || 'Unknown',
-            memberEmail: m.member?.email || '',
-          }))}
-          eventName={event.name}
-          existingStaffIds={staffList.map((s) => s.membershipId)}
+          eventId={event.id}
         />
       )}
 

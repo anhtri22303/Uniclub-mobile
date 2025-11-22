@@ -261,7 +261,7 @@ export default function ClubLeaderOrdersPage() {
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
-              <Text className="text-2xl font-bold text-white">Redeem Orders</Text>
+              <Text className="text-2xl font-bold text-white">        Redeem Orders</Text>
               <Text className="text-sm text-white opacity-90 mt-1">
                 Manage product redemptions
               </Text>

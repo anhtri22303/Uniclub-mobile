@@ -4,15 +4,15 @@ import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -105,18 +105,18 @@ export default function Sidebar({ role }: SidebarProps) {
   const getMenuItems = (): MenuItem[] => {
     if (role === 'club_leader') {
       return [
-        {
-          name: 'application',
-          icon: 'document-text',
-          route: '/club-leader/application',
-          label: 'Application'
-        },
-        {
-          name: 'members',
-          icon: 'people',
-          route: '/club-leader/members',
-          label: 'Members'
-        },
+        // {
+        //   name: 'application',
+        //   icon: 'document-text',
+        //   route: '/club-leader/application',
+        //   label: 'Application'
+        // },
+        // {
+        //   name: 'members',
+        //   icon: 'people',
+        //   route: '/club-leader/members',
+        //   label: 'Members'
+        // },
         {
           name: 'events',
           icon: 'calendar',

@@ -3,13 +3,13 @@ import { eventQR } from '@services/event.service';
 import { getCheckinUrl } from '@utils/getLocalUrl';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Toast from 'react-native-toast-message';
@@ -53,7 +53,8 @@ export default function QRModal({
       const result = await eventQR(eventId, currentPhase);
       console.log(`[QRModal] Received QR result - phase: ${result.phase}, token: ${result.token.substring(0, 20)}..., expiresIn: ${result.expiresIn}`);
       setToken(result.token);
-      setCurrentPhase(result.phase);
+      // Type assertion: API returns string but we know it's one of the valid phase values
+      setCurrentPhase(result.phase as 'START' | 'END' | 'MID');
       // Update refresh timer based on API response
       if (result.expiresIn) {
         setSecondsLeft(result.expiresIn);

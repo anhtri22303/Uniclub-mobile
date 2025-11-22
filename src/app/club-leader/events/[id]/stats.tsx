@@ -1,9 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEvent, useEventFraud, useEventStats } from '@hooks/useQueryHooks';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Hide the navigation header
+export const unstable_settings = {
+  headerShown: false,
+};
 
 interface StatCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -125,10 +130,11 @@ export default function EventStatsPage() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9488']} />}
       >
-        {/* Header */}
+        {/* Header (Back to Event, tên event, Attendance Statistics) */}
         <View className="p-4 bg-white border-b border-gray-200">
           <TouchableOpacity
             className="flex-row items-center mb-3"

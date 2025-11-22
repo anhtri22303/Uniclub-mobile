@@ -2,15 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface AvatarCropModalProps {
@@ -19,6 +19,7 @@ interface AvatarCropModalProps {
   imageUri: string;
   onCropComplete: (croppedBlob: { uri: string; base64?: string }) => void | Promise<void>;
   aspectRatio?: number; // 1 for square (avatar), 3 for 3:1 (background)
+  minOutputWidth?: number; // Optional: minimum width (in natural pixels) for the exported image
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -30,6 +31,7 @@ export function AvatarCropModal({
   imageUri,
   onCropComplete,
   aspectRatio = 1, // Default to square
+  minOutputWidth, // Optional minimum output width
 }: AvatarCropModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -53,7 +55,7 @@ export function AvatarCropModal({
       let cropWidth: number, cropHeight: number, originX: number, originY: number;
       
       if (aspectRatio === 1) {
-        // Square crop
+        // Square crop (avatar)
         const size = Math.min(imageInfo.width, imageInfo.height);
         cropWidth = size;
         cropHeight = size;
@@ -77,9 +79,18 @@ export function AvatarCropModal({
         }
       }
 
-      // Resize dimensions based on aspect ratio
-      const resizeWidth = aspectRatio === 1 ? 400 : 1200;
-      const resizeHeight = aspectRatio === 1 ? 400 : 400;
+      // Determine resize dimensions based on aspect ratio and minOutputWidth
+      const effectiveMinOutputWidth = minOutputWidth || (aspectRatio === 1 ? 512 : 1800);
+      let resizeWidth: number, resizeHeight: number;
+      
+      // Ensure output meets minimum width requirement
+      if (aspectRatio === 1) {
+        resizeWidth = Math.max(400, effectiveMinOutputWidth);
+        resizeHeight = resizeWidth;
+      } else {
+        resizeWidth = Math.max(1200, effectiveMinOutputWidth);
+        resizeHeight = Math.round(resizeWidth / aspectRatio);
+      }
 
       // Crop and resize
       const manipulatedImage = await ImageManipulator.manipulateAsync(

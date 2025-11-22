@@ -44,7 +44,11 @@ export default function ProfileScreen() {
     phone: '',
     majorName: '',
     bio: '',
+    studentCode: '',
   });
+  
+  // Validation state for studentCode
+  const [studentCodeError, setStudentCodeError] = useState<string | null>(null);
 
   // Avatar states
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -144,6 +148,7 @@ export default function ProfileScreen() {
         phone: profileData.phone || '',
         majorName: profileData.majorName || '',
         bio: profileData.bio || '',
+        studentCode: profileData.studentCode || '',
       });
 
       // Set avatar and background preview
@@ -270,9 +275,39 @@ export default function ProfileScreen() {
     ).start();
   }, [profile?.wallet?.balancePoints]);
 
+  // Validation function for studentCode
+  const validateStudentCode = (code: string): string | null => {
+    if (!code || code.trim() === '') {
+      return null; // Allow empty
+    }
+    
+    // Format: 2 letters followed by 6 numbers (e.g., SE000001)
+    const pattern = /^[A-Za-z]{2}\d{6}$/;
+    
+    if (code.length !== 8) {
+      return 'Student code must be exactly 8 characters (2 letters + 6 numbers)';
+    }
+    
+    if (!pattern.test(code)) {
+      return 'Student code must start with 2 letters followed by 6 numbers (e.g., SE000001)';
+    }
+    
+    return null; // Valid
+  };
+
   // Handle profile update
   const handleSave = async () => {
     if (!profile) return;
+
+    // Validate studentCode before saving
+    if (formData.studentCode) {
+      const error = validateStudentCode(formData.studentCode);
+      if (error) {
+        setStudentCodeError(error);
+        Alert.alert('Validation Error', error);
+        return;
+      }
+    }
 
     try {
       setSaving(true);
@@ -281,25 +316,57 @@ export default function ProfileScreen() {
       const selectedMajor = majors.find(m => m.name === formData.majorName);
       const majorId = selectedMajor ? selectedMajor.id : undefined;
 
+      if (formData.majorName && !selectedMajor) {
+        console.warn(`Cannot find majorId for majorName: ${formData.majorName}`);
+      }
+
       const updateData: EditProfileRequest = {
         fullName: formData.fullName,
         phone: formData.phone,
-        majorId: majorId, // Send majorId instead of majorName
+        majorId: majorId, // Send majorId (number) instead of majorName (string)
         bio: formData.bio,
+        studentCode: formData.studentCode || undefined,
       };
+
+      console.log('Sending profile update with payload:', updateData);
 
       const response = await UserService.editProfile(updateData);
       
       if (response && response.success) {
+        setStudentCodeError(null); // Clear validation error on success
         Alert.alert('Success', 'Your profile has been updated successfully!');
         setEditing(false);
         await loadProfile(); // Reload profile data
       } else {
         throw new Error(response?.message || 'Unable to update profile');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Edit profile failed:', err);
-      Alert.alert('Error', err instanceof Error ? err.message : 'An error occurred while updating profile');
+      
+      // Handle API error messages
+      let errorMessage = 'An error occurred while updating profile';
+      
+      if (err.response && err.response.data && err.response.data.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response && err.response.data) {
+        try {
+          const errorData = err.response.data;
+          const firstErrorKey = Object.keys(errorData)[0];
+          const firstError = errorData[firstErrorKey];
+          
+          if (typeof firstError === 'string') {
+            errorMessage = firstError;
+          } else if (Array.isArray(firstError) && firstError.length > 0) {
+            errorMessage = firstError[0];
+          }
+        } catch (e) {
+          // Use default message
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setSaving(false);
     }
@@ -316,7 +383,7 @@ export default function ProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false, // We'll handle cropping ourselves
         quality: 1,
       });
@@ -347,15 +414,14 @@ export default function ProfileScreen() {
       
       Alert.alert('Uploading...', 'Uploading image, please wait...');
 
-      // Create FormData for upload
-      const formData = new FormData();
-      formData.append('file', {
+      // Create file object for React Native upload
+      const fileToUpload = {
         uri: croppedImage.uri,
         type: 'image/jpeg',
         name: 'cropped-avatar.jpg',
-      } as any);
+      };
 
-      const response = await UserService.uploadAvatar(formData);
+      const response = await UserService.uploadAvatar(fileToUpload);
       
       if (response && response.success) {
         Alert.alert('Success', 'Your avatar has been updated successfully!');
@@ -393,7 +459,7 @@ export default function ProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false,
         quality: 1,
       });
@@ -424,15 +490,14 @@ export default function ProfileScreen() {
       
       Alert.alert('Uploading...', 'Uploading background image, please wait...');
 
-      // Create FormData for upload
-      const formData = new FormData();
-      formData.append('file', {
+      // Create file object for React Native upload
+      const fileToUpload = {
         uri: croppedImage.uri,
         type: 'image/jpeg',
         name: 'cropped-background.jpg',
-      } as any);
+      };
 
-      const response = await UserService.uploadBackground(formData);
+      const response = await UserService.uploadBackground(fileToUpload);
       
       if (response && response.success) {
         Alert.alert('Success', 'Your background has been updated successfully!');
@@ -928,6 +993,37 @@ export default function ProfileScreen() {
                   </View>
                   
                   <View>
+                    <Text className="text-sm font-medium text-gray-700 mb-2">Student Code</Text>
+                    <TextInput
+                      value={formData.studentCode}
+                      onChangeText={(text) => {
+                        const upperText = text.toUpperCase();
+                        setFormData({ ...formData, studentCode: upperText });
+                        // Validate on change
+                        const error = validateStudentCode(upperText);
+                        setStudentCodeError(error);
+                      }}
+                      className={`bg-gray-50 border rounded-xl px-4 py-3 text-base ${
+                        studentCodeError ? 'border-red-500' : 'border-gray-200'
+                      }`}
+                      placeholder="SE000001"
+                      maxLength={8}
+                      autoCapitalize="characters"
+                    />
+                    {studentCodeError && (
+                      <View className="flex-row items-center mt-1">
+                        <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                        <Text className="text-xs text-red-500 ml-1">{studentCodeError}</Text>
+                      </View>
+                    )}
+                    {!studentCodeError && formData.studentCode && (
+                      <Text className="text-xs text-gray-500 mt-1">
+                        Format: 2 letters + 6 numbers (e.g., SE000001)
+                      </Text>
+                    )}
+                  </View>
+                  
+                  <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Major</Text>
                     <View className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
                       <Picker
@@ -1085,11 +1181,32 @@ export default function ProfileScreen() {
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Student Code</Text>
                     <TextInput
-                      value={profile.studentCode || ''}
-                      className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-500"
-                      placeholder="Student code (read-only)"
-                      editable={false}
+                      value={formData.studentCode}
+                      onChangeText={(text) => {
+                        const upperText = text.toUpperCase();
+                        setFormData({ ...formData, studentCode: upperText });
+                        // Validate on change
+                        const error = validateStudentCode(upperText);
+                        setStudentCodeError(error);
+                      }}
+                      className={`bg-gray-50 border rounded-xl px-4 py-3 text-base ${
+                        studentCodeError ? 'border-red-500' : 'border-gray-200'
+                      }`}
+                      placeholder="SE000001"
+                      maxLength={8}
+                      autoCapitalize="characters"
                     />
+                    {studentCodeError && (
+                      <View className="flex-row items-center mt-1">
+                        <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                        <Text className="text-xs text-red-500 ml-1">{studentCodeError}</Text>
+                      </View>
+                    )}
+                    {!studentCodeError && formData.studentCode && (
+                      <Text className="text-xs text-gray-500 mt-1">
+                        Format: 2 letters + 6 numbers (e.g., SE000001)
+                      </Text>
+                    )}
                   </View>
                   
                   <View>
@@ -1259,6 +1376,8 @@ export default function ProfileScreen() {
         onClose={handleCropCancel}
         imageUri={imageToCrop}
         onCropComplete={handleCropComplete}
+        aspectRatio={1}
+        minOutputWidth={512}
       />
 
       {/* Background Crop Modal (3:1 aspect ratio for wide background) */}
@@ -1268,6 +1387,7 @@ export default function ProfileScreen() {
         imageUri={backgroundImageToCrop}
         onCropComplete={handleBackgroundCropComplete}
         aspectRatio={3}
+        minOutputWidth={1800}
       />
 
       {/* Change Password Modal */}

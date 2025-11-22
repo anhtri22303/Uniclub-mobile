@@ -18,8 +18,9 @@ export interface EventStaff {
   eventName: string;
   membershipId: number;
   memberName: string;
+  memberEmail?: string;
   duty: string;
-  state: "ACTIVE" | "INACTIVE";
+  state: "ACTIVE" | "INACTIVE" | "EXPIRED";
   assignedAt: string;
   unassignedAt: string | null;
 }
@@ -56,6 +57,19 @@ export async function getEventStaff(
 ): Promise<EventStaff[]> {
   const res = await axiosClient.get<ApiResponse<EventStaff[]>>(
     `/api/events/${eventId}/staffs`
+  );
+  return res.data.data;
+}
+
+/**
+ * Get event staff after completion (EXPIRED state)
+ * GET /api/events/{eventId}/staffs/completed
+ */
+export async function getEventStaffCompleted(
+  eventId: number | string
+): Promise<EventStaff[]> {
+  const res = await axiosClient.get<ApiResponse<EventStaff[]>>(
+    `/api/events/${eventId}/staffs/completed`
   );
   return res.data.data;
 }
@@ -99,13 +113,13 @@ export async function evaluateEventStaff(
 
 /**
  * Get staff evaluations for event
- * GET /api/events/{eventId}/staff/evaluates
+ * GET /api/events/{eventId}/staff/evaluations
  */
 export async function getEvaluateEventStaff(
   eventId: number | string
 ): Promise<StaffEvaluation[]> {
   const res = await axiosClient.get<ApiResponse<StaffEvaluation[]>>(
-    `/api/events/${eventId}/staff/evaluates`
+    `/api/events/${eventId}/staff/evaluations`
   );
   return res.data.data;
 }
@@ -125,6 +139,7 @@ export async function getTopEvaluatedStaff(
 
 export default {
   getEventStaff,
+  getEventStaffCompleted,
   postEventStaff,
   evaluateEventStaff,
   getEvaluateEventStaff,

@@ -283,7 +283,7 @@ export default function ClubLeaderPage() {
       
       {/* Header */}
       <View className="px-6 py-4 bg-white border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800">Club Leader Dashboard</Text>
+        <Text className="text-2xl font-bold text-gray-800">        Club Leader Dashboard</Text>
       </View>
 
       <ScrollView

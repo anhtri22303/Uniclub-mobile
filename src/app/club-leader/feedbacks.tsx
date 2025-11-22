@@ -3,18 +3,24 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { Feedback, FeedbackService } from '@services/feedback.service';
 import { useAuthStore } from '@stores/auth.store';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Hide the navigation header
+export const unstable_settings = {
+  headerShown: false,
+};
 
 type FilterType = 'all' | '5' | '4' | '3' | '2' | '1';
 
@@ -131,6 +137,7 @@ export default function ClubLeaderFeedbacksPage() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
+        <Stack.Screen options={{ headerShown: false }} />
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#0D9488" />
