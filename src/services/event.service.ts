@@ -172,17 +172,40 @@ export const getEventById = async (id: string | number): Promise<Event> => {
 };
 
 /**
- * Update event status.
+ * Update event status - Approve budget (updated to match web API)
+ * PUT /api/events/{eventId}/approve-budget
  */
-export const putEventStatus = async (id: string | number, status: string): Promise<Event> => {
+export const putEventStatus = async (id: string | number, approvedBudgetPoints: number): Promise<Event> => {
   try {
-    const response = await axiosClient.put(`api/events/${id}/status`, { status });
+    const response = await axiosClient.put(
+      `api/events/${id}/approve-budget`,
+      { approvedBudgetPoints }
+    );
     const data: any = response.data;
+    console.log(`Approved budget for event ${id} with points: ${approvedBudgetPoints}:`, data);
     
     if (data && data.data) return data.data;
     return data;
   } catch (error) {
-    console.error(`Error updating event ${id} status:`, error);
+    console.error(`Error approving budget for event ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get all settled events
+ * GET /api/events/settled
+ */
+export const getEventSettle = async () => {
+  try {
+    const response = await axiosClient.get(`/api/events/settled`);
+    const data: any = response.data;
+    console.log(`Fetched settled events:`, data);
+    // Response structure: { success: true, message: "success", data: [...] }
+    if (data?.data) return data.data;
+    return data;
+  } catch (error) {
+    console.error(`Error fetching settled events:`, error);
     throw error;
   }
 };
@@ -616,6 +639,30 @@ export const eventSettle = async (eventId: string | number) => {
   }
 };
 
+/**
+ * Refund event product to a user
+ * PUT /api/events/{eventId}/refund-product/{productId}
+ */
+export const refundEventProduct = async (
+  eventId: string | number,
+  productId: string | number,
+  userId: string | number
+) => {
+  try {
+    const response = await axiosClient.put(
+      `/api/events/${eventId}/refund-product/${productId}`,
+      null,
+      { params: { userId } }
+    );
+    const data: any = response.data;
+    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error refunding product for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
 export default {
   fetchEvent,
   createEvent,
@@ -644,5 +691,7 @@ export default {
   cancelEventRegistration,
   eventTimeExtend,
   rejectEvent,
-  eventSettle
+  eventSettle,
+  getEventSettle,
+  refundEventProduct
 };

@@ -81,6 +81,17 @@ export interface UniToEventTransaction {
   receiverName: string | null;
 }
 
+export interface UniToEventTransaction {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+  signedAmount: string;
+  senderName: string | null;
+  receiverName: string | null;
+}
+
 export class WalletService {
   /**
    * Get current user's wallet

@@ -2,6 +2,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { LogBox } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import '../../global.css';
@@ -14,6 +16,14 @@ import { useColorScheme } from '@hooks/useColorScheme';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  // Disable specific warnings in development
+  useEffect(() => {
+    LogBox.ignoreLogs([
+      'Each child in a list should have a unique "key" prop',
+      'VirtualizedLists should never be nested',
+    ]);
+  }, []);
   const [loaded] = useFonts({
     SpaceMono: require('@assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -64,11 +74,6 @@ export default function RootLayout() {
               <Stack.Screen name="uni-staff/club-requests" options={{ headerShown: false }} />
               <Stack.Screen name="uni-staff/event-requests" options={{ headerShown: false }} />
               <Stack.Screen name="uni-staff/points" options={{ headerShown: false }} />
-              <Stack.Screen name="admin" options={{ headerShown: false }} />
-              <Stack.Screen name="admin/users" options={{ headerShown: false }} />
-              <Stack.Screen name="admin/clubs" options={{ headerShown: false }} />
-              <Stack.Screen name="admin/events" options={{ headerShown: false }} />
-              <Stack.Screen name="admin/events/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="staff" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />

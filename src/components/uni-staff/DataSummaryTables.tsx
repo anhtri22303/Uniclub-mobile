@@ -88,7 +88,6 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
   const renderLocationCard = (location: Location) => (
     <View
-      key={location.locationId}
       className="bg-white rounded-xl p-4 mb-3 border border-gray-200"
     >
       <View className="flex-row items-start justify-between mb-2">
@@ -127,7 +126,6 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
   const renderTagCard = (tag: Tag) => (
     <View
-      key={tag.tagId}
       className="bg-white rounded-xl p-4 mb-3 border border-gray-200"
     >
       <View className="flex-row items-start justify-between mb-2">
@@ -174,7 +172,6 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
   const renderMajorCard = (major: Major) => (
     <View
-      key={major.majorId}
       className="bg-white rounded-xl p-4 mb-3 border border-gray-200"
     >
       <View className="flex-row items-start justify-between mb-2">
@@ -223,7 +220,6 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
   const renderPolicyCard = (policy: MultiplierPolicy) => (
     <View
-      key={policy.id}
       className="bg-white rounded-xl p-4 mb-3 border border-gray-200"
     >
       <View className="flex-row items-start justify-between mb-2">
@@ -345,7 +341,11 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
       <View>
         {activeTab === 'locations' &&
           (locations.length > 0 ? (
-            locations.map((location) => renderLocationCard(location))
+            locations.map((location) => (
+              <React.Fragment key={location.locationId}>
+                {renderLocationCard(location)}
+              </React.Fragment>
+            ))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">📍</Text>
@@ -360,7 +360,11 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
         {activeTab === 'tags' &&
           (tags.length > 0 ? (
-            tags.map((tag) => renderTagCard(tag))
+            tags.map((tag) => (
+              <React.Fragment key={tag.tagId}>
+                {renderTagCard(tag)}
+              </React.Fragment>
+            ))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">🏷️</Text>
@@ -375,7 +379,11 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
         {activeTab === 'majors' &&
           (majors.length > 0 ? (
-            majors.map((major) => renderMajorCard(major))
+            majors.map((major) => (
+              <React.Fragment key={major.majorId}>
+                {renderMajorCard(major)}
+              </React.Fragment>
+            ))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">🎓</Text>
@@ -390,7 +398,11 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
         {activeTab === 'policies' &&
           (multiplierPolicies.length > 0 ? (
-            multiplierPolicies.map((policy) => renderPolicyCard(policy))
+            multiplierPolicies.map((policy) => (
+              <React.Fragment key={policy.id}>
+                {renderPolicyCard(policy)}
+              </React.Fragment>
+            ))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
               <Text className="text-4xl mb-2">⚙️</Text>

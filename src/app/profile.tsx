@@ -84,13 +84,6 @@ export default function ProfileScreen() {
   const flameAnimation = useRef(new Animated.Value(1)).current;
   const glowAnimation = useRef(new Animated.Value(0)).current;
 
-  // Static data for admin stats
-  const adminStats = {
-    totalUsers: '1,247',
-    activeEvents: '89',
-    reportsGenerated: '156',
-  };
-
   const formatRoleName = (roleName?: string) => {
     if (!roleName) return '';
     const map: Record<string, string> = {
@@ -99,7 +92,6 @@ export default function ProfileScreen() {
       CLUB_MANAGER: 'CLUB LEADER',
       UNIVERSITY_STAFF: 'UNIVERSITY STAFF',
       UNI_ADMIN: 'UNIVERSITY ADMIN',
-      ADMIN: 'ADMIN',
       STAFF: 'STAFF',
     };
     return map[roleName.toUpperCase()] || roleName.replace(/_/g, ' ').toUpperCase();
@@ -593,7 +585,7 @@ export default function ProfileScreen() {
     };
   };
 
-  const isAdminRole = ['uni_staff', 'uni_admin', 'admin', 'staff'].includes(user?.role || '');
+  const isAdminRole = ['uni_staff', 'staff'].includes(user?.role || '');
 
   // Loading state
   if (loading) {
@@ -1108,35 +1100,7 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Admin Statistics */}
-            <View className="bg-white rounded-3xl p-6 shadow-lg">
-              <Text className="text-xl font-bold text-gray-800 mb-4">Quick Statistics</Text>
-              <View className="grid grid-cols-1 gap-4">
-                <View className="flex-row items-center justify-between p-4 bg-blue-50 rounded-xl">
-                  <View className="flex-row items-center">
-                    <Ionicons name="people" size={24} color="#3B82F6" />
-                    <Text className="text-gray-700 ml-3">Total Users</Text>
-                  </View>
-                  <Text className="text-xl font-bold text-blue-600">{adminStats.totalUsers}</Text>
-                </View>
-                
-                <View className="flex-row items-center justify-between p-4 bg-green-50 rounded-xl">
-                  <View className="flex-row items-center">
-                    <Ionicons name="calendar" size={24} color="#10B981" />
-                    <Text className="text-gray-700 ml-3">Active Events</Text>
-                  </View>
-                  <Text className="text-xl font-bold text-green-600">{adminStats.activeEvents}</Text>
-                </View>
-                
-                <View className="flex-row items-center justify-between p-4 bg-purple-50 rounded-xl">
-                  <View className="flex-row items-center">
-                    <Ionicons name="document-text" size={24} color="#8B5CF6" />
-                    <Text className="text-gray-700 ml-3">Reports Generated</Text>
-                  </View>
-                  <Text className="text-xl font-bold text-purple-600">{adminStats.reportsGenerated}</Text>
-                </View>
-              </View>
-            </View>
+
           </View>
         ) : (
           /* Student Interface */

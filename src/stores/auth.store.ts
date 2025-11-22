@@ -63,7 +63,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           UNIVERSITY_ADMIN: 'uni_staff',
           UNIVERSITY_STAFF: 'uni_staff',
           'UNIVERSITY STAFF': 'uni_staff',
-          ADMIN: 'admin',
           STAFF: 'staff',
         };
         return map[upper] || upper.toLowerCase();
@@ -156,7 +155,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
               university_admin: 'uni_staff',
               university_staff: 'uni_staff',
               'university staff': 'uni_staff',
-              admin: 'admin',
               staff: 'staff',
             };
             return map[lower] || lower;

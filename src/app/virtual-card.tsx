@@ -148,7 +148,6 @@ export default function VirtualCardScreen() {
       CLUB_MANAGER: 'CLUB LEADER',
       UNIVERSITY_STAFF: 'UNIVERSITY STAFF',
       UNI_ADMIN: 'UNIVERSITY ADMIN',
-      ADMIN: 'ADMIN',
       STAFF: 'STAFF',
     };
     return map[roleName.toUpperCase()] || roleName.replace(/_/g, ' ').toUpperCase();

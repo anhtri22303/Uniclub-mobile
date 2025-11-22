@@ -11,8 +11,6 @@ export const getRoleRoute = (role?: string): string => {
       return '/club-leader';
     case 'uni_staff':
       return '/uni-staff';
-    case 'admin':
-      return '/admin';
     case 'staff':
       return '/staff';
     default:
@@ -33,8 +31,6 @@ export const getRoleDisplayName = (role?: string): string => {
       return 'Club Leader';
     case 'uni_staff':
       return 'University Staff';
-    case 'admin':
-      return 'Admin';
     case 'staff':
       return 'Staff';
     default:
