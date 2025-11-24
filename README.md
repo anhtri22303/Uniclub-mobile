@@ -1,4 +1,29 @@
-# Welcome to your Expo app 👋
+Android Credentials     
+Project                 uniclub
+Application Identifier  com.anhtri.uniclub
+
+Push Notifications (FCM Legacy)
+  None assigned yet
+
+Push Notifications (FCM V1): Google Service Account Key For FCM V1
+  None assigned yet
+
+Submissions: Google Service Account Key for Play Store Submissions
+  None assigned yet
+
+Configuration: android-dev (Default)
+Keystore
+Type                JKS
+Key Alias           7d5740bb3425077693e849e4998ce978
+MD5 Fingerprint     54:65:BC:4D:D3:38:66:8A:EE:E0:7D:B0:A1:75:BE:56
+SHA1 Fingerprint    D1:99:9F:25:99:CA:31:BE:F0:77:4C:9C:D9:05:60:44:8E:BF:B0:D3
+SHA256 Fingerprint  9F:F0:EC:C9:32:0A:58:AA:9D:16:78:93:31:3E:62:CF:53:97:50:3E:75:0B:73:F6:DF:D2:AD:55:14:92:C5:08
+Updated             14 seconds ago
+
+
+# 
+
+Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
@@ -9,7 +34,6 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    ```bash
    npm install
    ```
-
 2. Start the app
 
    ```bash

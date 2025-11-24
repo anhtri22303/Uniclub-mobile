@@ -2,7 +2,7 @@ import { ENV } from '@configs/environment';
 import { Ionicons } from '@expo/vector-icons';
 import { SignUpCredentials } from '@models/auth/auth.types';
 import AuthService from '@services/auth.service';
-// import GoogleAuthService from '@services/googleAuth.service'; // Commented until Google Console setup
+// import GoogleAuthService from '@services/googleAuth.service';
 import { useAuthStore } from '@stores/auth.store';
 import { getRoleRoute } from '@utils/roleRouting';
 import { useRouter } from 'expo-router';
@@ -325,16 +325,15 @@ export default function LoginScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    // Google Sign-In temporarily disabled - requires Google Console setup
     Toast.show({
       type: 'info',
-      text1: 'Coming Soon',
-      text2: 'Google Sign-In is currently being configured',
+      text1: 'Waiting Setup',
+      text2: 'Google Sign-In is being configured',
       visibilityTime: 3000,
       autoHide: true,
     });
     
-    /* Uncomment when Google Console is setup
+    /* 
     setIsGoogleLoading(true);
     
     try {

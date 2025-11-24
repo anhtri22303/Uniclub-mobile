@@ -2,6 +2,7 @@ import AddStaffModal from '@components/AddStaffModal';
 import EvaluateStaffModal from '@components/EvaluateStaffModal';
 import EvaluationDetailModal from '@components/EvaluationDetailModal';
 import PhaseSelectionModal from '@components/PhaseSelectionModal';
+import PublicEventQRButton from '@components/PublicEventQRButton';
 import QRModal from '@components/QRModal';
 import TimeExtensionModal from '@components/TimeExtensionModal';
 import WalletHistoryModal from '@components/WalletHistoryModal';
@@ -9,12 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAssignEventStaff, useEvaluateStaff, useEventStaff, useExtendEventTime, useStaffEvaluations } from '@hooks/useQueryHooks';
 import type { Event, EventSummary } from '@services/event.service';
 import {
-  coHostRespond,
-  completeEvent,
-  getEventById,
-  getEventSummary,
-  submitForUniversityApproval,
-  timeObjectToString
+    coHostRespond,
+    completeEvent,
+    getEventById,
+    getEventSummary,
+    submitForUniversityApproval,
+    timeObjectToString
 } from '@services/event.service';
 import type { EventStaff } from '@services/eventStaff.service';
 import { MembershipsService } from '@services/memberships.service';
@@ -22,14 +23,14 @@ import { useAuthStore } from '@stores/auth.store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -858,15 +859,32 @@ export default function EventDetailPage() {
 
             {/* QR Code Generation */}
             {isEventActive() && (
-              <TouchableOpacity
-                onPress={handleGenerateQR}
-                className="bg-teal-600 p-4 rounded-lg flex-row items-center justify-center"
-              >
-                <Ionicons name="qr-code" size={20} color="white" />
-                <Text className="text-white font-semibold ml-2">
-                  Generate QR Code
-                </Text>
-              </TouchableOpacity>
+              <View>
+                {/* Show Public Event QR button for PUBLIC events */}
+                {event.type === 'PUBLIC' ? (
+                  <PublicEventQRButton
+                    event={{
+                      id: event.id,
+                      name: event.name,
+                      checkInCode: event.checkInCode || '',
+                    }}
+                    variant="default"
+                    size="default"
+                    className="w-full"
+                  />
+                ) : (
+                  /* Show Generate QR Code button for SPECIAL and PRIVATE events */
+                  <TouchableOpacity
+                    onPress={handleGenerateQR}
+                    className="bg-teal-600 p-4 rounded-lg flex-row items-center justify-center"
+                  >
+                    <Ionicons name="qr-code" size={20} color="white" />
+                    <Text className="text-white font-semibold ml-2">
+                      Generate QR Code
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
             {/* Status message for non-active events */}

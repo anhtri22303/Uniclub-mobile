@@ -20,6 +20,8 @@ interface QRModalProps {
   eventName: string;
   eventId?: number;
   phase?: 'START' | 'END' | 'MID';
+  checkInCode?: string;
+  isPublicEvent?: boolean;
 }
 
 type QRMode = 'prod' | 'dev' | 'mobile';
@@ -30,6 +32,8 @@ export default function QRModal({
   eventName,
   eventId,
   phase = 'START',
+  checkInCode,
+  isPublicEvent = false,
 }: QRModalProps) {
   const REFRESH_SECONDS = 120; // Updated to match API expiresIn default
   const [secondsLeft, setSecondsLeft] = useState(REFRESH_SECONDS);
@@ -43,9 +47,9 @@ export default function QRModal({
   const screenWidth = Dimensions.get('window').width;
   const qrSize = isFullscreen ? Math.min(screenWidth * 0.8, 400) : 220;
 
-  // Fetch QR code with phase
+  // Fetch QR code with phase (for non-public events)
   const fetchQrCode = async () => {
-    if (!eventId) return;
+    if (!eventId || isPublicEvent) return;
     console.log(`[QRModal] Fetching QR with eventId: ${eventId}, currentPhase: ${currentPhase}`);
     setQrLoading(true);
     setError('');
@@ -75,32 +79,55 @@ export default function QRModal({
 
   // Initial fetch and refresh based on expiresIn
   useEffect(() => {
-    if (!open || !eventId) {
+    if (!open) {
       setSecondsLeft(REFRESH_SECONDS);
       setToken('');
       setCurrentPhase(phase);
       setError('');
       return;
     }
-    setCurrentPhase(phase);
-    fetchQrCode();
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          fetchQrCode();
-          return REFRESH_SECONDS;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
+    
+    // For public events, use checkInCode directly
+    if (isPublicEvent && checkInCode) {
+      setToken(checkInCode);
+      setQrLoading(false);
+      return;
+    }
+    
+    // For non-public events, fetch QR token
+    if (!isPublicEvent && eventId) {
+      setCurrentPhase(phase);
+      fetchQrCode();
+      const timer = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            fetchQrCode();
+            return REFRESH_SECONDS;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, eventId, phase]);
+  }, [open, eventId, phase, isPublicEvent, checkInCode]);
 
   // Generate QR data based on mode
   const getQRValue = () => {
     if (!token) return '';
     
+    // For public events, generate URL with check-in code
+    if (isPublicEvent) {
+      if (qrMode === 'prod') {
+        return `https://uniclub.id.vn/student/checkin/public/${token}`;
+      } else if (qrMode === 'mobile') {
+        return `exp://192.168.1.50:8081/--/student/checkin/public/${token}`;
+      } else {
+        return `http://localhost:3000/student/checkin/public/${token}`;
+      }
+    }
+    
+    // For non-public events, use token and phase
     if (qrMode === 'prod') {
       // Production mode: use token directly for web check-in
       return token;
@@ -114,8 +141,10 @@ export default function QRModal({
   };
 
   const handleManualRefresh = () => {
-    fetchQrCode();
-    setSecondsLeft(REFRESH_SECONDS);
+    if (!isPublicEvent) {
+      fetchQrCode();
+      setSecondsLeft(REFRESH_SECONDS);
+    }
   };
 
   // Fullscreen Modal
@@ -134,7 +163,9 @@ export default function QRModal({
             <View className="flex-row items-center justify-between">
               <View className="flex-1">
                 <Text className="text-white text-xl font-bold mb-1">{eventName}</Text>
-                <Text className="text-gray-400 text-sm">QR Code - Phase: {currentPhase.replace('_', ' ')}</Text>
+                <Text className="text-gray-400 text-sm">
+                  {isPublicEvent ? 'Public Event QR Code' : `QR Code - Phase: ${currentPhase.replace('_', ' ')}`}
+                </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setIsFullscreen(false)}
@@ -218,28 +249,34 @@ export default function QRModal({
                       🌐 Web Check-in
                     </Text>
                     <Text className="text-green-300 text-xs">
-                      This QR code opens the web check-in page
+                      {isPublicEvent 
+                        ? 'This QR code opens the public event check-in page' 
+                        : 'This QR code opens the web check-in page'}
                     </Text>
                   </View>
                 )}
 
-                {/* Countdown */}
-                <View className="flex-row items-center bg-gray-800 px-6 py-3 rounded-full mb-4">
-                  <Ionicons name="sync" size={16} color="#6B7280" />
-                  <Text className="text-gray-400 ml-2">
-                    Auto-refresh in{' '}
-                    <Text className="text-teal-400 font-bold">{secondsLeft}s</Text>
-                  </Text>
-                </View>
+                {/* Countdown - only show for non-public events */}
+                {!isPublicEvent && (
+                  <View className="flex-row items-center bg-gray-800 px-6 py-3 rounded-full mb-4">
+                    <Ionicons name="sync" size={16} color="#6B7280" />
+                    <Text className="text-gray-400 ml-2">
+                      Auto-refresh in{' '}
+                      <Text className="text-teal-400 font-bold">{secondsLeft}s</Text>
+                    </Text>
+                  </View>
+                )}
 
-                {/* Manual Refresh Button */}
-                <TouchableOpacity
-                  onPress={handleManualRefresh}
-                  className="bg-teal-600 px-6 py-3 rounded-lg flex-row items-center"
-                >
-                  <Ionicons name="refresh" size={20} color="white" />
-                  <Text className="text-white font-semibold ml-2">Refresh Now</Text>
-                </TouchableOpacity>
+                {/* Manual Refresh Button - only show for non-public events */}
+                {!isPublicEvent && (
+                  <TouchableOpacity
+                    onPress={handleManualRefresh}
+                    className="bg-teal-600 px-6 py-3 rounded-lg flex-row items-center"
+                  >
+                    <Ionicons name="refresh" size={20} color="white" />
+                    <Text className="text-white font-semibold ml-2">Refresh Now</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <View className="items-center py-20">
@@ -293,11 +330,20 @@ export default function QRModal({
                 <Text className="text-white/90 text-sm" numberOfLines={2}>
                   {eventName}
                 </Text>
-                <View className="mt-2 bg-white/20 px-3 py-1 rounded-full self-start">
-                  <Text className="text-white text-xs font-semibold">
-                    Phase: {currentPhase.replace('_', ' ')}
-                  </Text>
-                </View>
+                {!isPublicEvent && (
+                  <View className="mt-2 bg-white/20 px-3 py-1 rounded-full self-start">
+                    <Text className="text-white text-xs font-semibold">
+                      Phase: {currentPhase.replace('_', ' ')}
+                    </Text>
+                  </View>
+                )}
+                {isPublicEvent && (
+                  <View className="mt-2 bg-white/20 px-3 py-1 rounded-full self-start">
+                    <Text className="text-white text-xs font-semibold">
+                      Public Event
+                    </Text>
+                  </View>
+                )}
               </View>
               <TouchableOpacity
                 onPress={() => setIsFullscreen(true)}
@@ -377,30 +423,36 @@ export default function QRModal({
                       🌐 Web Check-in
                     </Text>
                     <Text className="text-xs text-green-700">
-                      QR opens web check-in page
+                      {isPublicEvent 
+                        ? 'QR opens public event check-in page' 
+                        : 'QR opens web check-in page'}
                     </Text>
                   </View>
                 )}
 
-                {/* Countdown Timer */}
-                <View className="flex-row items-center bg-gray-100 px-4 py-2 rounded-full mb-3">
-                  <Ionicons name="time-outline" size={16} color="#6B7280" />
-                  <Text className="text-gray-600 text-sm ml-2">
-                    Refreshing in{' '}
-                    <Text className="font-bold text-teal-600">{secondsLeft}s</Text>
-                  </Text>
-                </View>
+                {/* Countdown Timer - only show for non-public events */}
+                {!isPublicEvent && (
+                  <View className="flex-row items-center bg-gray-100 px-4 py-2 rounded-full mb-3">
+                    <Ionicons name="time-outline" size={16} color="#6B7280" />
+                    <Text className="text-gray-600 text-sm ml-2">
+                      Refreshing in{' '}
+                      <Text className="font-bold text-teal-600">{secondsLeft}s</Text>
+                    </Text>
+                  </View>
+                )}
 
-                {/* Refresh Button */}
-                <TouchableOpacity
-                  onPress={handleManualRefresh}
-                  className="flex-row items-center justify-center bg-gray-100 px-4 py-2 rounded-lg mb-2"
-                >
-                  <Ionicons name="refresh" size={16} color="#0D9488" />
-                  <Text className="text-teal-600 font-medium ml-2 text-sm">
-                    Refresh Now
-                  </Text>
-                </TouchableOpacity>
+                {/* Refresh Button - only show for non-public events */}
+                {!isPublicEvent && (
+                  <TouchableOpacity
+                    onPress={handleManualRefresh}
+                    className="flex-row items-center justify-center bg-gray-100 px-4 py-2 rounded-lg mb-2"
+                  >
+                    <Ionicons name="refresh" size={16} color="#0D9488" />
+                    <Text className="text-teal-600 font-medium ml-2 text-sm">
+                      Refresh Now
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <View className="items-center py-10">

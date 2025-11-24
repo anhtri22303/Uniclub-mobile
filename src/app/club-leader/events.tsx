@@ -2,6 +2,7 @@ import CalendarModal from '@components/CalendarModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import PhaseSelectionModal from '@components/PhaseSelectionModal';
+import PublicEventQRButton from '@components/PublicEventQRButton';
 import QRModal from '@components/QRModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useClub, useEventCoHostByClub, useEventsByClub } from '@hooks/useQueryHooks';
@@ -714,21 +715,38 @@ export default function Events() {
                         </TouchableOpacity>
                       </View>
 
-                    {/* QR Code Button - Only show if ONGOING and event is still active */}
+                    {/* QR Code Section - Only show if ONGOING and event is still active */}
                     {isEventActive(event) && (
-                      <TouchableOpacity
-                        className="mt-3 w-full flex-row items-center justify-center rounded-2xl py-3 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600"
-                        style={{
-                          backgroundColor: '#0D9488',
-                        }}
-                        activeOpacity={0.85}
-                        onPress={() => handleShowQrModal(event)}
-                      >
-                        <Ionicons name="qr-code" size={24} color="#fff" style={{ marginRight: 10 }} />
-                        <Text className="font-extrabold text-base tracking-wide text-white">
-                          Generate QR Code
-                        </Text>
-                      </TouchableOpacity>
+                      <View className="mt-3 w-full">
+                        {/* Show Public Event QR button for PUBLIC events */}
+                        {event.type === 'PUBLIC' ? (
+                          <PublicEventQRButton
+                            event={{
+                              id: event.id,
+                              name: event.name,
+                              checkInCode: event.checkInCode || '',
+                            }}
+                            variant="default"
+                            size="default"
+                            className="w-full"
+                          />
+                        ) : (
+                          /* Show Generate QR Code button for SPECIAL and PRIVATE events */
+                          <TouchableOpacity
+                            className="w-full flex-row items-center justify-center rounded-2xl py-3 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600"
+                            style={{
+                              backgroundColor: '#0D9488',
+                            }}
+                            activeOpacity={0.85}
+                            onPress={() => handleShowQrModal(event)}
+                          >
+                            <Ionicons name="qr-code" size={24} color="#fff" style={{ marginRight: 10 }} />
+                            <Text className="font-extrabold text-base tracking-wide text-white">
+                              Generate QR Code
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     )}
                   </View>
                 </View>

@@ -1,4 +1,6 @@
-// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'; // Commented until Google Console setup
+// import { ENV } from '@configs/environment';
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+// import AuthService from '@services/auth.service';
 import * as SecureStore from 'expo-secure-store';
 
 /**
@@ -19,19 +21,14 @@ export class GoogleAuthService {
     //   offlineAccess: true,
     //   forceCodeForRefreshToken: true,
     // });
-    console.log('⚠️ Google Sign-In is disabled - requires Google Console setup');
+    console.log('⏳ Google Sign-In waiting setup');
   }
 
   /**
    * Sign in with Google and authenticate with backend
    * Returns user data from backend
-   * 
-   * ⚠️ DISABLED - Uncomment when Google Console is setup
    */
   static async signInWithGoogle() {
-    throw new Error('Google Sign-In is not configured. Please complete Google Console setup first.');
-    
-    /* Uncomment when ready
     try {
       console.log('🔵 Starting Google Sign-In flow...');
 
@@ -106,16 +103,14 @@ export class GoogleAuthService {
 
       throw error;
     }
-    */
   }
 
   /**
    * Sign out from Google
-   * ⚠️ DISABLED
    */
   static async signOut() {
     try {
-      // await GoogleSignin.signOut(); // Disabled
+      await GoogleSignin.signOut();
       await SecureStore.deleteItemAsync('token');
       console.log('🚪 Signed out successfully');
     } catch (error) {
@@ -139,11 +134,8 @@ export class GoogleAuthService {
 
   /**
    * Get current signed in user info (from Google, not backend)
-   * ⚠️ DISABLED
    */
   static async getCurrentUser() {
-    return null;
-    /* Uncomment when ready
     try {
       const userInfo = await GoogleSignin.signInSilently();
       return userInfo;
@@ -151,7 +143,6 @@ export class GoogleAuthService {
       console.error('Error getting current user:', error);
       return null;
     }
-    */
   }
 }
 

@@ -663,6 +663,24 @@ export const refundEventProduct = async (
   }
 };
 
+/**
+ * Check-in to a public event using check-in code
+ * POST /api/events/public/checkin?code={code}
+ */
+export const eventCheckinPublic = async (code: string): Promise<{ success: boolean; message: string; data: string }> => {
+  try {
+    const response = await axiosClient.post('/api/events/public/checkin', null, {
+      params: { code }
+    });
+    const data: any = response.data;
+    console.log(`Public event check-in response:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error checking in to public event:`, error);
+    throw error;
+  }
+};
+
 export default {
   fetchEvent,
   createEvent,
@@ -693,5 +711,6 @@ export default {
   rejectEvent,
   eventSettle,
   getEventSettle,
-  refundEventProduct
+  refundEventProduct,
+  eventCheckinPublic
 };
