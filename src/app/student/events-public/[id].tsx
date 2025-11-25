@@ -292,14 +292,6 @@ export default function PublicEventDetailPage() {
                   {typeBadge.label}
                 </Text>
               </View>
-              {isRegistered && (
-                <View className="flex-row items-center px-3 py-1.5 rounded-full bg-green-100">
-                  <Ionicons name="checkmark-circle" size={14} color="#15803d" />
-                  <Text className="ml-1 text-xs font-semibold text-green-800">
-                    Registered
-                  </Text>
-                </View>
-              )}
             </View>
 
             {/* Description */}

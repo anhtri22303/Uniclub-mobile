@@ -1,7 +1,7 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
-import { queryKeys, useClubs, useProductsByClubId, useProfile } from '@hooks/useQueryHooks';
+import { queryKeys, useClubs, useEventProductsOnTime, useProductsByClubId, useProfile } from '@hooks/useQueryHooks';
 import { useAuthStore } from '@stores/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -44,15 +44,30 @@ export default function StudentGiftPage() {
   const { data: profile = [], isLoading: profileLoading } = useProfile(true);
   const { data: clubsData = [], isLoading: clubsLoading } = useClubs();
 
-  // Get products for selected club
+  // Get CLUB_ITEM products for selected club
   const {
-    data: products = [],
-    isLoading: productsLoading,
-    isFetching,
+    data: clubProducts = [],
+    isLoading: clubProductsLoading,
+    isFetching: clubProductsFetching,
   } = useProductsByClubId(
     Number(selectedClubId),
-    !!selectedClubId
+    !!selectedClubId && selectedTab === 'CLUB_ITEM'
   );
+
+  // Get EVENT_ITEM products for selected club (auto-refresh every 10 seconds)
+  const {
+    data: eventProducts = [],
+    isLoading: eventProductsLoading,
+    isFetching: eventProductsFetching,
+  } = useEventProductsOnTime(
+    Number(selectedClubId),
+    !!selectedClubId && selectedTab === 'EVENT_ITEM'
+  );
+
+  // Combine products based on selected tab
+  const products = selectedTab === 'CLUB_ITEM' ? clubProducts : eventProducts;
+  const productsLoading = selectedTab === 'CLUB_ITEM' ? clubProductsLoading : eventProductsLoading;
+  const isFetching = selectedTab === 'CLUB_ITEM' ? clubProductsFetching : eventProductsFetching;
 
   // Extract user club IDs and details from profile
   const userClubIds = useMemo(() => {
@@ -96,9 +111,15 @@ export default function StudentGiftPage() {
     setRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: queryKeys.userProfile() });
     if (selectedClubId) {
-      await queryClient.invalidateQueries({ 
-        queryKey: queryKeys.productsByClubId(selectedClubId) 
-      });
+      if (selectedTab === 'CLUB_ITEM') {
+        await queryClient.invalidateQueries({ 
+          queryKey: queryKeys.productsByClubId(selectedClubId) 
+        });
+      } else {
+        await queryClient.invalidateQueries({ 
+          queryKey: queryKeys.eventProductsOnTime(selectedClubId) 
+        });
+      }
     }
     setRefreshing(false);
   };
@@ -137,7 +158,7 @@ export default function StudentGiftPage() {
       >
         {/* Header with Gradient */}
         <View className="bg-blue-600 px-6 pt-12 pb-8">
-          <Text className="text-3xl font-bold text-white mb-2">Gift Store</Text>
+          <Text className="text-3xl font-bold text-white mb-2">      Gift Store</Text>
           <Text className="text-base text-white">Redeem your points for amazing rewards</Text>
         </View>
 

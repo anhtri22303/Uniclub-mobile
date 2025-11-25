@@ -3,14 +3,22 @@ import { eventCheckinPublic, getEventByCode, timeObjectToString } from '@service
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  LogBox,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+
+// Suppress specific error notifications
+LogBox.ignoreLogs([
+  'AxiosError',
+  'Request failed with status code',
+  'Public event check-in error',
+]);
 
 export default function StudentPublicCheckinPage() {
   const router = useRouter();
@@ -85,17 +93,24 @@ export default function StudentPublicCheckinPage() {
         router.push('/student/events');
       }, 2000);
     } catch (error: any) {
-      console.error('Public event check-in error:', error);
+      // Extract error message from response
+      let errorMessage = 'An error occurred during check-in. Please try again.';
+      
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message && !error.message.includes('status code')) {
+        errorMessage = error.message;
+      }
 
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        'An error occurred during check-in. Please try again.';
-
+      // Show toast notification only (suppressing console errors)
       Toast.show({
         type: 'error',
         text1: 'Check-in Failed',
-        text2: String(errorMessage),
+        text2: errorMessage,
+        visibilityTime: 3000,
+        position: 'top',
       });
     } finally {
       setIsCheckinLoading(false);
@@ -161,75 +176,81 @@ export default function StudentPublicCheckinPage() {
   const typeBadge = getTypeBadge(event.type);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-white">
       <ScrollView className="flex-1">
-        <View className="max-w-4xl mx-auto px-4 py-8">
+        <View className="px-4 py-6">
           {/* Event Card */}
-          <View className="bg-white rounded-2xl shadow-xl border-2 border-teal-200 overflow-hidden">
-            {/* Header */}
-            <View className="bg-gradient-to-r from-teal-500 to-cyan-500 p-6">
-              <View className="items-center mb-3">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <View className={`${typeBadge.bg} px-3 py-1 rounded-full`}>
-                    <Text className={`${typeBadge.text} text-xs font-semibold`}>
-                      {typeBadge.label}
-                    </Text>
-                  </View>
-                  {event.status && (
-                    <View
-                      className={`px-3 py-1 rounded-full ${
+          <View className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            {/* Type and Status Badges */}
+            <View className="px-4 pt-4 pb-2">
+              <View className="flex-row items-center gap-2">
+                <View className={`${typeBadge.bg} px-3 py-1 rounded-full`}>
+                  <Text className={`${typeBadge.text} text-xs font-semibold`}>
+                    {typeBadge.label}
+                  </Text>
+                </View>
+                {event.status && (
+                  <View
+                    className={`px-3 py-1 rounded-full ${
+                      event.status === 'ONGOING'
+                        ? 'bg-purple-100'
+                        : event.status === 'APPROVED'
+                        ? 'bg-blue-100'
+                        : 'bg-gray-100'
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-semibold ${
                         event.status === 'ONGOING'
-                          ? 'bg-green-100'
+                          ? 'text-purple-700'
                           : event.status === 'APPROVED'
-                          ? 'bg-blue-100'
-                          : 'bg-gray-100'
+                          ? 'text-blue-700'
+                          : 'text-gray-700'
                       }`}
                     >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          event.status === 'ONGOING'
-                            ? 'text-green-700'
-                            : event.status === 'APPROVED'
-                            ? 'text-blue-700'
-                            : 'text-gray-700'
-                        }`}
-                      >
-                        {event.status}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                      {event.status}
+                    </Text>
+                  </View>
+                )}
               </View>
-              <Text className="text-white text-3xl font-extrabold text-center mb-2">
+            </View>
+
+            {/* Event Title */}
+            <View className="px-4 pb-4">
+              <Text className="text-black text-2xl font-bold mb-1">
                 {event.name}
               </Text>
               {event.description && (
-                <Text className="text-white/90 text-center">{event.description}</Text>
+                <Text className="text-gray-600 text-sm">{event.description}</Text>
               )}
             </View>
 
             {/* Event Details */}
-            <View className="p-6">
-              <View className="space-y-4 mb-6">
+            <View className="px-4 pb-4">
+              <View className="space-y-3">
                 {/* Date */}
-                <View className="flex-row items-start bg-gray-50 p-4 rounded-lg">
-                  <Ionicons name="calendar" size={20} color="#0D9488" />
+                <View className="flex-row items-center">
+                  <View className="w-10 h-10 bg-teal-100 rounded-lg items-center justify-center">
+                    <Ionicons name="calendar" size={20} color="#0D9488" />
+                  </View>
                   <View className="ml-3 flex-1">
-                    <Text className="text-gray-500 text-xs mb-1">Date</Text>
-                    <Text className="text-gray-900 font-medium">
+                    <Text className="text-gray-500 text-xs">Date</Text>
+                    <Text className="text-black font-semibold text-sm">
                       {formatDate(event.date)}
                     </Text>
-                    <Text className="text-gray-500 text-xs mt-1">{event.date}</Text>
+                    <Text className="text-gray-400 text-xs">{event.date}</Text>
                   </View>
                 </View>
 
                 {/* Time */}
                 {(event.startTime || event.endTime) && (
-                  <View className="flex-row items-start bg-gray-50 p-4 rounded-lg">
-                    <Ionicons name="time" size={20} color="#0D9488" />
+                  <View className="flex-row items-center">
+                    <View className="w-10 h-10 bg-teal-100 rounded-lg items-center justify-center">
+                      <Ionicons name="time" size={20} color="#0D9488" />
+                    </View>
                     <View className="ml-3 flex-1">
-                      <Text className="text-gray-500 text-xs mb-1">Time</Text>
-                      <Text className="text-gray-900 font-medium">
+                      <Text className="text-gray-500 text-xs">Time</Text>
+                      <Text className="text-black font-semibold text-sm">
                         {event.startTime && event.endTime
                           ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(
                               event.endTime
@@ -242,21 +263,25 @@ export default function StudentPublicCheckinPage() {
 
                 {/* Location */}
                 {event.locationName && (
-                  <View className="flex-row items-start bg-gray-50 p-4 rounded-lg">
-                    <Ionicons name="location" size={20} color="#0D9488" />
+                  <View className="flex-row items-center">
+                    <View className="w-10 h-10 bg-teal-100 rounded-lg items-center justify-center">
+                      <Ionicons name="location" size={20} color="#0D9488" />
+                    </View>
                     <View className="ml-3 flex-1">
-                      <Text className="text-gray-500 text-xs mb-1">Location</Text>
-                      <Text className="text-gray-900 font-medium">{event.locationName}</Text>
+                      <Text className="text-gray-500 text-xs">Location</Text>
+                      <Text className="text-black font-semibold text-sm">{event.locationName}</Text>
                     </View>
                   </View>
                 )}
 
                 {/* Attendance */}
-                <View className="flex-row items-start bg-gray-50 p-4 rounded-lg">
-                  <Ionicons name="people" size={20} color="#0D9488" />
+                <View className="flex-row items-center">
+                  <View className="w-10 h-10 bg-teal-100 rounded-lg items-center justify-center">
+                    <Ionicons name="people" size={20} color="#0D9488" />
+                  </View>
                   <View className="ml-3 flex-1">
-                    <Text className="text-gray-500 text-xs mb-1">Attendance</Text>
-                    <Text className="text-gray-900 font-medium">
+                    <Text className="text-gray-500 text-xs">Attendance</Text>
+                    <Text className="text-black font-semibold text-sm">
                       {event.currentCheckInCount || 0} / {event.maxCheckInCount || 0} checked in
                     </Text>
                   </View>
@@ -265,9 +290,9 @@ export default function StudentPublicCheckinPage() {
 
               {/* Host Club */}
               {event.hostClub && (
-                <View className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200 mb-6">
-                  <Text className="text-gray-500 text-xs mb-1">Hosted by</Text>
-                  <Text className="text-blue-900 font-semibold text-lg">
+                <View className="mt-4 bg-blue-50 p-3 rounded-lg">
+                  <Text className="text-gray-500 text-xs">Hosted by</Text>
+                  <Text className="text-blue-900 font-bold text-base">
                     {event.hostClub.name}
                   </Text>
                 </View>
@@ -277,52 +302,43 @@ export default function StudentPublicCheckinPage() {
               <TouchableOpacity
                 onPress={handleCheckin}
                 disabled={isCheckinLoading || isCheckedIn}
-                className={`py-6 rounded-xl flex-row items-center justify-center ${
+                className={`mt-6 py-4 rounded-xl flex-row items-center justify-center ${
                   isCheckedIn
-                    ? 'bg-green-600'
+                    ? 'bg-white border-2 border-green-500'
                     : isCheckinLoading
-                    ? 'bg-gray-400'
-                    : 'bg-gradient-to-r from-teal-600 to-cyan-600'
+                    ? 'bg-gray-200'
+                    : 'bg-teal-600'
                 }`}
-                style={{
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
               >
                 {isCheckinLoading ? (
                   <>
-                    <ActivityIndicator size="large" color="white" />
-                    <Text className="text-white text-2xl font-bold ml-3">Processing...</Text>
+                    <ActivityIndicator size="small" color="#666" />
+                    <Text className="text-gray-600 text-base font-semibold ml-2">Processing...</Text>
                   </>
                 ) : isCheckedIn ? (
                   <>
-                    <Ionicons name="checkmark-circle" size={32} color="white" />
-                    <Text className="text-white text-2xl font-bold ml-3">Checked In!</Text>
+                    <Ionicons name="checkmark-circle" size={24} color="#22C55E" />
+                    <Text className="text-green-600 text-base font-bold ml-2">Checked In!</Text>
                   </>
                 ) : (
                   <>
-                    <Ionicons name="checkmark-circle" size={32} color="white" />
-                    <Text className="text-white text-2xl font-bold ml-3">Check In Now</Text>
+                    <Ionicons name="checkmark-circle-outline" size={24} color="#FFF" />
+                    <Text className="text-white text-base font-bold ml-2">Check In Now</Text>
                   </>
                 )}
               </TouchableOpacity>
 
               {/* Info Note */}
-              <View className="mt-4">
-                <Text className="text-center text-sm text-gray-600">
+              <View className="mt-4 pb-2">
+                <Text className="text-center text-xs text-gray-500">
                   This is a public event - no registration required
-                </Text>
-                <Text className="text-center text-xs text-gray-500 mt-1">
-                  Code: {event.checkInCode || checkInCode}
                 </Text>
               </View>
             </View>
           </View>
         </View>
       </ScrollView>
+      <Toast />
     </SafeAreaView>
   );
 }

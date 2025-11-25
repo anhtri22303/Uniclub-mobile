@@ -422,9 +422,7 @@ export default function StudentEventDetailPage() {
               <Text className="text-2xl font-bold text-gray-900 flex-1 mr-4">
                 {event.name}
               </Text>
-              <View className="bg-gray-100 px-3 py-1 rounded-lg">
-                <Text className="text-gray-600 text-xs font-mono">#{event.id}</Text>
-              </View>
+              
             </View>
 
             {/* Badges */}
@@ -440,14 +438,6 @@ export default function StudentEventDetailPage() {
                   {typeBadge.label}
                 </Text>
               </View>
-              {isRegistered && (
-                <View className="flex-row items-center px-3 py-1.5 rounded-full bg-green-100">
-                  <Ionicons name="checkmark-circle" size={14} color="#15803d" />
-                  <Text className="ml-1 text-xs font-semibold text-green-800">
-                    Registered
-                  </Text>
-                </View>
-              )}
             </View>
 
             {/* Description */}

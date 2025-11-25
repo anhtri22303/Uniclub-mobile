@@ -1,9 +1,6 @@
 import CalendarModal from '@components/CalendarModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
-import PhaseSelectionModal from '@components/PhaseSelectionModal';
-import PublicEventQRButton from '@components/PublicEventQRButton';
-import QRModal from '@components/QRModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useClub, useEventCoHostByClub, useEventsByClub } from '@hooks/useQueryHooks';
 import { useAuthStore } from '@stores/auth.store';
@@ -51,25 +48,43 @@ function isEventExpired(event: ClubLeaderEvent): boolean {
   // COMPLETED, REJECTED, CANCELLED status are always considered expired
   if (["COMPLETED", "REJECTED", "CANCELLED"].includes(event.status)) return true;
 
-  if (!event.date || !event.endTime) return false;
+  if (!event.date) return false;
 
   try {
     // Get current date/time in Vietnam timezone (UTC+7)
     const now = new Date();
-    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
-
-    // Parse event date (format: YYYY-MM-DD)
+    
+    // Parse event date and time (treating as Vietnam timezone UTC+7)
     const [year, month, day] = event.date.split('-').map(Number);
-    // Parse endTime (format: HH:MM:SS or HH:MM)
-    const [hours, minutes] = event.endTime.split(':').map(Number);
-
-    // Create event end datetime in Vietnam timezone
-    const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-
-    // Event is expired if current VN time is past the end time
-    return vnTime > eventEndDateTime;
+    
+    if (event.endTime) {
+      // Parse endTime (format: HH:MM:SS or HH:MM)
+      const timeParts = event.endTime.split(':');
+      const hours = parseInt(timeParts[0] || '0', 10);
+      const minutes = parseInt(timeParts[1] || '0', 10);
+      
+      // Create event end datetime string in ISO format for Vietnam timezone
+      const eventEndDateTimeStr = `${event.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
+      const eventEndDateTime = new Date(eventEndDateTimeStr);
+      
+      // Event is expired if current time is past the end time
+      const isExpired = now > eventEndDateTime;
+      
+      console.log('[EXPIRED CHECK]', event.name, {
+        now: now.toISOString(),
+        eventEnd: eventEndDateTime.toISOString(),
+        expired: isExpired
+      });
+      
+      return isExpired;
+    } else {
+      // If no endTime, check if the date has passed (end of day Vietnam time)
+      const eventEndDateTimeStr = `${event.date}T23:59:59+07:00`;
+      const eventEndDateTime = new Date(eventEndDateTimeStr);
+      return now > eventEndDateTime;
+    }
   } catch (error) {
-    console.error('Error checking event expiration:', error);
+    console.error('Error checking event expiration:', error, event);
     return false;
   }
 }
@@ -177,11 +192,7 @@ export default function Events() {
   const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClub(clubId || 0, !!clubId && viewMode === 'cohost');
 
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [showPhaseModal, setShowPhaseModal] = useState<boolean>(false);
-  const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [showCalendarModal, setShowCalendarModal] = useState<boolean>(false);
-  const [selectedEvent, setSelectedEvent] = useState<ClubLeaderEvent | null>(null);
-  const [selectedPhase, setSelectedPhase] = useState<'START' | 'END' | 'MID'>('START');
   const [showExpiredEvents, setShowExpiredEvents] = useState<boolean>(false);
 
   // Process and sort events - matching web version normalization
@@ -235,6 +246,19 @@ export default function Events() {
       const matchesSearch = String(event.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       // Expiration filter
       const expired = isEventExpired(event);
+      
+      // Debug log for expired events
+      if (event.status === 'PENDING_UNISTAFF' || event.status === 'PENDING_COCLUB') {
+        console.log(`[EVENT FILTER] ${event.name}:`, {
+          status: event.status,
+          date: event.date,
+          endTime: event.endTime,
+          expired: expired,
+          showExpiredEvents: showExpiredEvents,
+          willShow: showExpiredEvents || !expired
+        });
+      }
+      
       const matchesExpirationFilter = showExpiredEvents || !expired;
       // Status filter
       const matchesStatus = selectedStatus === 'ALL' || event.status === selectedStatus;
@@ -250,17 +274,6 @@ export default function Events() {
       text2: 'Please create a new event on the web',
       position: 'bottom',
     });
-  };
-
-  // QR modal logic with phase selection
-  const handleShowQrModal = (event: ClubLeaderEvent) => {
-    setSelectedEvent(event);
-    setShowPhaseModal(true);
-  };
-
-  const handlePhaseSelected = (phase: 'START' | 'END' | 'MID') => {
-    setSelectedPhase(phase);
-    setShowQrModal(true);
   };
 
   const loading = eventsLoading || coHostEventsLoading || clubLoading;
@@ -386,30 +399,31 @@ export default function Events() {
             </TouchableOpacity>
           )}
         </View>
-  // Status dropdown modal state
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
         {/* Filter Toggle */}
         <View className="px-4 pb-3">
           <TouchableOpacity
             className={`flex-row items-center justify-center px-4 py-2 rounded-lg border ${
               showExpiredEvents
-                ? 'bg-gray-100 border-gray-300'
-                : 'bg-teal-50 border-teal-300'
+                ? 'bg-teal-50 border-teal-300'
+                : 'bg-gray-100 border-gray-300'
             }`}
-            onPress={() => setShowExpiredEvents(!showExpiredEvents)}
+            onPress={() => {
+              console.log('[TOGGLE] Current showExpiredEvents:', showExpiredEvents, '-> will become:', !showExpiredEvents);
+              setShowExpiredEvents(!showExpiredEvents);
+            }}
           >
             <Ionicons
-              name={showExpiredEvents ? 'eye-off' : 'eye'}
+              name={showExpiredEvents ? 'eye' : 'eye-off'}
               size={18}
-              color={showExpiredEvents ? '#6B7280' : '#0D9488'}
+              color={showExpiredEvents ? '#0D9488' : '#6B7280'}
             />
             <Text
               className={`ml-2 font-medium ${
-                showExpiredEvents ? 'text-gray-600' : 'text-teal-700'
+                showExpiredEvents ? 'text-teal-700' : 'text-gray-600'
               }`}
             >
-              {showExpiredEvents ? 'Show All Events' : 'Hide Expired Events'}
+              {showExpiredEvents ? 'Showing All Events' : 'Hiding Expired Events'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -558,8 +572,8 @@ export default function Events() {
                             </View>
                           )}
                           {event.status === 'ONGOING' && (
-                            <View className="bg-blue-100 border border-blue-500 px-2 py-1 rounded-full">
-                              <Text className="text-xs font-semibold text-blue-700">Event Ongoing</Text>
+                            <View className="bg-cyan-100 border border-cyan-500 px-2 py-1 rounded-full">
+                              <Text className="text-xs font-semibold text-cyan-700">Event Ongoing</Text>
                             </View>
                           )}
                         </>
@@ -571,7 +585,7 @@ export default function Events() {
                             </View>
                           )}
                           {event.status === 'ONGOING' && (
-                            <View className="bg-blue-600 px-2 py-1 rounded-full">
+                            <View className="bg-cyan-600 px-2 py-1 rounded-full">
                               <Text className="text-xs font-semibold text-white">Ongoing</Text>
                             </View>
                           )}
@@ -715,39 +729,7 @@ export default function Events() {
                         </TouchableOpacity>
                       </View>
 
-                    {/* QR Code Section - Only show if ONGOING and event is still active */}
-                    {isEventActive(event) && (
-                      <View className="mt-3 w-full">
-                        {/* Show Public Event QR button for PUBLIC events */}
-                        {event.type === 'PUBLIC' ? (
-                          <PublicEventQRButton
-                            event={{
-                              id: event.id,
-                              name: event.name,
-                              checkInCode: event.checkInCode || '',
-                            }}
-                            variant="default"
-                            size="default"
-                            className="w-full"
-                          />
-                        ) : (
-                          /* Show Generate QR Code button for SPECIAL and PRIVATE events */
-                          <TouchableOpacity
-                            className="w-full flex-row items-center justify-center rounded-2xl py-3 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600"
-                            style={{
-                              backgroundColor: '#0D9488',
-                            }}
-                            activeOpacity={0.85}
-                            onPress={() => handleShowQrModal(event)}
-                          >
-                            <Ionicons name="qr-code" size={24} color="#fff" style={{ marginRight: 10 }} />
-                            <Text className="font-extrabold text-base tracking-wide text-white">
-                              Generate QR Code
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    )}
+
                   </View>
                 </View>
               );
@@ -755,23 +737,6 @@ export default function Events() {
           </ScrollView>
         )}
 
-
-        {/* Phase Selection Modal */}
-        <PhaseSelectionModal
-          visible={showPhaseModal}
-          onClose={() => setShowPhaseModal(false)}
-          onSelectPhase={handlePhaseSelected}
-          eventName={selectedEvent?.name || ''}
-        />
-
-        {/* QR Modal */}
-        <QRModal
-          open={showQrModal}
-          onOpenChange={setShowQrModal}
-          eventName={selectedEvent?.name || ''}
-          eventId={selectedEvent?.id}
-          phase={selectedPhase}
-        />
 
         {/* Calendar Modal */}
         <CalendarModal

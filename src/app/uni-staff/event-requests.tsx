@@ -121,9 +121,31 @@ export default function UniStaffEventRequestsPage() {
 
       const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter;
 
-      // Check if event is expired
-      const eventDate = evt.date ? new Date(evt.date) : null;
-      const isExpired = eventDate ? eventDate < new Date() : false;
+      // Check if event is expired (using endTime and Vietnam timezone)
+      const isExpired = (() => {
+        if (!evt.date) return false;
+        try {
+          const now = new Date();
+          if (evt.endTime) {
+            // Parse endTime with Vietnam timezone
+            const endTimeStr = typeof evt.endTime === 'string' ? evt.endTime : String(evt.endTime);
+            const timeParts = endTimeStr.split(':');
+            const hours = parseInt(timeParts[0] || '0', 10);
+            const minutes = parseInt(timeParts[1] || '0', 10);
+            const eventEndDateTimeStr = `${evt.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
+            const eventEndDateTime = new Date(eventEndDateTimeStr);
+            return now > eventEndDateTime;
+          } else {
+            // If no endTime, check end of day Vietnam time
+            const eventEndDateTimeStr = `${evt.date}T23:59:59+07:00`;
+            const eventEndDateTime = new Date(eventEndDateTimeStr);
+            return now > eventEndDateTime;
+          }
+        } catch (error) {
+          console.error('Error checking event expiration:', error);
+          return false;
+        }
+      })();
 
       let matchStatus = false;
       if (tabType === "pending") {
@@ -191,13 +213,51 @@ export default function UniStaffEventRequestsPage() {
   // Compute counts by status
   const totalCount = events.length;
   const pendingUnistaffCount = events.filter((e) => {
-    const eventDate = e.date ? new Date(e.date) : null;
-    const isExpired = eventDate ? eventDate < new Date() : false;
+    const isExpired = (() => {
+      if (!e.date) return false;
+      try {
+        const now = new Date();
+        if (e.endTime) {
+          const endTimeStr = typeof e.endTime === 'string' ? e.endTime : String(e.endTime);
+          const timeParts = endTimeStr.split(':');
+          const hours = parseInt(timeParts[0] || '0', 10);
+          const minutes = parseInt(timeParts[1] || '0', 10);
+          const eventEndDateTimeStr = `${e.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
+          const eventEndDateTime = new Date(eventEndDateTimeStr);
+          return now > eventEndDateTime;
+        } else {
+          const eventEndDateTimeStr = `${e.date}T23:59:59+07:00`;
+          const eventEndDateTime = new Date(eventEndDateTimeStr);
+          return now > eventEndDateTime;
+        }
+      } catch (error) {
+        return false;
+      }
+    })();
     return !isExpired && (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF";
   }).length;
   const pendingCoclubCount = events.filter((e) => {
-    const eventDate = e.date ? new Date(e.date) : null;
-    const isExpired = eventDate ? eventDate < new Date() : false;
+    const isExpired = (() => {
+      if (!e.date) return false;
+      try {
+        const now = new Date();
+        if (e.endTime) {
+          const endTimeStr = typeof e.endTime === 'string' ? e.endTime : String(e.endTime);
+          const timeParts = endTimeStr.split(':');
+          const hours = parseInt(timeParts[0] || '0', 10);
+          const minutes = parseInt(timeParts[1] || '0', 10);
+          const eventEndDateTimeStr = `${e.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
+          const eventEndDateTime = new Date(eventEndDateTimeStr);
+          return now > eventEndDateTime;
+        } else {
+          const eventEndDateTimeStr = `${e.date}T23:59:59+07:00`;
+          const eventEndDateTime = new Date(eventEndDateTimeStr);
+          return now > eventEndDateTime;
+        }
+      } catch (error) {
+        return false;
+      }
+    })();
     return !isExpired && (e.status ?? "").toUpperCase() === "PENDING_COCLUB";
   }).length;
   const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length;

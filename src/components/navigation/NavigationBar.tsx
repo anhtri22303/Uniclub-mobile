@@ -75,10 +75,10 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
         label: userRole === 'club_leader' ? 'Apply' : 'Club'
       },
       {
-        name: 'member',
-        icon: 'person',
-        route: userRole === 'student' ? '/student/members' : '/club-leader/members',
-        label: 'Member'
+        name: 'check-in',
+        icon: 'checkmark-circle',
+        route: userRole === 'student' ? '/student/check-in' : '/club-leader/members',
+        label: userRole === 'student' ? 'Check' : 'Member'
       },
       {
         name: 'profile',
@@ -87,11 +87,6 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
         label: 'Profile'
       }
     ];
-
-    // Disable Member tab cho STUDENT nếu không có clubIds
-    if (userRole === 'student' && (!user?.clubIds || user.clubIds.length === 0)) {
-      tabs[2].disabled = true;
-    }
 
     return tabs;
   };

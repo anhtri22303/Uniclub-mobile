@@ -5,13 +5,13 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 // Services
@@ -259,13 +259,17 @@ export default function ClubLeaderOrdersPage() {
           end={{ x: 1, y: 1 }}
           className="px-6 pt-12 pb-4"
         >
-          <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center justify-between mb-4">
             <View className="flex-1">
-              <Text className="text-2xl font-bold text-white">        Redeem Orders</Text>
-              <Text className="text-sm text-white opacity-90 mt-1">
-                Manage product redemptions
-              </Text>
+              <Text className="text-2xl font-bold text-white">              Redeem Orders</Text>
+              <Text className="text-sm text-white opacity-90 mt-1">       Manage product redemptions</Text>
             </View>
+            <TouchableOpacity
+              onPress={() => router.push('/club-leader/orders/scan-qr')}
+              className="bg-white/20 backdrop-blur-sm rounded-xl p-3"
+            >
+              <Ionicons name="qr-code-outline" size={28} color="white" />
+            </TouchableOpacity>
           </View>
 
           {/* Stats Cards */}

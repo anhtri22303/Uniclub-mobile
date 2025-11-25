@@ -1,3 +1,4 @@
+import { EventItemQRModal } from '@components/EventItemQRModal';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { queryKeys, useProfile } from '@hooks/useQueryHooks';
@@ -44,6 +45,7 @@ export default function StudentProductDetailPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<ProductMedia | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // Fetch profile with React Query
   const { data: profile = [], isLoading: profileLoading } = useProfile(true);
@@ -188,7 +190,26 @@ export default function StudentProductDetailPage() {
       membershipId: currentMembership.membershipId,
     };
 
+    // Optimistic UI update - instant feedback
+    const optimisticProduct = {
+      ...product,
+      stockQuantity: product.stockQuantity - quantity
+    };
+
     try {
+      // Optimistic UI update - instant feedback
+      setProduct(optimisticProduct);
+      setIsConfirmOpen(false);
+      setQuantity(1);
+
+      // Show success immediately
+      Toast.show({
+        type: 'success',
+        text1: 'Processing...',
+        text2: `Redeeming ${quantity} x ${product.name}`,
+      });
+
+      // API call in background
       let redeemedOrder;
       if (product.type === 'EVENT_ITEM' && product.eventId) {
         redeemedOrder = await redeemEventProduct(product.eventId, payload);
@@ -198,22 +219,25 @@ export default function StudentProductDetailPage() {
         throw new Error('Invalid product data. Cannot determine redeem endpoint.');
       }
 
+      // Update with real data
       Toast.show({
         type: 'success',
-        text1: 'Success',
-        text2: `You have successfully redeemed ${redeemedOrder.quantity} x ${redeemedOrder.productName}.`,
+        text1: 'Success!',
+        text2: `Redeemed ${redeemedOrder.quantity} x ${redeemedOrder.productName}`,
       });
-      setIsConfirmOpen(false);
-      setQuantity(1);
 
-      // Refresh profile data and product
-      await queryClient.invalidateQueries({ queryKey: queryKeys.userProfile() });
-      await fetchProduct();
+      // Parallel refresh - faster than sequential
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.userProfile() }),
+        fetchProduct()
+      ]);
     } catch (error: any) {
+      // Rollback optimistic update on error
+      setProduct(product);
       Toast.show({
         type: 'error',
         text1: 'Redemption Failed',
-        text2: error.message || 'Not enough points or product is out of stock.',
+        text2: error.response?.data?.message || error.message || 'Not enough points or product is out of stock.',
       });
     } finally {
       setIsRedeeming(false);
@@ -312,7 +336,7 @@ export default function StudentProductDetailPage() {
           <TouchableOpacity onPress={handleBack}>
             <View className="flex-row items-center">
               <Ionicons name="arrow-back" size={24} color="#374151" />
-              <Text className="ml-2 text-base font-medium">Back to Gift Shop</Text>
+              <Text className="ml-2 text-base font-medium">     Back to Gift Shop</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -528,33 +552,59 @@ export default function StudentProductDetailPage() {
             </View>
           )}
 
-          {/* Redeem Button */}
-          <TouchableOpacity
-            onPress={() => setIsConfirmOpen(true)}
-            disabled={!canRedeem || isRedeeming || profileLoading}
-            className={`py-4 rounded-xl ${
-              !canRedeem || isRedeeming || profileLoading ? 'bg-gray-300' : 'bg-blue-600'
-            }`}
-          >
-            <View className="flex-row items-center justify-center gap-2">
-              {profileLoading ? (
-                <>
-                  <ActivityIndicator size="small" color="white" />
-                  <Text className="text-white text-lg font-bold">Loading membership...</Text>
-                </>
-              ) : isRedeeming ? (
-                <>
-                  <ActivityIndicator size="small" color="white" />
-                  <Text className="text-white text-lg font-bold">Processing...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="cart" size={20} color="white" />
-                  <Text className="text-white text-lg font-bold">Redeem Now</Text>
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
+          {/* Redeem Button - Different for EVENT_ITEM and CLUB_ITEM */}
+          {product.type === 'EVENT_ITEM' ? (
+            // EVENT_ITEM: Show QR Code Button
+            <TouchableOpacity
+              onPress={() => setShowQRModal(true)}
+              disabled={!canRedeem || profileLoading}
+              className={`py-4 rounded-xl ${
+                !canRedeem || profileLoading ? 'bg-gray-300' : 'bg-purple-600'
+              }`}
+            >
+              <View className="flex-row items-center justify-center gap-2">
+                {profileLoading ? (
+                  <>
+                    <ActivityIndicator size="small" color="white" />
+                    <Text className="text-white text-lg font-bold">Loading membership...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="qr-code" size={20} color="white" />
+                    <Text className="text-white text-lg font-bold">Your Order QR</Text>
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
+          ) : (
+            // CLUB_ITEM: Show Redeem Now Button
+            <TouchableOpacity
+              onPress={() => setIsConfirmOpen(true)}
+              disabled={!canRedeem || isRedeeming || profileLoading}
+              className={`py-4 rounded-xl ${
+                !canRedeem || isRedeeming || profileLoading ? 'bg-gray-300' : 'bg-blue-600'
+              }`}
+            >
+              <View className="flex-row items-center justify-center gap-2">
+                {profileLoading ? (
+                  <>
+                    <ActivityIndicator size="small" color="white" />
+                    <Text className="text-white text-lg font-bold">Loading membership...</Text>
+                  </>
+                ) : isRedeeming ? (
+                  <>
+                    <ActivityIndicator size="small" color="white" />
+                    <Text className="text-white text-lg font-bold">Processing...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="cart" size={20} color="white" />
+                    <Text className="text-white text-lg font-bold">Redeem Now</Text>
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Description */}
           <View className="bg-white rounded-xl p-4 border border-gray-200">
@@ -757,6 +807,21 @@ export default function StudentProductDetailPage() {
           </View>
         </View>
       </Modal>
+
+      {/* Event Item QR Modal */}
+      {product && product.type === 'EVENT_ITEM' && currentMembership && product.eventId && (
+        <EventItemQRModal
+          visible={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          productId={product.id}
+          quantity={quantity}
+          membershipId={currentMembership.membershipId}
+          eventId={product.eventId}
+          productName={product.name}
+          eventName={product.clubName} // You can fetch actual event name if needed
+          memberName={user?.fullName}
+        />
+      )}
     </View>
     </>
   );

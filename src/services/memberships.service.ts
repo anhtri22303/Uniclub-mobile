@@ -156,6 +156,29 @@ export class MembershipsService {
   }
 
   /**
+   * Submit leave request (student leaves club)
+   * POST /api/clubs/{clubId}/leave-request
+   */
+  static async postLeaveRequest(clubId: number, reason: string): Promise<string> {
+    try {
+      const response = await axiosClient.post(
+        `/api/clubs/${clubId}/leave-request`,
+        { reason }
+      );
+      const body: any = response.data;
+
+      if (!body?.success) {
+        throw new Error(body?.message || 'Failed to submit leave request');
+      }
+
+      return body.data || body.message || 'Leave request submitted successfully';
+    } catch (error) {
+      console.error('Error submitting leave request:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get leave requests for a club (leader only)
    * GET /api/clubs/{clubId}/leave-requests
    */
@@ -228,6 +251,7 @@ export default {
   getMyMemberships: MembershipsService.getMyMemberships,
   applyToClub: MembershipsService.applyToClub,
   deleteMember: MembershipsService.deleteMember,
+  postLeaveRequest: MembershipsService.postLeaveRequest,
   getLeaveRequests: MembershipsService.getLeaveRequests,
   processLeaveRequest: MembershipsService.processLeaveRequest,
 };

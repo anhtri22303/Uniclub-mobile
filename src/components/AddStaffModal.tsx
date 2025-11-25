@@ -68,7 +68,8 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       
       setClubMembers(availableMembers || []);
     } catch (error) {
-      console.error('Failed to load club members:', error);
+      // Không dùng console.error để tránh hiển thị error overlay
+      if (__DEV__) console.log('Failed to load club members');
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -103,12 +104,23 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       setDuty('');
       setSearchTerm('');
     } catch (error: any) {
-      console.error('Failed to assign staff:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error?.response?.data?.message || 'Failed to assign staff',
-      });
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Failed to assign staff';
+      
+      // Đóng modal trước rồi mới hiển thị toast để toast không bị che
+      setIsSubmitting(false);
+      onClose();
+      
+      // Delay nhỏ để modal đóng xong
+      setTimeout(() => {
+        Toast.show({
+          type: 'error',
+          text1: 'Cannot Assign Staff',
+          text2: errorMessage,
+          position: 'top',
+          visibilityTime: 4000,
+        });
+      }, 300);
+      return;
     } finally {
       setIsSubmitting(false);
     }
@@ -132,19 +144,21 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
   console.log('🎯 Club members count:', clubMembers.length);
   console.log('🔍 Filtered members count:', filteredMembers.length);
   console.log('🔎 Search term:', searchTerm);
+  console.log('📍 Current view:', view);
+  console.log('⏳ Loading members:', loadingMembers);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <View className="flex-1 justify-center items-center bg-black/50">
-        <View className="bg-white dark:bg-gray-800 rounded-2xl w-11/12 max-h-5/6" style={{ maxWidth: 600, height: '80%' }}>
+        <View className="bg-white dark:bg-gray-800 rounded-2xl w-11/12 flex-1" style={{ maxWidth: 600, maxHeight: '85%' }}>
           {/* Header */}
-          <View className="flex-row items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <View className="flex-row items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <View className="flex-1">
-              <Text className="text-xl font-bold text-gray-900 dark:text-white">
+              <Text className="text-lg font-bold text-gray-900 dark:text-white">
                 {view === 'list' ? 'Event Staff' : 'Add Staff Member'}
               </Text>
               {view === 'list' && (
-                <Text className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <Text className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   {staffList.length} staff member(s)
                 </Text>
               )}
@@ -155,22 +169,22 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
           </View>
 
           {/* Content */}
-          <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }}>
-            {view === 'list' ? (
-              // Staff List View
-              <View className="p-6">
+          {view === 'list' ? (
+            <ScrollView className="flex-1">
+              {/* Staff List View */}
+              <View className="p-4">
                 {staffLoading ? (
-                  <View className="py-12 items-center">
+                  <View className="py-8 items-center">
                     <ActivityIndicator size="large" color="#0D9488" />
-                    <Text className="mt-4 text-gray-500">Loading staff...</Text>
+                    <Text className="mt-3 text-gray-500 text-sm">Loading staff...</Text>
                   </View>
                 ) : staffList.length === 0 ? (
-                  <View className="py-12 items-center">
-                    <Ionicons name="people-outline" size={64} color="#9CA3AF" />
-                    <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+                  <View className="py-8 items-center">
+                    <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+                    <Text className="mt-3 text-base font-semibold text-gray-900 dark:text-white">
                       No Staff Assigned
                     </Text>
-                    <Text className="mt-2 text-sm text-gray-600 dark:text-gray-400 text-center">
+                    <Text className="mt-1 text-xs text-gray-600 dark:text-gray-400 text-center px-4">
                       Add staff members to help manage this event
                     </Text>
                   </View>
@@ -179,24 +193,24 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
                     {staffList.map((staff) => (
                       <View
                         key={staff.id}
-                        className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600"
+                        className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
                       >
-                        <View className="flex-row items-start justify-between mb-2">
-                          <View className="flex-1">
-                            <Text className="font-semibold text-gray-900 dark:text-white">
+                        <View className="flex-row items-start justify-between mb-1">
+                          <View className="flex-1 mr-2">
+                            <Text className="text-sm font-semibold text-gray-900 dark:text-white">
                               {staff.memberName}
                             </Text>
                             {staff.memberEmail && (
-                              <Text className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                                 {staff.memberEmail}
                               </Text>
                             )}
-                            <Text className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                               {staff.duty}
                             </Text>
                           </View>
                           <View
-                            className={`px-2 py-1 rounded ${
+                            className={`px-2 py-0.5 rounded ${
                               staff.state === 'ACTIVE'
                                 ? 'bg-green-100 dark:bg-green-900'
                                 : staff.state === 'EXPIRED'
@@ -217,10 +231,10 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
                             </Text>
                           </View>
                         </View>
-                        <View className="flex-row items-center gap-1 mt-2">
-                          <Ionicons name="time-outline" size={14} color="#9CA3AF" />
+                        <View className="flex-row items-center gap-1 mt-1">
+                          <Ionicons name="time-outline" size={12} color="#9CA3AF" />
                           <Text className="text-xs text-gray-500 dark:text-gray-400">
-                            Assigned: {new Date(staff.assignedAt).toLocaleDateString()}
+                            {new Date(staff.assignedAt).toLocaleDateString()}
                           </Text>
                         </View>
                       </View>
@@ -228,132 +242,148 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
                   </View>
                 )}
               </View>
-            ) : (
-              // Add Staff View
-              <View className="p-6 flex-1">
+            </ScrollView>
+          ) : (
+            <ScrollView className="flex-1">
+              {/* Add Staff View */}
+              <View className="p-4">
                 {/* Member Selection */}
-                <View className="mb-4">
+                <View className="mb-3">
                   <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Select Member <Text className="text-red-500">*</Text>
                   </Text>
                   
                   {/* Search */}
                   <TextInput
-                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 mb-3"
+                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 mb-2"
                     placeholder="Search members..."
                     value={searchTerm}
                     onChangeText={setSearchTerm}
                   />
 
-                  {loadingMembers ? (
-                    <View className="py-8 items-center">
-                      <ActivityIndicator size="large" color="#0D9488" />
-                    </View>
-                  ) : filteredMembers.length === 0 ? (
-                    <View className="py-8 items-center">
-                      <Ionicons name="search-outline" size={48} color="#9CA3AF" />
-                      <Text className="mt-2 text-gray-500 dark:text-gray-400">
-                        {searchTerm ? 'No members found' : 'No available members'}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden" style={{ maxHeight: 250 }}>
-                      <ScrollView>
-                        {filteredMembers.map((member, index) => (
-                          <TouchableOpacity
-                            key={member.membershipId || member.id || index}
-                            className={`p-4 ${index < filteredMembers.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''} ${
-                              selectedMember?.membershipId === member.membershipId
-                                ? 'bg-teal-50 dark:bg-teal-900/20'
-                                : 'bg-white dark:bg-gray-700'
-                            }`}
-                            onPress={() => {
-                              console.log('🎯 Selected member:', member);
-                              setSelectedMember(member);
-                            }}
-                          >
-                            <View className="flex-row items-center justify-between">
-                              <View className="flex-1">
-                                <Text className="font-semibold text-gray-900 dark:text-white">
-                                  {member.fullName || 'Unknown'}
-                                </Text>
-                                <Text className="text-sm text-gray-600 dark:text-gray-400">
-                                  {member.email || member.studentCode || 'No email'}
-                                </Text>
+                  {(() => {
+                    console.log('🎨 Rendering member list condition - loadingMembers:', loadingMembers, 'filteredMembers.length:', filteredMembers.length);
+                    
+                    if (loadingMembers) {
+                      return (
+                        <View className="py-6 items-center">
+                          <ActivityIndicator size="large" color="#0D9488" />
+                        </View>
+                      );
+                    }
+                    
+                    if (filteredMembers.length === 0) {
+                      return (
+                        <View className="py-6 items-center">
+                          <Ionicons name="search-outline" size={36} color="#9CA3AF" />
+                          <Text className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            {searchTerm ? 'No members found' : 'No available members'}
+                          </Text>
+                        </View>
+                      );
+                    }
+                    
+                    console.log('✅ About to render', filteredMembers.length, 'members');
+                    return (
+                      <View className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                        {filteredMembers.map((member, index) => {
+                          console.log('🔄 Rendering member:', member.fullName);
+                          return (
+                            <TouchableOpacity
+                              key={member.membershipId || member.id || index}
+                              className={`p-3 ${index < filteredMembers.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''} ${
+                                selectedMember?.membershipId === member.membershipId
+                                  ? 'bg-teal-50 dark:bg-teal-900/20'
+                                  : 'bg-white dark:bg-gray-700'
+                              }`}
+                              onPress={() => {
+                                console.log('🎯 Selected member:', member);
+                                setSelectedMember(member);
+                              }}
+                            >
+                              <View className="flex-row items-center justify-between">
+                                <View className="flex-1">
+                                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {member.fullName || 'Unknown'}
+                                  </Text>
+                                  <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                    {member.email || member.studentCode || 'No email'}
+                                  </Text>
+                                </View>
+                                {selectedMember?.membershipId === member.membershipId && (
+                                  <Ionicons name="checkmark-circle" size={20} color="#0D9488" />
+                                )}
                               </View>
-                              {selectedMember?.membershipId === member.membershipId && (
-                                <Ionicons name="checkmark-circle" size={24} color="#0D9488" />
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    );
+                  })()}
                 </View>
 
                 {/* Duty Input */}
-                <View className="mb-4">
+                <View className="mb-3">
                   <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Duty/Responsibility <Text className="text-red-500">*</Text>
                   </Text>
                   <TextInput
-                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
-                    placeholder="e.g., Registration Desk, Sound System, etc."
+                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                    placeholder="e.g., Registration Desk, Sound System"
                     value={duty}
                     onChangeText={setDuty}
                     maxLength={100}
                   />
                   <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {duty.length}/100 characters
+                    {duty.length}/100
                   </Text>
                 </View>
 
                 {/* Selected Member Preview */}
                 {selectedMember && (
-                  <View className="p-4 bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700 rounded-lg">
-                    <Text className="text-sm font-medium text-teal-800 dark:text-teal-200 mb-2">
+                  <View className="p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700 rounded-lg">
+                    <Text className="text-xs font-medium text-teal-800 dark:text-teal-200 mb-1">
                       Selected Member
                     </Text>
-                    <Text className="font-semibold text-gray-900 dark:text-white">
+                    <Text className="text-sm font-semibold text-gray-900 dark:text-white">
                       {selectedMember.fullName}
                     </Text>
-                    <Text className="text-sm text-gray-600 dark:text-gray-400">
+                    <Text className="text-xs text-gray-600 dark:text-gray-400">
                       {selectedMember.email || selectedMember.studentCode}
                     </Text>
                   </View>
                 )}
               </View>
-            )}
-          </ScrollView>
+            </ScrollView>
+          )}
 
           {/* Footer */}
-          <View className="p-6 border-t border-gray-200 dark:border-gray-700">
+          <View className="p-4 border-t border-gray-200 dark:border-gray-700">
             {view === 'list' ? (
-              <View className="flex-row gap-3">
+              <View className="flex-row gap-2">
                 <TouchableOpacity
-                  className="flex-1 bg-teal-600 rounded-lg py-3 items-center"
+                  className="flex-1 bg-teal-600 rounded-lg py-2.5 items-center"
                   onPress={() => {
                     setView('add');
                     loadClubMembers();
                   }}
                 >
                   <View className="flex-row items-center">
-                    <Ionicons name="add-circle" size={20} color="white" />
-                    <Text className="text-white font-medium ml-2">Add Staff</Text>
+                    <Ionicons name="add-circle" size={18} color="white" />
+                    <Text className="text-white font-medium ml-1.5 text-sm">Add Staff</Text>
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-lg py-3 items-center"
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-lg py-2.5 items-center"
                   onPress={handleClose}
                 >
-                  <Text className="text-gray-700 dark:text-gray-300 font-medium">Close</Text>
+                  <Text className="text-gray-700 dark:text-gray-300 font-medium text-sm">Close</Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              <View className="flex-row gap-3">
+              <View className="flex-row gap-2">
                 <TouchableOpacity
-                  className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-lg py-3 items-center"
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-lg py-2.5 items-center"
                   onPress={() => {
                     setView('list');
                     setSelectedMember(null);
@@ -362,10 +392,10 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
                   }}
                   disabled={isSubmitting}
                 >
-                  <Text className="text-gray-700 dark:text-gray-300 font-medium">Back</Text>
+                  <Text className="text-gray-700 dark:text-gray-300 font-medium text-sm">Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  className={`flex-1 bg-teal-600 rounded-lg py-3 items-center ${
+                  className={`flex-1 bg-teal-600 rounded-lg py-2.5 items-center ${
                     (!selectedMember || !duty.trim() || isSubmitting) ? 'opacity-50' : ''
                   }`}
                   onPress={handleAddStaff}
@@ -373,7 +403,7 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
                 >
                   <View className="flex-row items-center">
                     {isSubmitting && <ActivityIndicator size="small" color="white" />}
-                    <Text className="text-white font-medium ml-2">
+                    <Text className="text-white font-medium ml-1.5 text-sm">
                       {isSubmitting ? 'Adding...' : 'Assign Staff'}
                     </Text>
                   </View>

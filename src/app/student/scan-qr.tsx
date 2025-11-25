@@ -53,9 +53,20 @@ export default function ScanQRPage() {
       );
       
       if (checkinIndex !== -1) {
+        const nextPart = pathParts[checkinIndex + 1];
+        const thirdPart = pathParts[checkinIndex + 2];
+        
+        // Check if it's a public event checkin: /student/checkin/public/CODE
+        if (nextPart && nextPart.toLowerCase() === 'public' && thirdPart) {
+          const checkInCode = thirdPart;
+          console.log('Public event check-in detected, code:', checkInCode);
+          router.push(`/student/checkin/public/${checkInCode}` as any);
+          return;
+        }
+        
         // New format: /student/checkin/TIME/TOKEN
-        const time = pathParts[checkinIndex + 1];
-        const token = pathParts[checkinIndex + 2];
+        const time = nextPart;
+        const token = thirdPart;
         
         if (time && token) {
           console.log('Extracted time:', time, 'token:', token.substring(0, 20) + '...');

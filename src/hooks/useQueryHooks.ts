@@ -65,6 +65,8 @@ export const queryKeys = {
   productDetail: (clubId: number, productId: number | string) =>
     [...queryKeys.products, 'detail', clubId, productId] as const,
   productTags: () => [...queryKeys.products, 'tags'] as const,
+  eventProductsOnTime: (clubId: number) => [...queryKeys.products, 'event-ontime', clubId] as const,
+  eventProductsCompleted: (clubId: number) => [...queryKeys.products, 'event-completed', clubId] as const,
 
   // Attendances
   attendances: ['attendances'] as const,
@@ -1244,6 +1246,47 @@ export function useProductTags(enabled = true) {
     enabled,
     staleTime: 10 * 60 * 1000, // 10 minutes - tags rarely change
     gcTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch EVENT_ITEM products that are currently active (ONGOING events)
+ * Auto-refreshes every 10 seconds
+ * GET /api/events/clubs/{clubId}/event-items/active
+ */
+export function useEventProductsOnTime(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventProductsOnTime(clubId),
+    queryFn: async () => {
+      const { ProductService } = await import('@services/product.service');
+      const products = await ProductService.getEventProductsOnTime(clubId);
+      return products;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchInterval: 10 * 1000, // Auto refresh every 10 seconds
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch EVENT_ITEM products from completed events
+ * Fetches once and caches forever (completed events don't change)
+ * GET /api/events/clubs/{clubId}/event-items/completed
+ */
+export function useEventProductsCompleted(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventProductsCompleted(clubId),
+    queryFn: async () => {
+      const { ProductService } = await import('@services/product.service');
+      const products = await ProductService.getEventProductsCompleted(clubId);
+      return products;
+    },
+    enabled: !!clubId && enabled,
+    staleTime: Infinity, // Cache forever
+    refetchOnMount: false, // Don't refetch when component mounts
+    refetchOnWindowFocus: false, // Don't refetch when window focuses
+    gcTime: Infinity,
   });
 }
 

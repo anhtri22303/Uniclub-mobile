@@ -4,15 +4,15 @@ import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -136,6 +136,12 @@ export default function Sidebar({ role }: SidebarProps) {
           label: 'Orders'
         },
         {
+          name: 'event-orders',
+          icon: 'calendar-outline',
+          route: '/club-leader/event-orders',
+          label: 'Event Orders'
+        },
+        {
           name: 'points',
           icon: 'trophy',
           route: '/club-leader/points',
@@ -251,13 +257,19 @@ export default function Sidebar({ role }: SidebarProps) {
         }
       ];
       
-      // Show "Events Public" only when student has NO club
+      // Show "Events Public" and "Check In" when student has NO club
       const publicEventsItems: MenuItem[] = !hasClub ? [
         {
           name: 'events-public',
           icon: 'globe',
           route: '/student/events-public',
           label: 'Events Public'
+        },
+        {
+          name: 'check-in',
+          icon: 'checkmark-circle',
+          route: '/student/check-in',
+          label: 'Check In'
         }
       ] : [];
       

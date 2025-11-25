@@ -176,7 +176,7 @@ export default function PublicEventsPage() {
     if (event.status === 'COMPLETED') {
       return 'bg-blue-900';
     } else if (event.status === 'ONGOING') {
-      return 'bg-purple-600';
+      return 'bg-cyan-600';
     } else if (event.status === 'APPROVED') {
       return 'bg-green-500';
     } else if (event.status === 'PENDING_UNISTAFF') {
@@ -358,8 +358,8 @@ export default function PublicEventsPage() {
                             {event.name}
                           </Text>
                           <View className="flex-row items-center mt-1">
-                            <Ionicons name="business" size={14} color="#6B7280" />
-                            <Text className="text-sm text-gray-600 ml-1">
+                            <Ionicons name="business" size={14} color="#1F2937" />
+                            <Text className="text-sm text-gray-900 ml-1">
                               {event.hostClub?.name || 'Unknown Club'}
                             </Text>
                           </View>
@@ -372,20 +372,20 @@ export default function PublicEventsPage() {
                       {/* Event Info */}
                       <View className="space-y-2 mt-3">
                         <View className="flex-row items-center">
-                          <Ionicons name="calendar" size={16} color="#6B7280" />
-                          <Text className="text-sm text-gray-700 ml-2">{formatDate(event.date)}</Text>
+                          <Ionicons name="calendar" size={16} color="#1F2937" />
+                          <Text className="text-sm text-gray-900 ml-2">{formatDate(event.date)}</Text>
                         </View>
                         <View className="flex-row items-center">
-                          <Ionicons name="time" size={16} color="#6B7280" />
-                          <Text className="text-sm text-gray-700 ml-2">
+                          <Ionicons name="time" size={16} color="#1F2937" />
+                          <Text className="text-sm text-gray-900 ml-2">
                             {event.startTime && event.endTime
                               ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
                               : 'Time not set'}
                           </Text>
                         </View>
                         <View className="flex-row items-center">
-                          <Ionicons name="location" size={16} color="#6B7280" />
-                          <Text className="text-sm text-gray-700 ml-2">
+                          <Ionicons name="location" size={16} color="#1F2937" />
+                          <Text className="text-sm text-gray-900 ml-2">
                             {event.locationName || 'Location TBA'}
                           </Text>
                         </View>
@@ -398,13 +398,6 @@ export default function PublicEventsPage() {
                             {statusText}
                           </Text>
                         </View>
-                        {isRegistered && (
-                          <View className="px-3 py-1 rounded-full bg-green-100">
-                            <Text className="text-xs font-semibold text-green-800">
-                              Registered
-                            </Text>
-                          </View>
-                        )}
                       </View>
 
                       {/* Action Buttons */}

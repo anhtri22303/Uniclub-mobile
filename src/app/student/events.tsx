@@ -260,7 +260,7 @@ export default function StudentEventsPage() {
     if (event.status === 'COMPLETED') {
       return 'bg-blue-900';
     } else if (event.status === 'ONGOING') {
-      return 'bg-purple-600';
+      return 'bg-cyan-600';
     } else if (event.status === 'APPROVED') {
       return 'bg-green-500';
     } else if (event.status === 'PENDING_UNISTAFF') {
@@ -348,7 +348,7 @@ export default function StudentEventsPage() {
         {/* Header */}
         <View className="py-4">
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-2xl font-bold text-gray-900">Events</Text>
+            <Text className="text-2xl font-bold text-gray-900">          Events</Text>
             <View className="flex-row gap-2">
               <TouchableOpacity
                 onPress={() => setClubSelectorVisible(true)}
@@ -510,16 +510,6 @@ export default function StudentEventsPage() {
                             <Text className="text-gray-400 mr-2">🏆</Text>
                             <Text className="text-sm text-gray-600">
                               Cost: <Text className="font-semibold text-amber-600">{event.commitPointCost}</Text> points
-                            </Text>
-                          </View>
-                        )}
-
-                        {/* Registration Status */}
-                        {isRegistered && (
-                          <View className="flex-row items-center">
-                            <Text className="text-green-400 mr-2">✓</Text>
-                            <Text className="text-sm text-green-600 font-semibold">
-                              You are registered
                             </Text>
                           </View>
                         )}
@@ -860,7 +850,11 @@ export default function StudentEventsPage() {
       <CalendarModal
         visible={showCalendarModal}
         onClose={() => setShowCalendarModal(false)}
-        events={filteredEvents}
+        events={filteredEvents.map(event => ({
+          ...event,
+          startTime: typeof event.startTime === 'string' ? event.startTime : event.startTime ? timeObjectToString(event.startTime) : undefined,
+          endTime: typeof event.endTime === 'string' ? event.endTime : event.endTime ? timeObjectToString(event.endTime) : undefined,
+        }))}
         onEventClick={(event) => {
           setShowCalendarModal(false);
           router.push(`/student/events/${event.id}` as any);

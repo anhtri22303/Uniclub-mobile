@@ -9,6 +9,7 @@ export const toastConfig = {
         borderLeftColor: '#10B981',
         backgroundColor: '#ECFDF5',
         height: 70,
+        zIndex: 99999,
       }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{
@@ -29,6 +30,7 @@ export const toastConfig = {
         borderLeftColor: '#EF4444',
         backgroundColor: '#FEF2F2',
         height: 70,
+        zIndex: 99999,
       }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{
@@ -49,6 +51,7 @@ export const toastConfig = {
         borderLeftColor: '#3B82F6',
         backgroundColor: '#EFF6FF',
         height: 70,
+        zIndex: 99999,
       }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{

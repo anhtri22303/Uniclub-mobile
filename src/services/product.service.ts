@@ -128,6 +128,68 @@ export class ProductService {
   }
 
   /**
+   * Get EVENT_ITEM products that are currently active (ONGOING events)
+   * GET /api/events/clubs/{clubId}/event-items/active
+   */
+  static async getEventProductsOnTime(clubId: number | string): Promise<Product[]> {
+    try {
+      const response = await axiosClient.get<ApiResponse<Product[]>>(
+        `/api/events/clubs/${clubId}/event-items/active`
+      );
+      const data = response.data.data;
+      console.log('Event products on time:', data);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching active event products:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get EVENT_ITEM products from completed events
+   * GET /api/events/clubs/{clubId}/event-items/completed
+   */
+  static async getEventProductsCompleted(clubId: number | string): Promise<Product[]> {
+    try {
+      const response = await axiosClient.get<ApiResponse<Product[]>>(
+        `/api/events/clubs/${clubId}/event-items/completed`
+      );
+      const data = response.data.data;
+      console.log('Event products completed:', data);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching completed event products:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if EVENT_ITEM product is still valid (event hasn't expired)
+   * GET /api/clubs/{clubId}/products/{productId}/is-event-valid
+   */
+  static async checkEventProductValid(
+    clubId: number | string,
+    productId: number | string
+  ): Promise<{
+    productId: number;
+    eventId: number;
+    eventStatus: string;
+    expired: boolean;
+    expiredAt: string;
+    message: string;
+  }> {
+    try {
+      const response = await axiosClient.get(
+        `/api/clubs/${clubId}/products/${productId}/is-event-valid`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Error checking event product validity:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get all products with pagination and filters
    * GET /api/clubs/{clubId}/products/_all
    */

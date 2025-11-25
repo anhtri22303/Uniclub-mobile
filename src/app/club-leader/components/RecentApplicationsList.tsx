@@ -3,7 +3,8 @@ import { Button } from '@components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 interface Application {
   applicationId: number;
@@ -18,8 +19,28 @@ interface RecentApplicationsListProps {
   isLoading: boolean;
 }
 
+type StatusFilter = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
+
 export function RecentApplicationsList({ applications, isLoading }: RecentApplicationsListProps) {
   const router = useRouter();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
+
+  const filteredApplications = useMemo(() => {
+    if (statusFilter === 'ALL') {
+      return applications;
+    }
+    return applications.filter(app => app.status === statusFilter);
+  }, [applications, statusFilter]);
+
+  const getFilterButtonStyle = (filter: StatusFilter) => {
+    return statusFilter === filter
+      ? 'bg-green-500 border-green-500'
+      : 'bg-white border-gray-300';
+  };
+
+  const getFilterTextStyle = (filter: StatusFilter) => {
+    return statusFilter === filter ? 'text-white font-semibold' : 'text-gray-700';
+  };
 
   if (isLoading) {
     return (
@@ -51,17 +72,59 @@ export function RecentApplicationsList({ applications, isLoading }: RecentApplic
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {applications.length === 0 ? (
+        {/* Filter Buttons */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          className="mb-4"
+        >
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={() => setStatusFilter('PENDING')}
+              className={`px-4 py-2 rounded-full border ${getFilterButtonStyle('PENDING')}`}
+            >
+              <Text className={`text-sm ${getFilterTextStyle('PENDING')}`}>
+                Pending
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setStatusFilter('APPROVED')}
+              className={`px-4 py-2 rounded-full border ${getFilterButtonStyle('APPROVED')}`}
+            >
+              <Text className={`text-sm ${getFilterTextStyle('APPROVED')}`}>
+                Approved
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setStatusFilter('REJECTED')}
+              className={`px-4 py-2 rounded-full border ${getFilterButtonStyle('REJECTED')}`}
+            >
+              <Text className={`text-sm ${getFilterTextStyle('REJECTED')}`}>
+                Rejected
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setStatusFilter('ALL')}
+              className={`px-4 py-2 rounded-full border ${getFilterButtonStyle('ALL')}`}
+            >
+              <Text className={`text-sm ${getFilterTextStyle('ALL')}`}>
+                All
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        {filteredApplications.length === 0 ? (
           <Text className="text-sm text-gray-500 text-center py-4">
-            No recent applications
+            No {statusFilter.toLowerCase()} applications
           </Text>
         ) : (
           <View className="space-y-3">
-            {applications.map((application) => (
+            {filteredApplications.map((application) => (
               <TouchableOpacity
                 key={application.applicationId}
                 className="p-3 border border-gray-200 rounded-lg"
-                onPress={() => router.push('/club-leader/applications' as any)}
+                onPress={() => router.push('/club-leader/application' as any)}
               >
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1">

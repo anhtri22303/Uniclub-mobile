@@ -6,14 +6,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -184,10 +183,21 @@ export default function StudentCheckInPage() {
       <View className="flex-1 px-4">
         {/* Header */}
         <View className="py-4">
-          <Text className="text-2xl font-bold text-gray-900">Event Check-in</Text>
-          <Text className="text-sm text-gray-600 mt-1">
-            Check in to events and earn points
-          </Text>
+          <Text className="text-2xl font-bold text-gray-900">                      Event Check-in</Text>
+          <Text className="text-sm text-gray-600 mt-1">                             Check in to events and earn points</Text>
+        </View>
+
+        <View className="flex-1 justify-center items-center">
+          {/* Scan QR Button */}
+          <TouchableOpacity
+            onPress={() => router.push('/student/scan-qr' as any)}
+            className="py-6 px-8 rounded-xl items-center bg-teal-600 flex-row justify-center"
+          >
+            <Text className="text-4xl mr-2">📷</Text>
+            <Text className="text-white text-xl font-bold">
+              Scan QR Code to Check In
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -197,71 +207,6 @@ export default function StudentCheckInPage() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          {/* Check-in Code Input Card */}
-          <View className="bg-white rounded-2xl p-6 shadow-sm mb-4">
-            <View className="items-center mb-4">
-              <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-3">
-                <Text className="text-4xl">📱</Text>
-              </View>
-              <Text className="text-xl font-bold text-gray-900 mb-2">
-                Enter Check-in Code
-              </Text>
-              <Text className="text-sm text-gray-600 text-center">
-                Enter the check-in code from the event to participate
-              </Text>
-            </View>
-
-            <View className="space-y-3">
-              <TextInput
-                placeholder="Enter check-in code..."
-                value={checkInCode}
-                onChangeText={setCheckInCode}
-                className="bg-gray-50 rounded-xl px-4 py-4 text-center text-lg font-semibold"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="characters"
-                onSubmitEditing={handleCheckInSubmit}
-              />
-
-              <TouchableOpacity
-                onPress={handleCheckInSubmit}
-                disabled={!checkInCode.trim() || loading}
-                className={`py-4 rounded-xl items-center ${
-                  !checkInCode.trim() || loading
-                    ? 'bg-gray-300'
-                    : 'bg-blue-500'
-                }`}
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <View className="flex-row items-center">
-                    <Text className="text-white text-lg font-semibold mr-2">
-                      ✅ Join Event
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* OR Divider */}
-              <View className="flex-row items-center py-2">
-                <View className="flex-1 h-px bg-gray-300" />
-                <Text className="px-4 text-gray-500 font-medium">OR</Text>
-                <View className="flex-1 h-px bg-gray-300" />
-              </View>
-
-              {/* Scan QR Button */}
-              <TouchableOpacity
-                onPress={() => router.push('/student/scan-qr' as any)}
-                className="py-4 rounded-xl items-center bg-teal-500 flex-row justify-center"
-              >
-                <Text className="text-4xl mr-2">📷</Text>
-                <Text className="text-white text-lg font-semibold">
-                  Scan QR Code
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
           {/* Today's Events */}
           {todayEvents.length > 0 && (
             <View className="mb-4">
@@ -358,51 +303,6 @@ export default function StudentCheckInPage() {
                   </View>
                 );
               })}
-            </View>
-          )}
-
-          {/* Summary Card */}
-          <View className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 mb-4">
-            <View className="flex-row items-center mb-4">
-              <Text className="text-xl mr-2">🏆</Text>
-              <Text className="text-lg font-bold text-blue-900">
-                Today's Progress
-              </Text>
-            </View>
-
-            <View className="flex-row justify-around">
-              <View className="items-center">
-                <Text className="text-3xl font-bold text-blue-700">
-                  {checkedInEvents.length}
-                </Text>
-                <Text className="text-sm text-blue-700 font-medium mt-1">
-                  Events Checked In
-                </Text>
-              </View>
-
-              <View className="w-px bg-blue-200" />
-
-              <View className="items-center">
-                <Text className="text-3xl font-bold text-blue-700">
-                  {totalPoints}
-                </Text>
-                <Text className="text-sm text-blue-700 font-medium mt-1">
-                  Points Earned
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Empty State */}
-          {!loading && todayEvents.length === 0 && (
-            <View className="items-center py-12">
-              <Text className="text-6xl mb-4">📅</Text>
-              <Text className="text-lg font-semibold text-gray-900 mb-2">
-                No Events Today
-              </Text>
-              <Text className="text-gray-500 text-center px-8">
-                There are no events scheduled for today from your clubs
-              </Text>
             </View>
           )}
 

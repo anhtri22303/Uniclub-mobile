@@ -1,21 +1,18 @@
 import AddStaffModal from '@components/AddStaffModal';
 import EvaluateStaffModal from '@components/EvaluateStaffModal';
 import EvaluationDetailModal from '@components/EvaluationDetailModal';
-import PhaseSelectionModal from '@components/PhaseSelectionModal';
-import PublicEventQRButton from '@components/PublicEventQRButton';
-import QRModal from '@components/QRModal';
 import TimeExtensionModal from '@components/TimeExtensionModal';
 import WalletHistoryModal from '@components/WalletHistoryModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useAssignEventStaff, useEvaluateStaff, useEventStaff, useExtendEventTime, useStaffEvaluations } from '@hooks/useQueryHooks';
 import type { Event, EventSummary } from '@services/event.service';
 import {
-    coHostRespond,
-    completeEvent,
-    getEventById,
-    getEventSummary,
-    submitForUniversityApproval,
-    timeObjectToString
+  coHostRespond,
+  completeEvent,
+  getEventById,
+  getEventSummary,
+  submitForUniversityApproval,
+  timeObjectToString
 } from '@services/event.service';
 import type { EventStaff } from '@services/eventStaff.service';
 import { MembershipsService } from '@services/memberships.service';
@@ -23,14 +20,14 @@ import { useAuthStore } from '@stores/auth.store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -43,9 +40,6 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showPhaseModal, setShowPhaseModal] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [selectedPhase, setSelectedPhase] = useState<'START' | 'END' | 'MID'>('START');
   const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false);
   const [eventSummary, setEventSummary] = useState<EventSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -227,40 +221,63 @@ export default function EventDetailPage() {
 
   // Check if the event is currently active
   const isEventActive = () => {
-    if (!event) return false;
+    console.log('[EVENT ACTIVE CHECK - START]', {
+      hasEvent: !!event,
+      eventName: event?.name,
+      eventStatus: event?.status,
+      eventType: event?.type,
+      eventDate: event?.date,
+      eventEndTime: event?.endTime,
+    });
+
+    if (!event) {
+      console.log('[EVENT ACTIVE CHECK] No event - returning false');
+      return false;
+    }
 
     // COMPLETED status means event has ended
-    if (event.status === 'COMPLETED') return false;
+    if (event.status === 'COMPLETED') {
+      console.log('[EVENT ACTIVE CHECK] Status is COMPLETED - returning false');
+      return false;
+    }
 
     // Must be ONGOING
-    if (event.status !== 'ONGOING') return false;
+    if (event.status !== 'ONGOING') {
+      console.log('[EVENT ACTIVE CHECK] Status is not ONGOING - returning false', event.status);
+      return false;
+    }
 
     // Check if date and endTime are present
-    if (!event.date || !event.endTime) return false;
+    if (!event.date || !event.endTime) {
+      console.log('[EVENT ACTIVE CHECK] Missing date or endTime - returning false');
+      return false;
+    }
 
     try {
       const now = new Date();
-      const eventDate = new Date(event.date);
       const endTimeStr = timeObjectToString(event.endTime);
-      const [hours, minutes] = endTimeStr.split(':').map(Number);
-      const eventEndDateTime = new Date(eventDate);
-      eventEndDateTime.setHours(hours, minutes, 0, 0);
+      const timeParts = endTimeStr.split(':');
+      const hours = parseInt(timeParts[0] || '0', 10);
+      const minutes = parseInt(timeParts[1] || '0', 10);
+      
+      // Create event end datetime string in ISO format for Vietnam timezone
+      const eventEndDateTimeStr = `${event.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
+      const eventEndDateTime = new Date(eventEndDateTimeStr);
 
-      return now <= eventEndDateTime;
+      const isActive = now <= eventEndDateTime;
+
+      console.log('[EVENT ACTIVE CHECK - RESULT]', event.name, {
+        now: now.toISOString(),
+        eventEnd: eventEndDateTime.toISOString(),
+        endTimeStr: endTimeStr,
+        isActive: isActive
+      });
+
+      return isActive;
     } catch (error) {
-      console.error('Error checking event active status:', error);
+      console.error('[EVENT ACTIVE CHECK - ERROR]', error);
       return false;
     }
-  };
-
-  const handleGenerateQR = () => {
-    if (!event) return;
-    setShowPhaseModal(true);
-  };
-
-  const handlePhaseSelected = (phase: 'START' | 'END' | 'MID') => {
-    setSelectedPhase(phase);
-    setShowQrModal(true);
   };
 
   const handleSubmitToUniversity = async () => {
@@ -480,12 +497,22 @@ export default function EventDetailPage() {
       await refetchEvaluations();
       setShowEvaluateModal(false);
     } catch (error: any) {
-      console.error('Failed to evaluate staff:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error?.response?.data?.message || 'Failed to submit evaluation',
-      });
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Failed to submit evaluation';
+      
+      // Đóng modal trước rồi mới hiển thị toast
+      setShowEvaluateModal(false);
+      setSelectedStaff(null);
+      
+      // Delay nhỏ để modal đóng xong
+      setTimeout(() => {
+        Toast.show({
+          type: 'error',
+          text1: 'Cannot Submit Evaluation',
+          text2: errorMessage,
+          position: 'top',
+          visibilityTime: 4000,
+        });
+      }, 300);
     }
   };
 
@@ -504,12 +531,21 @@ export default function EventDetailPage() {
       await loadEventDetail();
       setShowTimeExtensionModal(false);
     } catch (error: any) {
-      console.error('Failed to extend event time:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error?.response?.data?.message || 'Failed to extend time',
-      });
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Failed to extend time';
+      
+      // Đóng modal trước rồi mới hiển thị toast
+      setShowTimeExtensionModal(false);
+      
+      // Delay nhỏ để modal đóng xong
+      setTimeout(() => {
+        Toast.show({
+          type: 'error',
+          text1: 'Cannot Extend Time',
+          text2: errorMessage,
+          position: 'top',
+          visibilityTime: 4000,
+        });
+      }, 300);
     }
   };
 
@@ -800,7 +836,7 @@ export default function EventDetailPage() {
               </View>
               <View className="flex-1 bg-green-50 p-4 rounded-lg">
                 <Text className="text-green-600 text-xs font-medium mb-1">
-                  {eventSummary ? 'Registered' : 'Checked In'}
+                  Checked In
                 </Text>
                 <Text className="text-green-900 text-xl font-bold">
                   {summaryLoading 
@@ -830,8 +866,8 @@ export default function EventDetailPage() {
                   onPress={() => setShowWalletHistoryModal(true)}
                   className="bg-teal-600 px-3 py-1.5 rounded-lg flex-row items-center"
                 >
-                  <Ionicons name="time-outline" size={14} color="white" />
-                  <Text className="text-white text-xs font-semibold ml-1">History</Text>
+                  {/* <Ionicons name="time-outline" size={14} color="white" />
+                  <Text className="text-white text-xs font-semibold ml-1">History</Text> */}
                 </TouchableOpacity>
               </View>
               <Text className="text-green-900 text-xl font-bold">
@@ -857,35 +893,7 @@ export default function EventDetailPage() {
               </View>
             )}
 
-            {/* QR Code Generation */}
-            {isEventActive() && (
-              <View>
-                {/* Show Public Event QR button for PUBLIC events */}
-                {event.type === 'PUBLIC' ? (
-                  <PublicEventQRButton
-                    event={{
-                      id: event.id,
-                      name: event.name,
-                      checkInCode: event.checkInCode || '',
-                    }}
-                    variant="default"
-                    size="default"
-                    className="w-full"
-                  />
-                ) : (
-                  /* Show Generate QR Code button for SPECIAL and PRIVATE events */
-                  <TouchableOpacity
-                    onPress={handleGenerateQR}
-                    className="bg-teal-600 p-4 rounded-lg flex-row items-center justify-center"
-                  >
-                    <Ionicons name="qr-code" size={20} color="white" />
-                    <Text className="text-white font-semibold ml-2">
-                      Generate QR Code
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+
 
             {/* Status message for non-active events */}
             {!isEventActive() && (
@@ -1165,27 +1173,6 @@ export default function EventDetailPage() {
         {/* Bottom Spacing */}
         <View className="h-8" />
       </ScrollView>
-
-      {/* Phase Selection Modal */}
-      {event && (
-        <PhaseSelectionModal
-          visible={showPhaseModal}
-          onClose={() => setShowPhaseModal(false)}
-          onSelectPhase={handlePhaseSelected}
-          eventName={event.name}
-        />
-      )}
-
-      {/* QR Modal */}
-      {event && (
-        <QRModal
-          open={showQrModal}
-          onOpenChange={setShowQrModal}
-          eventName={event.name}
-          eventId={event.id}
-          phase={selectedPhase}
-        />
-      )}
 
       {/* Wallet History Modal */}
       {event && (

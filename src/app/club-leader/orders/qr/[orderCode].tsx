@@ -2,40 +2,36 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import {
-  completeRedeemOrder,
-  getRedeemByOrderCode,
-  getRedeemOrderById,
-  RedeemOrder,
-  refundPartialRedeemOrder,
-  RefundPayload,
-  refundRedeemOrder
+    completeRedeemOrder,
+    getRedeemByOrderCode,
+    RedeemOrder,
+    refundPartialRedeemOrder,
+    RefundPayload,
+    refundRedeemOrder
 } from '@services/redeem.service';
 import { useAuthStore } from '@stores/auth.store';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function OrderDetailPage() {
+export default function OrderDetailByCodePage() {
   const router = useRouter();
-  const { id, fromQR, orderCode } = useLocalSearchParams<{ id: string; fromQR?: string; orderCode?: string }>();
-  
-  // Check if id is orderCode format (UC-xxx) or numeric orderId
-  const isOrderCode = id && typeof id === 'string' && id.toUpperCase().startsWith('UC-');
-  const orderId = !isOrderCode && id ? parseInt(id, 10) : null;
-  
-  console.log('📋 OrderDetailPage - id:', id, 'isOrderCode:', isOrderCode, 'orderId:', orderId);
+  const { orderCode } = useLocalSearchParams<{ orderCode: string }>();
+
+  // Debug log
+  console.log('📋 OrderDetailByCodePage - orderCode:', orderCode);
 
   // Get user from auth store
   const { user } = useAuthStore();
@@ -77,32 +73,31 @@ export default function OrderDetailPage() {
 
   // Load order data
   useEffect(() => {
-    if (id) {
+    if (orderCode) {
       loadData();
     }
-  }, [id]);
+  }, [orderCode]);
 
   const loadData = async () => {
-    if (!id) return;
+    if (!orderCode) {
+      console.log('❌ orderCode is empty!');
+      Alert.alert('Error', 'Order code is missing');
+      router.back();
+      return;
+    }
 
     try {
       setLoading(true);
-      let foundOrder: RedeemOrder;
-      
-      // Check if id is orderCode format (UC-xxx)
-      if (isOrderCode) {
-        console.log('🔍 Loading order by orderCode:', id);
-        foundOrder = await getRedeemByOrderCode(id as string);
-      } else if (orderId) {
-        console.log('🔍 Loading order by orderId:', orderId);
-        foundOrder = await getRedeemOrderById(orderId);
-      } else {
-        throw new Error('Invalid order identifier');
-      }
-      
+      console.log('🔍 Loading order by orderCode:', orderCode);
+      console.log('🔍 API will call: /api/redeem/orders/' + orderCode);
+      const foundOrder = await getRedeemByOrderCode(orderCode);
+      console.log('✅ Order loaded successfully:', foundOrder);
+      console.log('✅ Order ID:', foundOrder.orderId);
+      console.log('✅ Order Status:', foundOrder.status);
       setOrder(foundOrder);
     } catch (error: any) {
-      console.error('Failed to load order:', error);
+      console.error('❌ Failed to load order:', error);
+      console.error('❌ Error details:', error.response?.data || error.message);
       Alert.alert('Error', error.message || 'Order not found');
       router.back();
     } finally {
@@ -118,6 +113,11 @@ export default function OrderDetailPage() {
 
   // Complete order (Mark as Delivered)
   const handleComplete = () => {
+    console.log('🎯 handleComplete called');
+    console.log('🎯 order:', order);
+    console.log('🎯 order.orderId:', order?.orderId);
+    console.log('🎯 processing:', processing);
+    
     Alert.alert(
       'Mark as Delivered',
       'Confirm that the member has received their product?',
@@ -127,13 +127,19 @@ export default function OrderDetailPage() {
           text: 'Confirm',
           style: 'default',
           onPress: async () => {
-            if (!order?.orderId) return;
+            if (!order?.orderId) {
+              console.log('❌ No order ID found!');
+              return;
+            }
             try {
               setProcessing(true);
+              console.log('📤 Calling completeRedeemOrder with ID:', order.orderId);
               const updatedOrder = await completeRedeemOrder(order.orderId);
+              console.log('✅ Order completed:', updatedOrder);
               setOrder(updatedOrder);
               Alert.alert('Success', 'Order marked as delivered successfully');
             } catch (error: any) {
+              console.error('❌ Complete order error:', error);
               Alert.alert('Error', error.message || 'Failed to complete order');
             } finally {
               setProcessing(false);
@@ -440,7 +446,10 @@ export default function OrderDetailPage() {
           {/* 1️⃣ PENDING: Show "Mark as Delivered" button */}
           {order.status === 'PENDING' && (
             <TouchableOpacity
-              onPress={handleComplete}
+              onPress={() => {
+                console.log('🔘 Button pressed! order.orderId:', order.orderId);
+                handleComplete();
+              }}
               disabled={processing}
               className="bg-green-500 rounded-xl py-4 flex-row items-center justify-center mb-4"
               style={{
@@ -685,4 +694,3 @@ export default function OrderDetailPage() {
     </SafeAreaView>
   );
 }
-

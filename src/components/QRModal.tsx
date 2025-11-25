@@ -3,13 +3,13 @@ import { eventQR } from '@services/event.service';
 import { getCheckinUrl } from '@utils/getLocalUrl';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Toast from 'react-native-toast-message';
@@ -116,28 +116,39 @@ export default function QRModal({
   const getQRValue = () => {
     if (!token) return '';
     
+    let qrValue = '';
+    
     // For public events, generate URL with check-in code
     if (isPublicEvent) {
       if (qrMode === 'prod') {
-        return `https://uniclub.id.vn/student/checkin/public/${token}`;
+        qrValue = `https://uniclub.id.vn/student/checkin/public/${token}`;
       } else if (qrMode === 'mobile') {
-        return `exp://192.168.1.50:8081/--/student/checkin/public/${token}`;
+        qrValue = `exp://192.168.1.50:8081/--/student/checkin/public/${token}`;
       } else {
-        return `http://localhost:3000/student/checkin/public/${token}`;
+        qrValue = `http://localhost:3000/student/checkin/public/${token}`;
+      }
+    } else {
+      // For non-public events, use token and phase
+      if (qrMode === 'prod') {
+        // Production mode: use token directly for web check-in
+        qrValue = token;
+      } else if (qrMode === 'mobile') {
+        // Mobile mode: generate deep link URL with token and phase
+        qrValue = getCheckinUrl(token, currentPhase);
+      } else {
+        // Dev mode: generate local URL with token and phase
+        qrValue = getCheckinUrl(token, currentPhase);
       }
     }
     
-    // For non-public events, use token and phase
-    if (qrMode === 'prod') {
-      // Production mode: use token directly for web check-in
-      return token;
-    } else if (qrMode === 'mobile') {
-      // Mobile mode: generate deep link URL with token and phase
-      return getCheckinUrl(token, currentPhase);
-    } else {
-      // Dev mode: generate local URL with token and phase
-      return getCheckinUrl(token, currentPhase);
-    }
+    console.log('[QR VALUE]', {
+      mode: qrMode,
+      isPublicEvent,
+      token: token.substring(0, 20) + '...',
+      qrValue: qrValue.substring(0, 60) + '...'
+    });
+    
+    return qrValue;
   };
 
   const handleManualRefresh = () => {
@@ -323,11 +334,11 @@ export default function QRModal({
       <View className="flex-1 justify-center items-center bg-black/80 px-4">
         <View className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header */}
-          <View className="bg-gradient-to-r from-teal-500 to-cyan-500 p-6">
+          <View className="bg-teal-600 p-6">
             <View className="flex-row items-start justify-between">
               <View className="flex-1 mr-4">
                 <Text className="text-white text-xl font-bold mb-1">Event QR Code</Text>
-                <Text className="text-white/90 text-sm" numberOfLines={2}>
+                <Text className="text-white text-sm" numberOfLines={2}>
                   {eventName}
                 </Text>
                 {!isPublicEvent && (
@@ -359,7 +370,11 @@ export default function QRModal({
             <View className="flex-row bg-gray-100 rounded-xl p-1 mb-6">
               <TouchableOpacity
                 className={`flex-1 py-3 rounded-lg ${qrMode === 'prod' ? 'bg-teal-600 shadow-sm' : 'bg-transparent'}`}
-                onPress={() => setQrMode('prod')}
+                onPress={() => {
+                  console.log('[QR MODAL] Switching to PROD mode');
+                  setQrMode('prod');
+                }}
+                activeOpacity={0.7}
               >
                 <Text className={`text-center font-semibold text-xs ${qrMode === 'prod' ? 'text-white' : 'text-gray-600'}`}>
                   Web
@@ -367,7 +382,11 @@ export default function QRModal({
               </TouchableOpacity>
               <TouchableOpacity
                 className={`flex-1 py-3 rounded-lg ${qrMode === 'mobile' ? 'bg-teal-600 shadow-sm' : 'bg-transparent'}`}
-                onPress={() => setQrMode('mobile')}
+                onPress={() => {
+                  console.log('[QR MODAL] Switching to MOBILE mode');
+                  setQrMode('mobile');
+                }}
+                activeOpacity={0.7}
               >
                 <Text className={`text-center font-semibold text-xs ${qrMode === 'mobile' ? 'text-white' : 'text-gray-600'}`}>
                   Mobile
@@ -375,7 +394,11 @@ export default function QRModal({
               </TouchableOpacity>
               <TouchableOpacity
                 className={`flex-1 py-3 rounded-lg ${qrMode === 'dev' ? 'bg-teal-600 shadow-sm' : 'bg-transparent'}`}
-                onPress={() => setQrMode('dev')}
+                onPress={() => {
+                  console.log('[QR MODAL] Switching to DEV mode');
+                  setQrMode('dev');
+                }}
+                activeOpacity={0.7}
               >
                 <Text className={`text-center font-semibold text-xs ${qrMode === 'dev' ? 'text-white' : 'text-gray-600'}`}>
                   Dev

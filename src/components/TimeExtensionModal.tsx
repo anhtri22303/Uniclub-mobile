@@ -220,19 +220,21 @@ const TimeExtensionModal: React.FC<TimeExtensionModalProps> = ({
           {/* Footer */}
           <View className="flex-row items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
             <TouchableOpacity
-              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 rounded-lg"
+              className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-lg py-3 items-center"
               onPress={handleClose}
               disabled={isSubmitting}
             >
               <Text className="text-gray-700 dark:text-gray-300 font-medium">Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              className={`px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex-row items-center gap-2 ${isSubmitting ? 'opacity-50' : ''}`}
+              className={`flex-1 bg-blue-600 rounded-lg py-3 items-center ${isSubmitting ? 'opacity-50' : ''}`}
               onPress={handleSubmit}
               disabled={isSubmitting}
             >
-              {isSubmitting && <ActivityIndicator size="small" color="#FFF" />}
-              <Text className="text-white font-medium">{isSubmitting ? 'Saving...' : 'Save Extension'}</Text>
+              <View className="flex-row items-center gap-2">
+                {isSubmitting && <ActivityIndicator size="small" color="#FFF" />}
+                <Text className="text-white font-medium">{isSubmitting ? 'Saving...' : 'Save Extension'}</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>

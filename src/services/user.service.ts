@@ -35,6 +35,7 @@ export interface UserProfile {
   bio: string | null;
   memberships: any[];
   clubs?: any[]; // Array of clubs the user is a member of
+  clubIds?: number[]; // Array of club IDs the user is a member of
   needCompleteProfile?: boolean; // Flag indicating if profile needs completion
 }
 

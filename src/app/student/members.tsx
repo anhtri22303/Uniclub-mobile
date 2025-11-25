@@ -1,5 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { useProfile } from '@contexts/ProfileContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import { MembershipsService, type ApiMembership } from '@services/memberships.service';
@@ -11,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
@@ -48,6 +50,7 @@ interface Member {
 
 export default function StudentMembersPage() {
   const { user } = useAuthStore();
+  const { profile, userClubs } = useProfile();
   const router = useRouter();
 
   // Club selection
@@ -70,14 +73,19 @@ export default function StudentMembersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'leader' | 'staff' | 'member'>('all');
 
-  // Get user's club IDs from memberships
+  // Leave club modal
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveReason, setLeaveReason] = useState('');
+  const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
+
+  // Get user's club IDs from userClubs (from ProfileContext/Sidebar)
   useEffect(() => {
     const loadUserClubs = async () => {
       try {
-        // Get club IDs from user's clubIds property
-        const clubIds = user?.clubIds || [];
+        // Get club IDs from userClubs array (same as Sidebar)
+        const clubIds = userClubs.map((club) => club.clubId);
         
-        console.log('User club IDs:', clubIds);
+        console.log('User club IDs from userClubs:', clubIds);
         setUserClubIds(clubIds);
         
         // Set first club as default
@@ -90,7 +98,7 @@ export default function StudentMembersPage() {
     };
     
     loadUserClubs();
-  }, [user]);
+  }, [userClubs]);
 
   // Load club details for dropdown
   useEffect(() => {
@@ -174,7 +182,7 @@ export default function StudentMembersPage() {
         clubId: m.clubId,
         fullName: m.fullName ?? `User ${m.userId}`,
         email: m.email ?? 'N/A',
-        phone: m.phone ?? 'N/A',
+        phone: 'N/A',
         studentCode: m.studentCode ?? 'N/A',
         majorName: m.major ?? 'N/A',
         avatarUrl: m.avatarUrl ?? '',
@@ -241,6 +249,44 @@ export default function StudentMembersPage() {
     return 'bg-green-500';
   };
 
+  // Handle leave club request
+  const handleOpenLeaveModal = () => {
+    if (!selectedClubId) {
+      Alert.alert('Error', 'Please select a club first');
+      return;
+    }
+    setLeaveReason('');
+    setShowLeaveModal(true);
+  };
+
+  const handleLeaveClub = async () => {
+    if (!selectedClubId) return;
+    
+    if (!leaveReason.trim()) {
+      Alert.alert('Error', 'Please enter reason for leaving the club');
+      return;
+    }
+
+    setIsSubmittingLeave(true);
+    try {
+      const result = await MembershipsService.postLeaveRequest(selectedClubId, leaveReason);
+      Alert.alert('Success', result || 'Request to leave the club has been sent successfully');
+      setShowLeaveModal(false);
+      setLeaveReason('');
+    } catch (error: any) {
+      console.error('Failed to submit leave request:', error);
+      Alert.alert(
+        'Error',
+        error?.response?.data?.error || 
+        error?.response?.data?.message || 
+        error?.message ||
+        'Unable to submit a request to leave the club'
+      );
+    } finally {
+      setIsSubmittingLeave(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
@@ -255,7 +301,7 @@ export default function StudentMembersPage() {
           {/* Club Selector */}
           {userClubIds.length > 0 && (
             <View className="bg-white rounded-2xl p-4 shadow-sm">
-              <Text className="text-sm font-semibold text-gray-700 mb-2">Select Club</Text>
+              <Text className="text-sm font-semibold text-gray-700 mb-2">     Select Club</Text>
               <TouchableOpacity
                 onPress={() => setShowClubPicker(!showClubPicker)}
                 className="flex-row items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-200"
@@ -312,6 +358,17 @@ export default function StudentMembersPage() {
                 <Text className="text-xs text-gray-500 mt-2">
                   {userClubIds.length} clubs available
                 </Text>
+              )}
+
+              {/* Leave Club Button */}
+              {selectedClubId && (
+                <TouchableOpacity
+                  onPress={handleOpenLeaveModal}
+                  className="mt-3 bg-red-500 px-4 py-3 rounded-xl flex-row items-center justify-center gap-2"
+                >
+                  <Ionicons name="log-out-outline" size={20} color="white" />
+                  <Text className="text-white font-semibold">Leave Club</Text>
+                </TouchableOpacity>
               )}
             </View>
           )}
@@ -501,15 +558,19 @@ export default function StudentMembersPage() {
                           </Text>
                           <View
                             className={`px-2 py-1 rounded-full ${
-                              member.role === 'LEADER' ? 'bg-purple-100' : 'bg-green-100'
+                              member.role === 'LEADER' || member.role === 'VICE_LEADER' 
+                                ? 'bg-purple-100' 
+                                : 'bg-green-100'
                             }`}
                           >
                             <Text
                               className={`text-xs font-bold ${
-                                member.role === 'LEADER' ? 'text-purple-700' : 'text-green-700'
+                                member.role === 'LEADER' || member.role === 'VICE_LEADER'
+                                  ? 'text-purple-700' 
+                                  : 'text-green-700'
                               }`}
                             >
-                              {member.role}
+                              {member.role === 'VICE_LEADER' ? 'VICE LEADER' : member.role}
                             </Text>
                           </View>
                           {member.isStaff && (
@@ -556,6 +617,81 @@ export default function StudentMembersPage() {
           )}
         </View>
       </ScrollView>
+
+      {/* Leave Club Modal */}
+      <Modal
+        visible={showLeaveModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLeaveModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center px-4">
+          <View className="bg-white rounded-3xl w-full max-w-md shadow-lg">
+            {/* Modal Header */}
+            <View className="px-6 pt-6 pb-4 border-b border-gray-100">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-xl font-bold text-gray-900">Leave the club</Text>
+                <TouchableOpacity
+                  onPress={() => setShowLeaveModal(false)}
+                  className="p-2 rounded-full bg-gray-100"
+                  disabled={isSubmittingLeave}
+                >
+                  <Ionicons name="close" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-sm text-gray-600">
+                Are you sure you want to leave{' '}
+                <Text className="font-semibold text-gray-900">"{selectedClub?.name}"</Text>?
+                {'\n'}Please enter a reason for Leader to review.
+              </Text>
+            </View>
+
+            {/* Modal Body */}
+            <View className="px-6 py-4">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Reason for leaving the club <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                placeholder="Enter your reason..."
+                value={leaveReason}
+                onChangeText={setLeaveReason}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 min-h-[120px]"
+                editable={!isSubmittingLeave}
+              />
+            </View>
+
+            {/* Modal Footer */}
+            <View className="px-6 pb-6 flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setShowLeaveModal(false);
+                  setLeaveReason('');
+                }}
+                className="flex-1 bg-gray-100 px-4 py-3 rounded-xl"
+                disabled={isSubmittingLeave}
+              >
+                <Text className="text-gray-700 font-semibold text-center">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleLeaveClub}
+                className={`flex-1 px-4 py-3 rounded-xl ${
+                  isSubmittingLeave || !leaveReason.trim() ? 'bg-red-300' : 'bg-red-500'
+                }`}
+                disabled={isSubmittingLeave || !leaveReason.trim()}
+              >
+                {isSubmittingLeave ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-white font-semibold text-center">Leave</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Navigation Bar */}
       <NavigationBar role={user?.role} user={user || undefined} />

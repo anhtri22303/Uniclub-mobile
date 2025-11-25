@@ -10,7 +10,7 @@ export const ENV = {
   IS_DEV: process.env.EXPO_PUBLIC_ENV === 'development',
   
   // Timeout settings
-  REQUEST_TIMEOUT: 20000, // Increased timeout for network requests
+  REQUEST_TIMEOUT: 10000, // Optimized timeout for faster error detection
 } as const;
 
 // API Configuration reference (for documentation purposes)

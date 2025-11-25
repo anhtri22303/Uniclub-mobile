@@ -52,9 +52,10 @@ axiosPublic.interceptors.request.use(
 // Request interceptor for axiosClient to add JWT token (for authenticated requests)
 axiosClient.interceptors.request.use(
     async (config) => {
-        console.log('� Making AUTHENTICATED API request to:', `${config.baseURL || ''}${config.url || ''}`);
-        console.log('📋 Request method:', config.method?.toUpperCase());
-        console.log('📦 Request headers:', config.headers);
+        // Only log in development mode
+        if (__DEV__) {
+            console.log('🔐 API:', config.method?.toUpperCase(), config.url);
+        }
         
         const token = await SecureStore.getItemAsync('token');
         if (token) {
@@ -63,7 +64,7 @@ axiosClient.interceptors.request.use(
         return config;
     },
     (error) => {
-        console.log('Authenticated request interceptor error:', error);
+        if (__DEV__) console.error('Request error:', error);
         return Promise.reject(error);
     }
 );
@@ -84,12 +85,12 @@ axiosPublic.interceptors.response.use(
 // Response interceptor for axiosClient  
 axiosClient.interceptors.response.use(
     (response) => {
-        console.log('✅ Authenticated API Response success:', response.status);
+        if (__DEV__) console.log('✅', response.config.url, response.status);
         return response;
     },
     (error) => {
-        console.log('Authenticated API Response error:', error.response?.status, error.message);
-        console.log('Error details:', error.response?.data);
+        // Không dùng console.error để tránh hiển thị error overlay màu đỏ
+        if (__DEV__) console.log('❌', error.config?.url, error.response?.status, error.response?.data);
         return Promise.reject(error);
     }
 );
@@ -129,21 +130,20 @@ axiosPrivate.interceptors.response.use(
     },
 );
 
-// Xử lý lỗi toàn cục
+// Xử lý lỗi toàn cục - chỉ log trong dev mode, không hiển thị error overlay
 const handleError = (error: AxiosError) => {
-    if (error.response) {
-        console.log('Server Error:', error.response.data);
-    } else if (error.request) {
-        console.log('No Response:', error.request);
-    } else {
-        console.log('Error:', error.message);
+    // Chỉ log thông tin cần thiết, không log error object trực tiếp để tránh error overlay
+    if (__DEV__) {
+        if (error.response) {
+            console.log('Server Error:', error.response.status, error.response.data);
+        } else if (error.request) {
+            console.log('No Response from server');
+        } else {
+            console.log('Request Error:', error.message);
+        }
     }
     return Promise.reject(error);
 };
-
-axiosClient.interceptors.response.use((response) => response, handleError);
-axiosPrivate.interceptors.response.use((response) => response, handleError);
-axiosPublic.interceptors.response.use((response) => response, handleError);
 
 export { axiosClient, axiosPrivate, axiosPublic };
 
