@@ -18,9 +18,8 @@ export interface EventStaff {
   eventName: string;
   membershipId: number;
   memberName: string;
-  memberEmail?: string;
   duty: string;
-  state: "ACTIVE" | "INACTIVE" | "EXPIRED";
+  state: "ACTIVE" | "INACTIVE" | "REMOVED";
   assignedAt: string;
   unassignedAt: string | null;
 }
@@ -97,6 +96,20 @@ export async function postEventStaff(
 }
 
 /**
+ * Delete staff from event
+ * DELETE /api/events/{id}/staffs/{staffId}
+ */
+export async function deleteEventStaff(
+  eventId: number | string,
+  staffId: number | string
+): Promise<string> {
+  const res = await axiosClient.delete<ApiResponse<string>>(
+    `/api/events/${eventId}/staffs/${staffId}`
+  );
+  return res.data.data;
+}
+
+/**
  * Evaluate staff performance after event
  * POST /api/events/{id}/staff/evaluate
  */
@@ -137,11 +150,69 @@ export async function getTopEvaluatedStaff(
   return res.data.data;
 }
 
+/**
+ * My Staff Event - Events where current user is staff
+ */
+export interface MyStaffEvent {
+  eventId: number;
+  eventName: string;
+  clubId: number;
+  clubName: string;
+  duty: string;
+  state: "ACTIVE" | "INACTIVE" | "REMOVED";
+}
+
+/**
+ * Staff History Order - Staff's order approval history
+ */
+export interface StaffHistoryOrder {
+  orderId: number;
+  orderCode: string;
+  productName: string;
+  quantity: number;
+  totalPoints: number;
+  status: string;
+  createdAt: string;
+  completedAt: string;
+  productType: string;
+  clubId: number;
+  eventId: number;
+  clubName: string;
+  memberName: string;
+  reasonRefund: string;
+  errorImages: string[];
+}
+
+/**
+ * Get events where current user is staff
+ * GET /api/events/my/staff
+ */
+export async function getMyStaff(): Promise<MyStaffEvent[]> {
+  const res = await axiosClient.get<ApiResponse<MyStaffEvent[]>>(
+    '/api/events/my/staff'
+  );
+  return res.data.data;
+}
+
+/**
+ * Get staff's order approval history
+ * GET /api/redeem/my-approvals
+ */
+export async function getStaffHistory(): Promise<StaffHistoryOrder[]> {
+  const res = await axiosClient.get<ApiResponse<{ content: StaffHistoryOrder[] }>>(
+    '/api/redeem/my-approvals'
+  );
+  return res.data.data.content;
+}
+
 export default {
   getEventStaff,
   getEventStaffCompleted,
   postEventStaff,
+  deleteEventStaff,
   evaluateEventStaff,
   getEvaluateEventStaff,
   getTopEvaluatedStaff,
+  getMyStaff,
+  getStaffHistory,
 };

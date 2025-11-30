@@ -278,6 +278,7 @@ export default function StudentEventsPage() {
     if (event.status === 'PENDING_UNISTAFF') return 'PENDING';
     if (event.status === 'REJECTED') return 'REJECTED';
     
+    if (!event.date) return 'Approved';
     const status = getEventStatus(event.date);
     if (status === 'past') return 'Past';
     if (status === 'upcoming') return 'Soon';
@@ -850,11 +851,14 @@ export default function StudentEventsPage() {
       <CalendarModal
         visible={showCalendarModal}
         onClose={() => setShowCalendarModal(false)}
-        events={filteredEvents.map(event => ({
-          ...event,
-          startTime: typeof event.startTime === 'string' ? event.startTime : event.startTime ? timeObjectToString(event.startTime) : undefined,
-          endTime: typeof event.endTime === 'string' ? event.endTime : event.endTime ? timeObjectToString(event.endTime) : undefined,
-        }))}
+        events={filteredEvents
+          .filter(event => event.date !== undefined && event.date !== null)
+          .map(event => ({
+            ...event,
+            date: event.date as string,
+            startTime: typeof event.startTime === 'string' ? event.startTime : event.startTime ? timeObjectToString(event.startTime) : undefined,
+            endTime: typeof event.endTime === 'string' ? event.endTime : event.endTime ? timeObjectToString(event.endTime) : undefined,
+          }))}
         onEventClick={(event) => {
           setShowCalendarModal(false);
           router.push(`/student/events/${event.id}` as any);

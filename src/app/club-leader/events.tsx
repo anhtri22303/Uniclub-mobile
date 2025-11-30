@@ -665,6 +665,20 @@ export default function Events() {
                         </View>
                       )}
 
+                      {/* Receive Points - NEW */}
+                      <View className="flex-row items-center">
+                        <View className="flex-row items-center px-3 py-1 rounded-full bg-emerald-600">
+                          <Ionicons name="gift" size={12} color="white" />
+                          <Text className="text-xs font-semibold text-white ml-1">
+                            {(() => {
+                              const budgetPoints = event.budgetPoints ?? 0
+                              const maxCheckInCount = event.maxCheckInCount ?? 1
+                              return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                            })()} pts
+                          </Text>
+                        </View>
+                      </View>
+
                       {/* Registration Deadline - NEW */}
                       {event.registrationDeadline && (
                         <View className="flex-row items-center">

@@ -93,14 +93,38 @@ export default function PublicEventsPage() {
     return myRegistrations.some((reg) => reg.eventId === eventId);
   };
 
-  // Helper function to check if event has expired
+  // Enhanced isEventExpired function from event.service.ts (supports both single-day and multi-day events)
   const isEventExpired = (event: Event) => {
     if (event.status === 'COMPLETED') return true;
     
+    const now = new Date();
+    
+    // Check if event is multi-day
+    if (event.days && event.days.length > 0) {
+      const lastDay = event.days[event.days.length - 1];
+      const [endHour, endMinute] = lastDay.endTime.split(':').map(Number);
+      const [year, month, dayNum] = lastDay.date.split('-').map(Number);
+      const eventEnd = new Date(year, month - 1, dayNum, endHour, endMinute);
+      
+      return now > eventEnd;
+    }
+    
+    // Single-day event check
+    
+    // Check if event is multi-day
+    if (event.days && event.days.length > 0) {
+      const lastDay = event.days[event.days.length - 1];
+      const [endHour, endMinute] = lastDay.endTime.split(':').map(Number);
+      const [year, month, dayNum] = lastDay.date.split('-').map(Number);
+      const eventEnd = new Date(year, month - 1, dayNum, endHour, endMinute);
+      
+      return now > eventEnd;
+    }
+    
+    // Single-day event check
     if (!event.date || !event.endTime) return false;
 
     try {
-      const now = new Date();
       const eventDate = new Date(event.date);
       const endTimeStr = timeObjectToString(event.endTime);
       const [hours, minutes] = endTimeStr.split(':').map(Number);
@@ -197,8 +221,11 @@ export default function PublicEventsPage() {
     const isExpired = isEventExpired(event);
     if (isExpired) return 'Past';
     
-    const status = getEventStatus(event.date);
-    if (status === 'upcoming') return 'Soon';
+    const eventDate = event.date || event.startDate;
+    if (eventDate) {
+      const status = getEventStatus(eventDate);
+      if (status === 'upcoming') return 'Soon';
+    }
     return 'Approved';
   };
 
@@ -373,13 +400,21 @@ export default function PublicEventsPage() {
                       <View className="space-y-2 mt-3">
                         <View className="flex-row items-center">
                           <Ionicons name="calendar" size={16} color="#1F2937" />
-                          <Text className="text-sm text-gray-900 ml-2">{formatDate(event.date)}</Text>
+                          <Text className="text-sm text-gray-900 ml-2">
+                            {event.date 
+                              ? formatDate(event.date) 
+                              : event.startDate && event.endDate
+                              ? `${formatDate(event.startDate)} - ${formatDate(event.endDate)}`
+                              : 'Date TBA'}
+                          </Text>
                         </View>
                         <View className="flex-row items-center">
                           <Ionicons name="time" size={16} color="#1F2937" />
                           <Text className="text-sm text-gray-900 ml-2">
                             {event.startTime && event.endTime
                               ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
+                              : event.days && event.days.length > 0
+                              ? `${event.days[0].startTime} - ${event.days[event.days.length - 1].endTime}`
                               : 'Time not set'}
                           </Text>
                         </View>
@@ -392,10 +427,22 @@ export default function PublicEventsPage() {
                       </View>
 
                       {/* Status Badges */}
-                      <View className="flex-row items-center gap-2 mt-3">
+                      <View className="flex-row items-center gap-2 mt-3 flex-wrap">
                         <View className={`px-3 py-1 rounded-full ${getStatusBadgeStyle(event)}`}>
                           <Text className="text-xs font-semibold text-white">
                             {statusText}
+                          </Text>
+                        </View>
+                        {/* Receive Points Badge */}
+                        <View className="flex-row items-center px-3 py-1 rounded-full bg-emerald-600">
+                          <Ionicons name="gift" size={12} color="white" />
+                          <Text className="text-xs font-semibold text-white ml-1">
+                            {(() => {
+                              const budgetPoints = event.budgetPoints ?? 0;
+                              const maxCheckInCount = event.maxCheckInCount ?? 1;
+                              const receivePoint = maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0;
+                              return receivePoint;
+                            })()} pts
                           </Text>
                         </View>
                       </View>

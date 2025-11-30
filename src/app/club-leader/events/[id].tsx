@@ -751,8 +751,8 @@ export default function EventDetailPage() {
                 <Ionicons name="calendar" size={20} color="#0D9488" />
               </View>
               <View className="flex-1">
-                <Text className="text-gray-900 font-medium">{formatDate(event.date)}</Text>
-                <Text className="text-gray-500 text-sm">{event.date}</Text>
+                <Text className="text-gray-900 font-medium">{event.date ? formatDate(event.date) : 'Date TBA'}</Text>
+                <Text className="text-gray-500 text-sm">{event.date || 'Not set'}</Text>
               </View>
             </View>
 
@@ -770,20 +770,41 @@ export default function EventDetailPage() {
               </View>
             </View>
 
-            {/* Commit Point Cost (Ticket Price) */}
-            {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
-              <View className="bg-amber-50 p-4 rounded-lg flex-row items-center">
-                <View className="bg-amber-100 p-3 rounded-lg mr-4">
-                  <Ionicons name="pricetag" size={20} color="#F59E0B" />
+          </View>
+
+          {/* Divider */}
+          <View className="h-px bg-gray-200 mx-6" />
+
+          {/* Points Information Card */}
+          <View className="px-6 py-4">
+            <Text className="text-lg font-semibold text-gray-900 mb-3">Points Information</Text>
+            <View className="flex-row gap-3 mb-0">
+              {/* Commit Point Cost */}
+              <View className="flex-1 bg-gray-50 p-4 rounded-lg">
+                <View className="flex-row items-center gap-2 mb-2">
+                  <Ionicons name="ticket" size={16} color="#6B7280" />
+                  <Text className="text-xs text-gray-600">Commit Point Cost</Text>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-gray-900 font-medium">
-                    <Text className="font-bold text-amber-600">{event.commitPointCost}</Text> points
-                  </Text>
-                  <Text className="text-gray-500 text-sm">Ticket Price</Text>
-                </View>
+                <Text className="text-2xl font-bold text-gray-800">{event.commitPointCost ?? 0}</Text>
+                <Text className="text-xs text-gray-500 mt-1">points</Text>
               </View>
-            )}
+              
+              {/* Receive Point */}
+              <View className="flex-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                <View className="flex-row items-center gap-2 mb-2">
+                  <Ionicons name="gift" size={16} color="#059669" />
+                  <Text className="text-xs text-emerald-700">Receive Point</Text>
+                </View>
+                <Text className="text-2xl font-bold text-emerald-700">
+                  {(() => {
+                    const budgetPoints = event.budgetPoints ?? 0
+                    const maxCheckInCount = event.maxCheckInCount ?? 1
+                    return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                  })()}
+                </Text>
+                <Text className="text-xs text-emerald-600 mt-1">per full attendance</Text>
+              </View>
+            </View>
           </View>
 
           {/* Divider */}
@@ -1320,7 +1341,7 @@ export default function EventDetailPage() {
           visible={showTimeExtensionModal}
           onClose={() => setShowTimeExtensionModal(false)}
           onSubmit={handleExtendTime}
-          currentDate={event.date}
+          currentDate={event.date || ''}
           currentStartTime={timeObjectToString(event.startTime)}
           currentEndTime={timeObjectToString(event.endTime)}
           eventName={event.name}

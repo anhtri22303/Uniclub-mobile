@@ -1,7 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMyEventRegistrations, useRegisterForEvent } from '@hooks/useQueryHooks';
 import type { Event } from '@services/event.service';
-import { getEventById, timeObjectToString } from '@services/event.service';
+import {
+  formatEventDateRange,
+  getEventById,
+  getEventDurationDays,
+  isMultiDayEvent,
+  timeObjectToString
+} from '@services/event.service';
 import FeedbackService, { Feedback } from '@services/feedback.service';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -455,27 +461,82 @@ export default function StudentEventDetailPage() {
           <View className="p-6 space-y-3">
             <Text className="text-lg font-semibold text-gray-900 mb-3">Date & Time</Text>
             
-            <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
-              <View className="bg-teal-100 p-3 rounded-lg mr-4">
-                <Ionicons name="calendar" size={20} color="#0D9488" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-gray-900 font-medium">{formatDate(event.date)}</Text>
-                <Text className="text-gray-500 text-sm">{event.date}</Text>
-              </View>
-            </View>
+            {isMultiDayEvent(event) ? (
+              // Multi-day event display
+              <View>
+                <View className="bg-gray-50 p-4 rounded-lg flex-row items-center mb-3">
+                  <View className="bg-teal-100 p-3 rounded-lg mr-4">
+                    <Ionicons name="calendar" size={20} color="#0D9488" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-gray-900 font-medium">
+                      {formatEventDateRange(event, 'en-US')}
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                      {getEventDurationDays(event)} day{getEventDurationDays(event) > 1 ? 's' : ''} event
+                    </Text>
+                  </View>
+                </View>
 
-            {(event.startTime && event.endTime) && (
-              <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
-                <View className="bg-teal-100 p-3 rounded-lg mr-4">
-                  <Ionicons name="time" size={20} color="#0D9488" />
+                {/* Schedule for each day */}
+                {event.days && event.days.length > 0 && (
+                  <View className="mt-2">
+                    <Text className="text-sm font-semibold text-gray-600 mb-2">Event Schedule</Text>
+                    {event.days.map((day, index) => (
+                      <View key={day.id} className="bg-gray-50 p-3 rounded-lg mb-2 flex-row items-start border border-gray-200">
+                        <View className="w-10 h-10 rounded-full bg-teal-100 items-center justify-center mr-3">
+                          <Text className="text-sm font-bold text-teal-700">D{index + 1}</Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-gray-900 font-medium">
+                            {new Date(day.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </Text>
+                          <View className="flex-row items-center mt-1">
+                            <Ionicons name="time" size={12} color="#6B7280" />
+                            <Text className="text-sm text-gray-600 ml-1">
+                              {day.startTime} - {day.endTime}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : (
+              // Single-day event display
+              <View>
+                <View className="bg-gray-50 p-4 rounded-lg flex-row items-center">
+                  <View className="bg-teal-100 p-3 rounded-lg mr-4">
+                    <Ionicons name="calendar" size={20} color="#0D9488" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-gray-900 font-medium">
+                      {event.date ? formatDate(event.date) : 'Date TBA'}
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                      {event.date || 'Date TBA'}
+                    </Text>
+                  </View>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-gray-900 font-medium">
-                    {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
-                  </Text>
-                  <Text className="text-gray-500 text-sm">Event Duration</Text>
-                </View>
+
+                {event.startTime && event.endTime && (
+                  <View className="bg-gray-50 p-4 rounded-lg flex-row items-center mt-3">
+                    <View className="bg-teal-100 p-3 rounded-lg mr-4">
+                      <Ionicons name="time" size={20} color="#0D9488" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-gray-900 font-medium">
+                        {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
+                      </Text>
+                      <Text className="text-gray-500 text-sm">Event Duration</Text>
+                    </View>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -644,29 +705,44 @@ export default function StudentEventDetailPage() {
           </View>
         </View>
 
-        {/* Points Information */}
-        {event.budgetPoints !== undefined && event.budgetPoints > 0 && (
-          <View className="bg-white m-4 rounded-xl shadow-sm">
-            <View className="p-6">
-              <Text className="text-lg font-semibold text-gray-900 mb-4">
-                Event Budget
-              </Text>
-              <View className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4 flex-row items-center">
-                <View className="bg-amber-100 p-3 rounded-full mr-4">
-                  <Ionicons name="wallet" size={24} color="#F59E0B" />
+        {/* Points Information Card */}
+        <View className="bg-white m-4 rounded-xl shadow-sm">
+          <View className="p-6">
+            <Text className="text-lg font-semibold text-gray-900 mb-4">
+              Points Information
+            </Text>
+
+            <View className="flex-row mb-0 gap-3">
+              {/* Commit Point Cost */}
+              <View className="flex-1 bg-gray-50 p-4 rounded-lg">
+                <View className="flex-row items-center mb-2">
+                  <Ionicons name="ticket" size={16} color="#6B7280" />
+                  <Text className="text-xs text-gray-600 ml-1">Commit Cost</Text>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-amber-900 font-semibold text-lg">
-                    {event.budgetPoints} Points
-                  </Text>
-                  <Text className="text-amber-700 text-xs mt-1">
-                    Total budget allocated for this event
-                  </Text>
+                <Text className="text-xl font-bold text-gray-900">
+                  {event.commitPointCost ?? 0}
+                </Text>
+                <Text className="text-xs text-gray-500 mt-1">points</Text>
+              </View>
+
+              {/* Receive Points */}
+              <View className="flex-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                <View className="flex-row items-center mb-2">
+                  <Ionicons name="gift" size={16} color="#059669" />
+                  <Text className="text-xs text-emerald-700 ml-1">Receive Point</Text>
                 </View>
+                <Text className="text-xl font-bold text-emerald-700">
+                  {(() => {
+                    const budgetPoints = event.budgetPoints ?? 0;
+                    const maxCheckInCount = event.maxCheckInCount ?? 1;
+                    return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0;
+                  })()}
+                </Text>
+                <Text className="text-xs text-emerald-600 mt-1">per full attendance</Text>
               </View>
             </View>
           </View>
-        )}
+        </View>
 
         {/* Co-hosted Clubs */}
         {event.coHostedClubs && event.coHostedClubs.length > 0 && (

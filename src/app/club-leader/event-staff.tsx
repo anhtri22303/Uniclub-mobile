@@ -3,21 +3,28 @@ import Sidebar from '@components/navigation/Sidebar';
 import { Badge } from '@components/ui/Badge';
 import { Card, CardContent } from '@components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
-import { getEventByClubId, type Event } from '@services/event.service';
+import {
+  formatEventDateRange,
+  getEventByClubId,
+  getEventEndTime,
+  getEventStartTime,
+  isEventExpired,
+  type Event
+} from '@services/event.service';
 import EventStaffService, { type EventStaff, type StaffEvaluation } from '@services/eventStaff.service';
 import { useAuthStore } from '@stores/auth.store';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -186,20 +193,16 @@ export default function EventStaffPage() {
   };
 
   // Filter events based on status and time
-  const now = new Date();
-
   const activeEvents = events.filter((event) => {
-    const eventDate = new Date(event.date);
-    const isNotExpired = eventDate >= now;
     const isApprovedOrOngoing = ['APPROVED', 'ONGOING'].includes(event.status);
-    return isNotExpired && isApprovedOrOngoing;
+    const expired = isEventExpired(event);
+    return isApprovedOrOngoing && !expired;
   });
 
   const completedEvents = events.filter((event) => {
-    const eventDate = new Date(event.date);
-    const isExpired = eventDate < now;
+    const expired = isEventExpired(event);
     const isCompleted = event.status === 'COMPLETED';
-    return isExpired || isCompleted;
+    return expired || isCompleted;
   });
 
   const displayEvents = activeTab === 'active' ? activeEvents : completedEvents;
@@ -369,12 +372,12 @@ export default function EventStaffPage() {
                     <View className="space-y-2">
                       <View className="flex-row items-center">
                         <Ionicons name="calendar" size={16} color="#0D9488" />
-                        <Text className="text-sm text-gray-600 ml-2">{formatDate(event.date)}</Text>
+                        <Text className="text-sm text-gray-600 ml-2">{formatEventDateRange(event)}</Text>
                       </View>
                       <View className="flex-row items-center">
                         <Ionicons name="time" size={16} color="#0D9488" />
                         <Text className="text-sm text-gray-600 ml-2">
-                          {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                          {getEventStartTime(event)} - {getEventEndTime(event)}
                         </Text>
                       </View>
                       <View className="flex-row items-center">
