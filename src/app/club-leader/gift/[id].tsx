@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
+import { Event, getEventByClubId } from '@services/event.service';
 import { Product, ProductMedia, ProductService, StockHistory, UpdateProductPayload } from '@services/product.service';
 import { Tag, TagService } from '@services/tag.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -21,11 +22,25 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 type TabType = 'details' | 'media' | 'stock' | 'redemptions';
 
 // Description length limit
 const MAX_DESCRIPTION_LENGTH = 500;
+
+// Fixed tag IDs interface
+interface FixedTagIds {
+  clubTagId: number | null;
+  eventTagId: number | null;
+}
+
+// Event validation interface
+interface EventProductValidation {
+  eventStatus: string;
+  expired: boolean;
+  message?: string;
+}
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -39,12 +54,27 @@ export default function ProductDetailPage() {
   const [clubId, setClubId] = useState<number | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [stockHistory, setStockHistory] = useState<StockHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('details');
+  
+  // Event validation
+  const [eventValidation, setEventValidation] = useState<EventProductValidation | null>(null);
+  const [isEventExpired, setIsEventExpired] = useState(false);
+  
+  // Fixed tag IDs
+  const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
+    clubTagId: null,
+    eventTagId: null,
+  });
+  
+  // Formatted display values
+  const [displayPrice, setDisplayPrice] = useState<string>('');
+  const [displayStockChange, setDisplayStockChange] = useState<string>('');
   
   // Edit mode
   const [isEditing, setIsEditing] = useState(false);
@@ -61,6 +91,18 @@ export default function ProductDetailPage() {
 
   // Description validation
   const isDescriptionTooLong = formData.description.length > MAX_DESCRIPTION_LENGTH;
+  
+  // Check if product is archived
+  const isArchived = product?.status === 'ARCHIVED';
+  
+  // Helper functions for number formatting
+  const formatNumber = (num: number | string): string => {
+    return Number(num).toLocaleString('en-US');
+  };
+  
+  const parseFormattedNumber = (str: string): number => {
+    return Number(str.replace(/,/g, ''));
+  };
   
   // Stock update modal
   const [showStockModal, setShowStockModal] = useState(false);
@@ -88,6 +130,12 @@ export default function ProductDetailPage() {
     const id = getClubId();
     if (id) {
       setClubId(id);
+      // Fetch events list for EVENT_ITEM products
+      getEventByClubId(id)
+        .then(setEvents)
+        .catch((err) => {
+          console.error('Failed to fetch events:', err);
+        });
     } else {
       Alert.alert('Error', 'Club ID not found');
       router.back();
@@ -128,7 +176,41 @@ export default function ProductDetailPage() {
       setProduct(productData);
       setTags(tagsData);
       
+      // Find and save fixed tags (club and event)
+      const clubTag = tagsData.find((tag) => tag.name.toLowerCase() === 'club');
+      const eventTag = tagsData.find((tag) => tag.name.toLowerCase() === 'event');
+      setFixedTagIds({
+        clubTagId: clubTag ? clubTag.tagId : null,
+        eventTagId: eventTag ? eventTag.tagId : null,
+      });
+      
+      // Check if product is EVENT_ITEM and validate event
+      if (productData.type === 'EVENT_ITEM' && productData.eventId) {
+        try {
+          // Simple validation: check if event exists and is not COMPLETED
+          const event = events.find(e => e.id === productData.eventId);
+          if (event) {
+            const isExpired = event.status === 'COMPLETED';
+            setIsEventExpired(isExpired);
+            setEventValidation({
+              eventStatus: event.status,
+              expired: isExpired,
+              message: isExpired ? 'Event has ended' : undefined,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to validate event product:', error);
+          setIsEventExpired(false);
+        }
+      } else {
+        setIsEventExpired(false);
+      }
+      
       // Initialize form data
+      const loadedTagIds = tagsData
+        .filter((tag) => productData.tags.includes(tag.name))
+        .map((tag) => tag.tagId);
+        
       setFormData({
         name: productData.name,
         description: productData.description,
@@ -137,11 +219,11 @@ export default function ProductDetailPage() {
         type: productData.type,
         eventId: productData.eventId || 0,
         status: productData.status,
-        tagIds: productData.tags.map(tagName => {
-          const tag = tagsData.find(t => t.name === tagName);
-          return tag?.tagId || 0;
-        }).filter(id => id > 0),
+        tagIds: loadedTagIds,
       });
+      
+      // Set formatted display price
+      setDisplayPrice(formatNumber(productData.pointCost));
 
       // Load stock history if on stock tab
       if (activeTab === 'stock') {
@@ -164,7 +246,29 @@ export default function ProductDetailPage() {
 
   // Save product changes
   const handleSave = async () => {
-    if (!clubId || !productId) return;
+    if (!clubId || !productId || !product) return;
+
+    // Check if product is archived
+    if (product.status === 'ARCHIVED') {
+      Toast.show({
+        type: 'error',
+        text1: 'Cannot Edit',
+        text2: 'Cannot edit products that are in ARCHIVED status',
+        position: 'top',
+      });
+      return;
+    }
+
+    // Validate tags
+    if (!formData.tagIds || formData.tagIds.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Product must have at least one tag',
+        position: 'top',
+      });
+      return;
+    }
 
     try {
       setSaving(true);
@@ -177,9 +281,22 @@ export default function ProductDetailPage() {
       
       setProduct(updatedProduct);
       setIsEditing(false);
-      Alert.alert('Success', 'Product updated successfully');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Product updated successfully',
+        position: 'top',
+      });
+      
+      // Reload data to get fresh state
+      await loadData();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update product');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.message || 'Failed to update product',
+        position: 'top',
+      });
     } finally {
       setSaving(false);
     }
@@ -189,9 +306,24 @@ export default function ProductDetailPage() {
   const handleUpdateStock = async () => {
     if (!clubId || !productId) return;
 
-    const delta = parseInt(stockDelta, 10);
+    const delta = parseFormattedNumber(stockDelta);
     if (isNaN(delta) || delta === 0) {
-      Alert.alert('Error', 'Please enter a valid stock change');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Input',
+        text2: 'Please enter a valid number to add or remove stock (e.g. 50 or -10)',
+        position: 'top',
+      });
+      return;
+    }
+    
+    if (!stockNote.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Note',
+        text2: 'Please provide a note for this stock change',
+        position: 'top',
+      });
       return;
     }
 
@@ -200,36 +332,68 @@ export default function ProductDetailPage() {
       setProduct(updatedProduct);
       setShowStockModal(false);
       setStockDelta('0');
+      setDisplayStockChange('');
       setStockNote('');
       
       // Reload stock history
       const history = await ProductService.getStockHistory(clubId, productId);
       setStockHistory(history);
       
-      Alert.alert('Success', 'Stock updated successfully');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Stock updated successfully',
+        position: 'top',
+      });
+      
+      // Reload product data
+      await loadData();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update stock');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.message || 'Failed to update stock',
+        position: 'top',
+      });
     }
   };
 
-  // Delete product
-  const handleDelete = () => {
+  // Archive product (web uses archive instead of delete)
+  const handleArchive = () => {
+    if (!formData) return;
+    
     Alert.alert(
-      'Delete Product',
-      'Are you sure you want to delete this product? This action cannot be undone.',
+      'Archive Product',
+      `"${product?.name}" will be permanently archived and:\n\n• Hidden from all students\n• Cannot be redeemed or purchased\n• Cannot be edited or restored\n\n⚠️ This action is permanent and cannot be undone!`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Archive',
           style: 'destructive',
           onPress: async () => {
             if (!clubId || !productId) return;
             try {
-              await ProductService.deleteProduct(clubId, productId);
-              Alert.alert('Success', 'Product deleted successfully');
+              // Update product with ARCHIVED status
+              await ProductService.updateProduct(clubId, productId, {
+                ...formData,
+                status: 'ARCHIVED',
+              });
+              
+              Toast.show({
+                type: 'success',
+                text1: 'Product Archived',
+                text2: 'The product has been successfully archived',
+                position: 'top',
+              });
+              
               router.back();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete product');
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: error.message || 'Failed to archive product',
+                position: 'top',
+              });
             }
           },
         },
@@ -325,16 +489,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Toggle tag selection
-  const toggleTag = (tagId: number) => {
-    setFormData(prev => ({
-      ...prev,
-      tagIds: prev.tagIds.includes(tagId)
-        ? prev.tagIds.filter(id => id !== tagId)
-        : [...prev.tagIds, tagId],
-    }));
-  };
-
   // Open media viewer
   const openMediaViewer = (media: ProductMedia) => {
     setSelectedMedia(media);
@@ -351,6 +505,23 @@ export default function ProductDetailPage() {
     setTimeout(() => setSelectedMedia(null), 300); // Delay to allow modal animation
   };
 
+  // Toggle tag selection (prevent toggling fixed tags)
+  const toggleTag = (tagId: number) => {
+    const { clubTagId, eventTagId } = fixedTagIds;
+    
+    // Don't allow toggling fixed tags
+    if (tagId === clubTagId || tagId === eventTagId) {
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      tagIds: prev.tagIds.includes(tagId)
+        ? prev.tagIds.filter(id => id !== tagId)
+        : [...prev.tagIds, tagId],
+    }));
+  };
+  
   // Check if media is a video
   const isVideo = (media: ProductMedia | null): boolean => {
     if (!media || !media.url) return false;
@@ -427,23 +598,46 @@ export default function ProductDetailPage() {
                 </View>
               </View>
 
+              {/* Warning Badges */}
+              {isArchived && (
+                <View className="mb-3 bg-red-50 border-2 border-red-200 rounded-lg p-3 flex-row items-center">
+                  <Ionicons name="archive" size={20} color="#EF4444" />
+                  <Text className="text-red-700 font-semibold ml-2 flex-1">
+                    Archived Product - Cannot be edited
+                  </Text>
+                </View>
+              )}
+              {isEventExpired && !isArchived && (
+                <View className="mb-3 bg-purple-50 border-2 border-purple-200 rounded-lg p-3 flex-row items-center">
+                  <Ionicons name="alert-circle" size={20} color="#A855F7" />
+                  <Text className="text-purple-700 font-semibold ml-2 flex-1">
+                    Event Has Ended
+                  </Text>
+                </View>
+              )}
+
               {/* Action Buttons */}
               <View className="flex-row gap-2">
                 {!isEditing ? (
                   <>
                     <TouchableOpacity
                       onPress={() => setIsEditing(true)}
-                      className="flex-1 bg-blue-500 px-4 py-3 rounded-lg flex-row items-center justify-center"
+                      disabled={isArchived}
+                      className={`flex-1 px-4 py-3 rounded-lg flex-row items-center justify-center ${
+                        isArchived ? 'bg-gray-400' : 'bg-blue-500'
+                      }`}
                     >
                       <Ionicons name="create-outline" size={20} color="white" />
                       <Text className="text-white font-semibold ml-2">Edit</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleDelete}
-                      className="bg-red-500 px-4 py-3 rounded-lg"
-                    >
-                      <Ionicons name="trash-outline" size={20} color="white" />
-                    </TouchableOpacity>
+                    {!isArchived && !isEventExpired && (
+                      <TouchableOpacity
+                        onPress={handleArchive}
+                        className="bg-red-500 px-4 py-3 rounded-lg"
+                      >
+                        <Ionicons name="archive-outline" size={20} color="white" />
+                      </TouchableOpacity>
+                    )}
                   </>
                 ) : (
                   <>
@@ -609,7 +803,30 @@ export default function ProductDetailPage() {
                       {['CLUB_ITEM', 'EVENT_ITEM'].map((type) => (
                         <TouchableOpacity
                           key={type}
-                          onPress={() => isEditing && setFormData(prev => ({ ...prev, type }))}
+                          onPress={() => {
+                            if (!isEditing) return;
+                            const { clubTagId, eventTagId } = fixedTagIds;
+                            
+                            setFormData(prev => {
+                              let newTagIds = [...prev.tagIds];
+                              // Remove both fixed tags first
+                              newTagIds = newTagIds.filter(id => id !== clubTagId && id !== eventTagId);
+                              
+                              // Add appropriate fixed tag
+                              if (type === 'CLUB_ITEM' && clubTagId) {
+                                newTagIds.push(clubTagId);
+                              } else if (type === 'EVENT_ITEM' && eventTagId) {
+                                newTagIds.push(eventTagId);
+                              }
+                              
+                              return {
+                                ...prev,
+                                type,
+                                tagIds: newTagIds,
+                                eventId: type === 'EVENT_ITEM' ? prev.eventId : 0,
+                              };
+                            });
+                          }}
                           disabled={!isEditing}
                           className={`flex-1 px-4 py-3 rounded-lg border ${
                             formData.type === type
@@ -627,6 +844,44 @@ export default function ProductDetailPage() {
                         </TouchableOpacity>
                       ))}
                     </View>
+                    
+                    {/* Event Selection for EVENT_ITEM */}
+                    {formData.type === 'EVENT_ITEM' && (
+                      <View className="mb-4">
+                        <Text className="text-sm font-semibold text-gray-700 mb-2">Select Event</Text>
+                        <ScrollView
+                          className="max-h-40 border border-gray-300 rounded-lg"
+                          nestedScrollEnabled
+                        >
+                          {events.filter(e => e.status === 'APPROVED' || e.status === 'ONGOING').length > 0 ? (
+                            events
+                              .filter(e => e.status === 'APPROVED' || e.status === 'ONGOING')
+                              .map((event) => (
+                                <TouchableOpacity
+                                  key={event.id}
+                                  onPress={() => isEditing && setFormData(prev => ({ ...prev, eventId: event.id }))}
+                                  disabled={!isEditing}
+                                  className={`p-3 border-b border-gray-100 ${
+                                    formData.eventId === event.id ? 'bg-purple-50' : 'bg-white'
+                                  }`}
+                                >
+                                  <Text
+                                    className={`font-medium ${
+                                      formData.eventId === event.id ? 'text-purple-600' : 'text-gray-800'
+                                    }`}
+                                  >
+                                    {event.name}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))
+                          ) : (
+                            <View className="p-3">
+                              <Text className="text-gray-500 text-center">No available events</Text>
+                            </View>
+                          )}
+                        </ScrollView>
+                      </View>
+                    )}
 
                     <Text className="text-sm font-semibold text-gray-700 mb-2">Status</Text>
                     <View className="flex-row gap-2 mb-4">
@@ -655,26 +910,34 @@ export default function ProductDetailPage() {
                     {/* Tags */}
                     <Text className="text-sm font-semibold text-gray-700 mb-2">Tags</Text>
                     <View className="flex-row flex-wrap gap-2">
-                      {tags.map((tag) => (
-                        <TouchableOpacity
-                          key={tag.tagId}
-                          onPress={() => isEditing && toggleTag(tag.tagId)}
-                          disabled={!isEditing}
-                          className={`px-3 py-2 rounded-lg ${
-                            formData.tagIds.includes(tag.tagId)
-                              ? 'bg-purple-500'
-                              : 'bg-gray-100'
-                          }`}
-                        >
-                          <Text
-                            className={`text-sm font-medium ${
-                              formData.tagIds.includes(tag.tagId) ? 'text-white' : 'text-gray-600'
-                            }`}
-                          >
-                            #{tag.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                      {tags
+                        .filter((tag) => tag.name.toLowerCase() !== 'new') // Hide 'new' tag
+                        .map((tag) => {
+                          const isFixedTag = tag.tagId === fixedTagIds.clubTagId || tag.tagId === fixedTagIds.eventTagId;
+                          const isSelected = formData.tagIds.includes(tag.tagId);
+                          const isDisabled = !isEditing || isFixedTag;
+                          
+                          return (
+                            <TouchableOpacity
+                              key={tag.tagId}
+                              onPress={() => !isDisabled && toggleTag(tag.tagId)}
+                              disabled={isDisabled}
+                              className={`px-3 py-2 rounded-lg ${
+                                isSelected
+                                  ? 'bg-purple-500'
+                                  : 'bg-gray-100'
+                              } ${isDisabled && isSelected ? 'opacity-70' : ''}`}
+                            >
+                              <Text
+                                className={`text-sm font-medium ${
+                                  isSelected ? 'text-white' : 'text-gray-600'
+                                }`}
+                              >
+                                #{tag.name}{isFixedTag && ' (Auto)'}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                     </View>
                   </View>
 
@@ -886,32 +1149,74 @@ export default function ProductDetailPage() {
               </TouchableOpacity>
             </View>
 
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Stock Change</Text>
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Stock Change <Text className="text-red-500">*</Text>
+            </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
+              className="bg-gray-50 border-2 border-gray-200 rounded-lg px-4 py-3 mb-2 text-lg"
               value={stockDelta}
-              onChangeText={setStockDelta}
-              placeholder="Enter change (e.g., +10 or -5)"
+              onChangeText={(text) => {
+                const isNegative = text.startsWith('-');
+                const numericValue = text.replace(/[^0-9]/g, '');
+                
+                if (numericValue === '') {
+                  setStockDelta(isNegative ? '-' : '');
+                  return;
+                }
+                
+                const numberValue = parseInt(numericValue, 10);
+                const formattedValue = formatNumber(numberValue);
+                setStockDelta(isNegative ? `-${formattedValue}` : formattedValue);
+              }}
+              placeholder="e.g., 50 (to add) or -10 (to remove)"
               keyboardType="numeric"
             />
+            <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <Text className="text-xs text-blue-900 font-semibold mb-1">Examples:</Text>
+              <Text className="text-xs text-blue-800">• Type <Text className="font-bold">50</Text> to add 50 items</Text>
+              <Text className="text-xs text-blue-800">• Type <Text className="font-bold">-10</Text> to remove 10 items</Text>
+            </View>
 
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Note (Optional)</Text>
+            <Text className="text-sm font-semibold text-gray-700 mb-2">
+              Note <Text className="text-red-500">*</Text>
+            </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4"
+              className="bg-gray-50 border-2 border-gray-200 rounded-lg px-4 py-3 mb-4"
               value={stockNote}
               onChangeText={setStockNote}
-              placeholder="Enter a note for this change"
+              placeholder="e.g., 'Initial stock import' or 'Manual correction'"
               multiline
-              numberOfLines={3}
+              numberOfLines={4}
               textAlignVertical="top"
             />
 
-            <TouchableOpacity
-              onPress={handleUpdateStock}
-              className="bg-blue-500 px-4 py-4 rounded-lg"
-            >
-              <Text className="text-white font-semibold text-center">Update Stock</Text>
-            </TouchableOpacity>
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setShowStockModal(false);
+                  setStockDelta('0');
+                  setDisplayStockChange('');
+                  setStockNote('');
+                }}
+                className="flex-1 border-2 border-gray-300 bg-white px-4 py-3 rounded-lg"
+              >
+                <Text className="text-gray-700 font-semibold text-center">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleUpdateStock}
+                disabled={parseFormattedNumber(stockDelta) === 0 || !stockNote.trim()}
+                className={`flex-1 px-4 py-3 rounded-lg ${
+                  parseFormattedNumber(stockDelta) === 0 || !stockNote.trim()
+                    ? 'bg-gray-400'
+                    : 'bg-indigo-600'
+                }`}
+              >
+                <View className="flex-row items-center justify-center">
+                  <Ionicons name="checkmark-circle" size={20} color="white" />
+                  <Text className="text-white font-semibold ml-2">Confirm Update</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

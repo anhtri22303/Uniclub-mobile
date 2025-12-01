@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 // Hide the navigation header
 export const unstable_settings = {
@@ -23,6 +24,15 @@ export const unstable_settings = {
 };
 
 type FilterType = 'all' | '5' | '4' | '3' | '2' | '1';
+
+// Event Feedback Group interface
+interface EventFeedbackGroup {
+  eventId: number;
+  eventName: string;
+  feedbacks: Feedback[];
+  averageRating: number;
+  totalFeedbacks: number;
+}
 
 export default function ClubLeaderFeedbacksPage() {
   const { user } = useAuthStore();
@@ -37,6 +47,11 @@ export default function ClubLeaderFeedbacksPage() {
   const [selectedRating, setSelectedRating] = useState<FilterType>('all');
   const [showEventFilter, setShowEventFilter] = useState(false);
   const [showRatingFilter, setShowRatingFilter] = useState(false);
+  
+  // Expand/collapse and pagination states
+  const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Load feedbacks
   useEffect(() => {
@@ -48,13 +63,25 @@ export default function ClubLeaderFeedbacksPage() {
     try {
       const clubId = user?.clubIds?.[0];
       if (!clubId) {
-        throw new Error('No club found for this leader');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Club ID not found',
+          position: 'top',
+        });
+        return;
       }
 
       const data = await FeedbackService.getFeedbackByClubId(clubId);
       setFeedbacks(data);
     } catch (error: any) {
       console.error('Error fetching feedbacks:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load feedbacks',
+        position: 'top',
+      });
     } finally {
       setLoading(false);
     }
@@ -67,40 +94,101 @@ export default function ClubLeaderFeedbacksPage() {
     setRefreshing(false);
   };
 
-  // Get unique events for filter
-  const uniqueEvents = useMemo(() => {
-    const events = feedbacks.map((f) => ({
-      id: f.eventId,
-      name: f.eventName,
-    }));
-    const unique = Array.from(new Map(events.map((e) => [e.id, e])).values());
-    return unique;
+  // Group feedbacks by event
+  const groupedFeedbacks = useMemo(() => {
+    const groups = new Map<number, EventFeedbackGroup>();
+
+    feedbacks.forEach((feedback) => {
+      if (!groups.has(feedback.eventId)) {
+        groups.set(feedback.eventId, {
+          eventId: feedback.eventId,
+          eventName: feedback.eventName,
+          feedbacks: [],
+          averageRating: 0,
+          totalFeedbacks: 0,
+        });
+      }
+
+      const group = groups.get(feedback.eventId)!;
+      group.feedbacks.push(feedback);
+    });
+
+    // Calculate averages
+    groups.forEach((group) => {
+      group.totalFeedbacks = group.feedbacks.length;
+      const sum = group.feedbacks.reduce((acc, f) => acc + f.rating, 0);
+      group.averageRating = sum / group.totalFeedbacks;
+    });
+
+    return Array.from(groups.values());
   }, [feedbacks]);
 
-  // Filter feedbacks
-  const filteredFeedbacks = useMemo(() => {
-    return feedbacks.filter((feedback) => {
-      const matchesSearch =
-        feedback.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        feedback.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        feedback.comment.toLowerCase().includes(searchTerm.toLowerCase());
+  // Get unique events for filter
+  const uniqueEvents = useMemo(() => {
+    return groupedFeedbacks.map((group) => ({
+      id: group.eventId,
+      name: group.eventName,
+    }));
+  }, [groupedFeedbacks]);
 
+  // Filter grouped feedbacks
+  const filteredGroups = useMemo(() => {
+    return groupedFeedbacks.filter((group) => {
       const matchesEvent =
-        selectedEvent === 'all' || feedback.eventId.toString() === selectedEvent;
+        selectedEvent === 'all' || group.eventId.toString() === selectedEvent;
 
       const matchesRating =
-        selectedRating === 'all' || feedback.rating.toString() === selectedRating;
+        selectedRating === 'all' ||
+        group.feedbacks.some((f) => f.rating.toString() === selectedRating);
 
-      return matchesSearch && matchesEvent && matchesRating;
+      const matchesSearch =
+        group.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        group.feedbacks.some(
+          (f) =>
+            f.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.comment.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+      return matchesEvent && matchesRating && matchesSearch;
     });
-  }, [feedbacks, searchTerm, selectedEvent, selectedRating]);
+  }, [groupedFeedbacks, searchTerm, selectedEvent, selectedRating]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+  const paginatedGroups = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredGroups.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredGroups, currentPage]);
+
+  // Toggle event expansion
+  const toggleEventExpansion = (eventId: number) => {
+    setExpandedEvents((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId);
+      } else {
+        newSet.add(eventId);
+      }
+      return newSet;
+    });
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedEvent, selectedRating]);
 
   // Calculate average rating
   const averageRating = useMemo(() => {
-    if (filteredFeedbacks.length === 0) return 0;
-    const sum = filteredFeedbacks.reduce((acc, f) => acc + f.rating, 0);
-    return (sum / filteredFeedbacks.length).toFixed(1);
-  }, [filteredFeedbacks]);
+    if (feedbacks.length === 0) return 0;
+    const sum = feedbacks.reduce((acc, f) => acc + f.rating, 0);
+    return (sum / feedbacks.length).toFixed(1);
+  }, [feedbacks]);
+
+  // Total feedbacks count (filtered)
+  const totalFeedbacksCount = useMemo(() => {
+    return filteredGroups.reduce((acc, group) => acc + group.totalFeedbacks, 0);
+  }, [filteredGroups]);
 
   // Render star rating
   const renderStars = (rating: number, size: number = 16) => {
@@ -154,7 +242,7 @@ export default function ClubLeaderFeedbacksPage() {
 
       {/* Header */}
       <View className="bg-white px-6 py-6 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800 mb-1">Club Feedbacks</Text>
+        <Text className="text-2xl font-bold text-gray-800 mb-1">       Club Feedbacks</Text>
         <Text className="text-gray-600 text-sm">
           View and manage feedback from club events
         </Text>
@@ -172,7 +260,7 @@ export default function ClubLeaderFeedbacksPage() {
               <Ionicons name="chatbubbles" size={20} color="#2563EB" />
             </View>
             <Text className="text-2xl font-bold text-blue-900">
-              {filteredFeedbacks.length}
+              {totalFeedbacksCount}
             </Text>
           </View>
 
@@ -359,7 +447,7 @@ export default function ClubLeaderFeedbacksPage() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
       >
-        {filteredFeedbacks.length === 0 ? (
+        {paginatedGroups.length === 0 ? (
           <View className="bg-white rounded-xl p-8 items-center">
             <Ionicons name="chatbubbles-outline" size={48} color="#D1D5DB" />
             <Text className="text-lg font-semibold text-gray-800 mt-4">No Feedbacks Found</Text>
@@ -370,56 +458,195 @@ export default function ClubLeaderFeedbacksPage() {
             </Text>
           </View>
         ) : (
-          filteredFeedbacks.map((feedback) => (
-            <View
-              key={feedback.feedbackId}
-              className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-200"
-            >
-              {/* Header */}
-              <View className="flex-row items-start justify-between mb-3">
-                <View className="flex-1 mr-2">
-                  <Text className="text-base font-bold text-gray-900 mb-1">
-                    {feedback.eventName}
-                  </Text>
-                  <View className="flex-row items-center">
-                    <Ionicons name="person" size={14} color="#6B7280" />
-                    <Text className="text-sm text-gray-600 ml-1">
-                      {feedback.memberName || 'Unknown'}
-                    </Text>
-                  </View>
+          <>
+            {paginatedGroups.map((group) => {
+              const isExpanded = expandedEvents.has(group.eventId);
+              return (
+                <View key={group.eventId} className="mb-3">
+                  {/* Event Group Header */}
+                  <TouchableOpacity
+                    onPress={() => toggleEventExpansion(group.eventId)}
+                    className="bg-teal-600 rounded-t-xl p-4 flex-row items-center justify-between"
+                    activeOpacity={0.7}
+                  >
+                    <View className="flex-1">
+                      <Text className="text-white text-lg font-bold mb-1">
+                        {group.eventName}
+                      </Text>
+                      <View className="flex-row items-center gap-3">
+                        <View className="flex-row items-center">
+                          <Ionicons name="chatbubbles" size={14} color="white" />
+                          <Text className="text-white text-sm ml-1">
+                            {group.totalFeedbacks} feedback{group.totalFeedbacks !== 1 ? 's' : ''}
+                          </Text>
+                        </View>
+                        <View className="flex-row items-center">
+                          <Ionicons name="star" size={14} color="#FCD34D" />
+                          <Text className="text-white text-sm ml-1 font-semibold">
+                            {group.averageRating.toFixed(1)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+                      size={24}
+                      color="white"
+                    />
+                  </TouchableOpacity>
+
+                  {/* Feedbacks List (Collapsed/Expanded) */}
+                  {isExpanded && (
+                    <View className="bg-white rounded-b-xl border-x border-b border-gray-200">
+                      {group.feedbacks.map((feedback, index) => (
+                        <View
+                          key={feedback.feedbackId}
+                          className={`p-4 ${
+                            index !== group.feedbacks.length - 1 ? 'border-b border-gray-100' : ''
+                          }`}
+                        >
+                          {/* Feedback Header */}
+                          <View className="flex-row items-start justify-between mb-3">
+                            <View className="flex-1 mr-2">
+                              <View className="flex-row items-center">
+                                <Ionicons name="person" size={14} color="#6B7280" />
+                                <Text className="text-sm text-gray-600 ml-1 font-medium">
+                                  {feedback.memberName || 'Unknown'}
+                                </Text>
+                              </View>
+                            </View>
+                            <View
+                              className={`px-3 py-1 rounded-full border ${getRatingColor(
+                                feedback.rating
+                              )}`}
+                            >
+                              <Text
+                                className={`text-sm font-bold ${getRatingTextColor(
+                                  feedback.rating
+                                )}`}
+                              >
+                                {feedback.rating} ★
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Rating Stars */}
+                          <View className="mb-3">{renderStars(feedback.rating, 18)}</View>
+
+                          {/* Comment */}
+                          <View className="bg-gray-50 rounded-lg p-3 mb-3">
+                            <Text className="text-sm text-gray-700">{feedback.comment}</Text>
+                          </View>
+
+                          {/* Date */}
+                          <View className="flex-row items-center">
+                            <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+                            <Text className="text-xs text-gray-500 ml-1">
+                              {new Date(feedback.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
-                <View
-                  className={`px-3 py-1 rounded-full border ${getRatingColor(
-                    feedback.rating
-                  )}`}
-                >
-                  <Text className={`text-sm font-bold ${getRatingTextColor(feedback.rating)}`}>
-                    {feedback.rating} ★
-                  </Text>
-                </View>
-              </View>
+              );
+            })}
 
-              {/* Rating Stars */}
-              <View className="mb-3">{renderStars(feedback.rating, 18)}</View>
-
-              {/* Comment */}
-              <View className="bg-gray-50 rounded-lg p-3 mb-3">
-                <Text className="text-sm text-gray-700">{feedback.comment}</Text>
-              </View>
-
-              {/* Date */}
-              <View className="flex-row items-center">
-                <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-                <Text className="text-xs text-gray-500 ml-1">
-                  {new Date(feedback.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <View className="mt-4 mb-6">
+                {/* Page Info */}
+                <Text className="text-center text-sm text-gray-600 mb-3">
+                  Showing{' '}
+                  {Math.min((currentPage - 1) * itemsPerPage + 1, filteredGroups.length)} to{' '}
+                  {Math.min(currentPage * itemsPerPage, filteredGroups.length)} of{' '}
+                  {filteredGroups.length} events
                 </Text>
+
+                {/* Pagination Buttons */}
+                <View className="flex-row items-center justify-center gap-2">
+                  {/* Previous Button */}
+                  <TouchableOpacity
+                    onPress={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className={`px-4 py-2 rounded-lg ${
+                      currentPage === 1
+                        ? 'bg-gray-200'
+                        : 'bg-teal-600 active:bg-teal-700'
+                    }`}
+                  >
+                    <Text
+                      className={`font-semibold ${
+                        currentPage === 1 ? 'text-gray-400' : 'text-white'
+                      }`}
+                    >
+                      Previous
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Page Numbers */}
+                  <View className="flex-row items-center gap-2">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <TouchableOpacity
+                          key={pageNum}
+                          onPress={() => setCurrentPage(pageNum)}
+                          className={`w-10 h-10 rounded-lg items-center justify-center ${
+                            currentPage === pageNum
+                              ? 'bg-teal-600'
+                              : 'bg-gray-100 active:bg-gray-200'
+                          }`}
+                        >
+                          <Text
+                            className={`font-semibold ${
+                              currentPage === pageNum ? 'text-white' : 'text-gray-700'
+                            }`}
+                          >
+                            {pageNum}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Next Button */}
+                  <TouchableOpacity
+                    onPress={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`px-4 py-2 rounded-lg ${
+                      currentPage === totalPages
+                        ? 'bg-gray-200'
+                        : 'bg-teal-600 active:bg-teal-700'
+                    }`}
+                  >
+                    <Text
+                      className={`font-semibold ${
+                        currentPage === totalPages ? 'text-gray-400' : 'text-white'
+                      }`}
+                    >
+                      Next
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          ))
+            )}
+          </>
         )}
       </ScrollView>
 

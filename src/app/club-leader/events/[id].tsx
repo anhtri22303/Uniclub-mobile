@@ -7,10 +7,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAssignEventStaff, useEvaluateStaff, useEventStaff, useExtendEventTime, useStaffEvaluations } from '@hooks/useQueryHooks';
 import type { Event, EventSummary } from '@services/event.service';
 import {
+  isEventExpired as checkEventExpired,
   coHostRespond,
   completeEvent,
+  formatEventDateRange,
   getEventById,
+  getEventEndTime,
+  getEventStartTime,
   getEventSummary,
+  isMultiDayEvent,
   submitForUniversityApproval,
   timeObjectToString
 } from '@services/event.service';
@@ -219,15 +224,17 @@ export default function EventDetailPage() {
     });
   };
 
-  // Check if the event is currently active
+  // Check if the event is currently active (supports multi-day events)
   const isEventActive = () => {
     console.log('[EVENT ACTIVE CHECK - START]', {
       hasEvent: !!event,
       eventName: event?.name,
       eventStatus: event?.status,
       eventType: event?.type,
+      isMultiDay: event ? isMultiDayEvent(event) : false,
       eventDate: event?.date,
-      eventEndTime: event?.endTime,
+      eventStartDate: event?.startDate,
+      eventEndDate: event?.endDate,
     });
 
     if (!event) {
@@ -247,37 +254,17 @@ export default function EventDetailPage() {
       return false;
     }
 
-    // Check if date and endTime are present
-    if (!event.date || !event.endTime) {
-      console.log('[EVENT ACTIVE CHECK] Missing date or endTime - returning false');
-      return false;
-    }
+    // Use helper function to check if event has expired
+    const expired = checkEventExpired(event);
+    const isActive = !expired;
 
-    try {
-      const now = new Date();
-      const endTimeStr = timeObjectToString(event.endTime);
-      const timeParts = endTimeStr.split(':');
-      const hours = parseInt(timeParts[0] || '0', 10);
-      const minutes = parseInt(timeParts[1] || '0', 10);
-      
-      // Create event end datetime string in ISO format for Vietnam timezone
-      const eventEndDateTimeStr = `${event.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
-      const eventEndDateTime = new Date(eventEndDateTimeStr);
+    console.log('[EVENT ACTIVE CHECK - RESULT]', event.name, {
+      expired,
+      isActive,
+      isMultiDay: isMultiDayEvent(event)
+    });
 
-      const isActive = now <= eventEndDateTime;
-
-      console.log('[EVENT ACTIVE CHECK - RESULT]', event.name, {
-        now: now.toISOString(),
-        eventEnd: eventEndDateTime.toISOString(),
-        endTimeStr: endTimeStr,
-        isActive: isActive
-      });
-
-      return isActive;
-    } catch (error) {
-      console.error('[EVENT ACTIVE CHECK - ERROR]', error);
-      return false;
-    }
+    return isActive;
   };
 
   const handleSubmitToUniversity = async () => {
@@ -742,34 +729,78 @@ export default function EventDetailPage() {
           {/* Divider */}
           <View className="h-px bg-gray-200 mx-6" />
 
-          {/* Date & Time */}
+          {/* Date & Time - Support multi-day events */}
           <View className="p-6">
             <Text className="text-lg font-semibold text-gray-900 mb-3">Date & Time</Text>
             
+            {/* Date Display */}
             <View className="bg-gray-50 p-4 rounded-lg flex-row items-center mb-3">
               <View className="bg-teal-100 p-3 rounded-lg mr-4">
                 <Ionicons name="calendar" size={20} color="#0D9488" />
               </View>
               <View className="flex-1">
-                <Text className="text-gray-900 font-medium">{event.date ? formatDate(event.date) : 'Date TBA'}</Text>
-                <Text className="text-gray-500 text-sm">{event.date || 'Not set'}</Text>
+                <Text className="text-gray-900 font-medium">
+                  {formatEventDateRange(event)}
+                </Text>
+                {isMultiDayEvent(event) && event.days && (
+                  <Text className="text-blue-600 text-xs font-semibold mt-1">
+                    {event.days.length} days event
+                  </Text>
+                )}
               </View>
             </View>
 
+            {/* Time Display */}
             <View className="bg-gray-50 p-4 rounded-lg flex-row items-center mb-3">
               <View className="bg-teal-100 p-3 rounded-lg mr-4">
                 <Ionicons name="time" size={20} color="#0D9488" />
               </View>
               <View className="flex-1">
                 <Text className="text-gray-900 font-medium">
-                  {event.startTime && event.endTime
-                    ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
-                    : 'Time not set'}
+                  {(() => {
+                    const startTime = getEventStartTime(event);
+                    const endTime = getEventEndTime(event);
+                    return startTime && endTime ? `${startTime} - ${endTime}` : 'Time not set';
+                  })()}
                 </Text>
-                <Text className="text-gray-500 text-sm">Event Duration</Text>
+                <Text className="text-gray-500 text-sm">
+                  {isMultiDayEvent(event) ? 'First to Last Day Times' : 'Event Duration'}
+                </Text>
               </View>
             </View>
 
+            {/* Show individual days for multi-day events */}
+            {isMultiDayEvent(event) && event.days && event.days.length > 0 && (
+              <View className="bg-blue-50 p-4 rounded-lg border border-blue-200 mt-3">
+                <View className="flex-row items-center mb-3">
+                  <Ionicons name="list" size={16} color="#2563EB" />
+                  <Text className="text-blue-800 font-semibold ml-2">Event Schedule</Text>
+                </View>
+                {event.days.map((day, index) => (
+                  <View key={day.id || index} className="bg-white p-3 rounded-lg mb-2 border border-blue-100">
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center flex-1">
+                        <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center mr-3">
+                          <Text className="text-white text-xs font-bold">{index + 1}</Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-gray-900 font-medium">
+                            {new Date(day.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </Text>
+                          <Text className="text-gray-600 text-sm">
+                            {day.startTime} - {day.endTime}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Divider */}
@@ -978,7 +1009,7 @@ export default function EventDetailPage() {
                 )}
               </View>
 
-              {event.status === 'ONGOING' && (
+              {/* {event.status === 'ONGOING' && (
                 <TouchableOpacity
                   onPress={() => setShowTimeExtensionModal(true)}
                   className="bg-orange-600 rounded-lg py-3 items-center mb-3"
@@ -988,7 +1019,7 @@ export default function EventDetailPage() {
                     <Text className="text-white font-semibold ml-2">Request More Time</Text>
                   </View>
                 </TouchableOpacity>
-              )}
+              )} */}
 
               {(event.status === 'APPROVED' || event.status === 'ONGOING' || event.status === 'COMPLETED') && (
                 <TouchableOpacity
@@ -1295,6 +1326,7 @@ export default function EventDetailPage() {
           visible={showAddStaffModal}
           onClose={() => setShowAddStaffModal(false)}
           eventId={event.id}
+          eventStatus={event.status}
         />
       )}
 

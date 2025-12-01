@@ -26,6 +26,7 @@ import { Tag, TagService } from '@services/tag.service';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { useAuthStore } from '@stores/auth.store';
+import Toast from 'react-native-toast-message';
 
 // Types
 type StatusFilter = 'all' | 'active' | 'inactive' | 'archived';
@@ -199,11 +200,16 @@ export default function ClubLeaderGiftPage() {
     today.setHours(0, 0, 0, 0);
 
     return events.filter((event) => {
-      const parts = event.date.split('-').map(Number);
-      const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      // Use startDate for multi-day events, fallback to date for legacy events
+      const dateStr = event.startDate || event.date;
+      if (!dateStr) return false;
 
-      // Normalize status to handle "ONGOING" and "ON-GOING"
-      const normalizedStatus = (event.status || '').toString().toUpperCase().replace(/-/g, '');
+      const parts = dateStr.split('-').map(Number);
+      const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      eventDate.setHours(0, 0, 0, 0);
+
+      // Normalize status to handle "ONGOING", "ON-GOING", "ON_GOING", etc.
+      const normalizedStatus = (event.status || '').toString().toUpperCase().replace(/-|_/g, '');
 
       if (normalizedStatus === 'ONGOING') return true;
       if (normalizedStatus === 'APPROVED' && eventDate >= today) return true;
@@ -432,16 +438,13 @@ export default function ClubLeaderGiftPage() {
           </View>
           <TouchableOpacity
             onPress={() => {
-              if (fixedTagIds.clubTagId) {
-                setForm({
-                  ...initialFormState,
-                  tagIds: [fixedTagIds.clubTagId],
-                });
-              } else {
-                setForm(initialFormState);
-              }
-              setTagSearchTerm('');
-              setAddModalVisible(true);
+              Toast.show({
+                type: 'info',
+                text1: 'Feature Available on Web',
+                text2: 'Please use the web version to add new products',
+                position: 'top',
+                visibilityTime: 3000,
+              });
             }}
             disabled={!clubId}
             className="bg-purple-600 px-4 py-3 rounded-lg flex-row items-center"

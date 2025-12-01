@@ -15,18 +15,28 @@ type ClubLeaderEvent = {
   name: string;
   description: string;
   type: string;
-  date: string;
+  // Multi-day event fields
+  startDate?: string;
+  endDate?: string;
+  days?: Array<{
+    id?: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+  }>;
+  // Legacy single-day fields
+  date?: string;
   startTime?: string;
   endTime?: string;
   time?: string;
-  registrationDeadline?: string; // NEW: Registration deadline
+  registrationDeadline?: string;
   status: string;
   locationId?: number;
   locationName?: string;
   checkInCode?: string;
   points?: number;
   budgetPoints?: number;
-  commitPointCost?: number; // NEW: Commit point cost (ticket price)
+  commitPointCost?: number;
   hostClub?: {
     id: number;
     name: string;
@@ -48,14 +58,30 @@ function isEventExpired(event: ClubLeaderEvent): boolean {
   // COMPLETED, REJECTED, CANCELLED status are always considered expired
   if (["COMPLETED", "REJECTED", "CANCELLED"].includes(event.status)) return true;
 
-  if (!event.date) return false;
+  const now = new Date();
+  
+  // Multi-day event: check last day's end time
+  if (event.days && event.days.length > 0) {
+    try {
+      const lastDay = event.days[event.days.length - 1];
+      const [endHour, endMinute] = lastDay.endTime.split(':').map(Number);
+      const [year, month, dayNum] = lastDay.date.split('-').map(Number);
+      const eventEnd = new Date(year, month - 1, dayNum, endHour, endMinute);
+      
+      return now > eventEnd;
+    } catch (error) {
+      console.error('Error checking multi-day event expiration:', error, event);
+      return false;
+    }
+  }
+
+  // Legacy single-day event
+  const eventDate = event.date || event.startDate;
+  if (!eventDate) return false;
 
   try {
-    // Get current date/time in Vietnam timezone (UTC+7)
-    const now = new Date();
-    
     // Parse event date and time (treating as Vietnam timezone UTC+7)
-    const [year, month, day] = event.date.split('-').map(Number);
+    const [year, month, day] = eventDate.split('-').map(Number);
     
     if (event.endTime) {
       // Parse endTime (format: HH:MM:SS or HH:MM)
@@ -64,7 +90,7 @@ function isEventExpired(event: ClubLeaderEvent): boolean {
       const minutes = parseInt(timeParts[1] || '0', 10);
       
       // Create event end datetime string in ISO format for Vietnam timezone
-      const eventEndDateTimeStr = `${event.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
+      const eventEndDateTimeStr = `${eventDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
       const eventEndDateTime = new Date(eventEndDateTimeStr);
       
       // Event is expired if current time is past the end time
@@ -79,7 +105,7 @@ function isEventExpired(event: ClubLeaderEvent): boolean {
       return isExpired;
     } else {
       // If no endTime, check if the date has passed (end of day Vietnam time)
-      const eventEndDateTimeStr = `${event.date}T23:59:59+07:00`;
+      const eventEndDateTimeStr = `${eventDate}T23:59:59+07:00`;
       const eventEndDateTime = new Date(eventEndDateTimeStr);
       return now > eventEndDateTime;
     }
@@ -100,8 +126,10 @@ function isEventActive(event: ClubLeaderEvent): boolean {
   // Must not be expired
   if (isEventExpired(event)) return false;
 
-  // Check if date and endTime are present
-  if (!event.date || !event.endTime) return false;
+  // For multi-day events, check if any day exists
+  // For single-day events, check date/endTime
+  const hasValidDate = (event.days && event.days.length > 0) || ((event.date || event.startDate) && event.endTime);
+  if (!hasValidDate) return false;
 
   return true;
 }
@@ -615,29 +643,78 @@ export default function Events() {
 
                     {/* Event Details */}
                     <View className="space-y-2 mb-4">
-                      {/* Date */}
+                      {/* Date - Support multi-day events */}
                       <View className="flex-row items-center">
                         <Ionicons name="calendar" size={16} color="#0D9488" />
                         <Text className="text-sm text-gray-600 ml-2">
-                          {new Date(event.date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
+                          {(() => {
+                            // Multi-day event: show date range
+                            if (event.days && event.days.length > 1) {
+                              const firstDay = event.days[0].date;
+                              const lastDay = event.days[event.days.length - 1].date;
+                              const startDate = new Date(firstDay).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                              const endDate = new Date(lastDay).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                              return `${startDate} - ${endDate}`;
+                            }
+                            // Single-day event or legacy
+                            const dateStr = event.startDate || event.date;
+                            if (!dateStr) return 'Date TBA';
+                            return new Date(dateStr).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            });
+                          })()}
                         </Text>
                       </View>
 
-                      {/* Time */}
-                      {event.time && (
+                      {/* Multi-day indicator */}
+                      {event.days && event.days.length > 1 && (
                         <View className="flex-row items-center">
-                          <Ionicons name="time" size={16} color="#0D9488" />
-                          <Text className="text-sm text-gray-600 ml-2">
-                            {event.time}
-                            {event.endTime && ` - ${event.endTime}`}
+                          <Ionicons name="calendar-outline" size={16} color="#3B82F6" />
+                          <Text className="text-xs text-blue-600 ml-2 font-semibold">
+                            {event.days.length} days event
                           </Text>
                         </View>
                       )}
+
+                      {/* Time - Use first and last day for multi-day events */}
+                      {(() => {
+                        if (event.days && event.days.length > 0) {
+                          const startTime = event.days[0].startTime;
+                          const endTime = event.days[event.days.length - 1].endTime;
+                          return (
+                            <View className="flex-row items-center">
+                              <Ionicons name="time" size={16} color="#0D9488" />
+                              <Text className="text-sm text-gray-600 ml-2">
+                                {startTime} - {endTime}
+                              </Text>
+                            </View>
+                          );
+                        }
+                        // Legacy single-day event
+                        const displayTime = event.time || event.startTime;
+                        if (!displayTime) return null;
+                        return (
+                          <View className="flex-row items-center">
+                            <Ionicons name="time" size={16} color="#0D9488" />
+                            <Text className="text-sm text-gray-600 ml-2">
+                              {displayTime}
+                              {event.endTime && ` - ${event.endTime}`}
+                            </Text>
+                          </View>
+                        );
+                      })()}
 
                       {/* Location */}
                       {event.locationName && (

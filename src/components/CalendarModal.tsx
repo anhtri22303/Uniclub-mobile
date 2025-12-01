@@ -1,18 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import {
-    Dimensions,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface Event {
   id: number;
   name: string;
-  date: string;
+  // Multi-day event fields
+  startDate?: string;
+  endDate?: string;
+  days?: Array<{
+    id?: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+  }>;
+  // Legacy single-day fields
+  date?: string;
   startTime?: string;
   endTime?: string;
   time?: string;
@@ -20,10 +30,16 @@ interface Event {
   type: string;
   locationName?: string;
   commitPointCost?: number;
+  budgetPoints?: number;
+  maxCheckInCount?: number;
   hostClub?: {
     id: number;
     name: string;
   };
+  // For calendar display of multi-day events
+  currentDayDate?: string;
+  currentDayStartTime?: string;
+  currentDayEndTime?: string;
 }
 
 interface CalendarModalProps {
@@ -80,7 +96,7 @@ export default function CalendarModal({
     return calendar;
   }, [currentDate]);
 
-  // Group events by date
+  // Group events by date (supports both single-day and multi-day events)
   const eventsByDate = useMemo(() => {
     const grouped: { [key: string]: Event[] } = {};
     
@@ -90,14 +106,42 @@ export default function CalendarModal({
     events
       .filter(event => validStatuses.includes(event.status))
       .forEach(event => {
-        if (event.date) {
-          const dateKey = new Date(event.date).toDateString();
+        // Multi-day event: add to each day in the days[] array
+        if (event.days && Array.isArray(event.days) && event.days.length > 0) {
+          event.days.forEach((day: any) => {
+            if (day.date) {
+              const dateKey = new Date(day.date).toDateString();
+              if (!grouped[dateKey]) {
+                grouped[dateKey] = [];
+              }
+              // Create a copy with the specific day's time
+              grouped[dateKey].push({
+                ...event,
+                currentDayDate: day.date,
+                currentDayStartTime: day.startTime,
+                currentDayEndTime: day.endTime,
+              });
+            }
+          });
+        }
+        // Legacy single-day event: use event.date or startDate
+        else if (event.date || event.startDate) {
+          const dateKey = new Date(event.date || event.startDate!).toDateString();
           if (!grouped[dateKey]) {
             grouped[dateKey] = [];
           }
           grouped[dateKey].push(event);
         }
       });
+    
+    // Sort events within each day by time
+    Object.keys(grouped).forEach((dateKey) => {
+      grouped[dateKey].sort((a, b) => {
+        const timeA = a.currentDayStartTime || a.startTime || a.time || '00:00';
+        const timeB = b.currentDayStartTime || b.startTime || b.time || '00:00';
+        return timeA.localeCompare(timeB);
+      });
+    });
     
     return grouped;
   }, [events]);
@@ -322,7 +366,9 @@ export default function CalendarModal({
               selectedDateEvents.length > 0 ? (
                 selectedDateEvents.map((event) => {
                   const statusColors = getStatusBadgeColor(event.status);
-                  const indicatorColor = getEventIndicator(new Date(event.date));
+                  // For multi-day events, use currentDayDate; otherwise use date or startDate
+                  const eventDateStr = event.currentDayDate || event.date || event.startDate || '';
+                  const indicatorColor = eventDateStr ? getEventIndicator(new Date(eventDateStr)) : null;
                   
                   return (
                     <TouchableOpacity
@@ -353,16 +399,30 @@ export default function CalendarModal({
 
                         {/* Event Details */}
                         <View className="space-y-2">
-                          {/* Time */}
-                          {(event.startTime || event.time) && (
+                          {/* Multi-day indicator */}
+                          {event.days && event.days.length > 1 && (
                             <View className="flex-row items-center">
-                              <Ionicons name="time-outline" size={14} color="#6B7280" />
-                              <Text className="text-sm text-gray-600 ml-2">
-                                {event.startTime || event.time}
-                                {event.endTime && ` - ${event.endTime}`}
+                              <Ionicons name="calendar-outline" size={14} color="#3B82F6" />
+                              <Text className="text-xs text-blue-600 ml-2 font-semibold">
+                                {event.days.length} days event
                               </Text>
                             </View>
                           )}
+
+                          {/* Time - Use currentDay times for multi-day events */}
+                          {(() => {
+                            const displayTime = event.currentDayStartTime || event.startTime || event.time;
+                            const displayEndTime = event.currentDayEndTime || event.endTime;
+                            return displayTime ? (
+                              <View className="flex-row items-center">
+                                <Ionicons name="time-outline" size={14} color="#6B7280" />
+                                <Text className="text-sm text-gray-600 ml-2">
+                                  {displayTime}
+                                  {displayEndTime && ` - ${displayEndTime}`}
+                                </Text>
+                              </View>
+                            ) : null;
+                          })()}
 
                           {/* Location */}
                           {event.locationName && (

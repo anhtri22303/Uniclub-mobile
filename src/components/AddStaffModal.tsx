@@ -1,6 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEventStaff } from '@hooks/useQueryHooks';
-import { postEventStaff } from '@services/eventStaff.service';
+import {
+  deleteEventStaff,
+  EventStaff,
+  getEvaluateEventStaff,
+  getTopEvaluatedStaff,
+  postEventStaff,
+  StaffEvaluation
+} from '@services/eventStaff.service';
 import { MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
 import React, { useEffect, useState } from 'react';
@@ -14,17 +21,21 @@ import {
   View
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import EvaluateStaffModal from './EvaluateStaffModal';
+import EvaluationDetailModal from './EvaluationDetailModal';
 
 interface AddStaffModalProps {
   visible: boolean;
   onClose: () => void;
   eventId: number;
+  eventStatus?: string;
 }
 
 const AddStaffModal: React.FC<AddStaffModalProps> = ({
   visible,
   onClose,
   eventId,
+  eventStatus = '',
 }) => {
   const { user } = useAuthStore();
   const userClubId = user?.clubIds?.[0] || null;
@@ -33,9 +44,22 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
   const [clubMembers, setClubMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMember, setSelectedMember] = useState<any | null>(null);
-  const [duty, setDuty] = useState('');
+  const [dutyInput, setDutyInput] = useState<{ [key: number]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Evaluation states
+  const [staffEvaluations, setStaffEvaluations] = useState<StaffEvaluation[]>([]);
+  const [topEvaluations, setTopEvaluations] = useState<StaffEvaluation[]>([]);
+  const [evaluationsLoading, setEvaluationsLoading] = useState(false);
+  const [showEvaluateModal, setShowEvaluateModal] = useState(false);
+  const [showEvaluationDetailModal, setShowEvaluationDetailModal] = useState(false);
+  const [selectedStaffForEvaluation, setSelectedStaffForEvaluation] = useState<EventStaff | null>(null);
+  const [selectedEvaluation, setSelectedEvaluation] = useState<StaffEvaluation | null>(null);
+  
+  // Delete states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<EventStaff | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch staff data
   const {
@@ -43,6 +67,9 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
     isLoading: staffLoading,
     refetch: refetchStaff,
   } = useEventStaff(eventId, !!eventId);
+  
+  // Check if event is completed
+  const isEventCompleted = eventStatus === 'COMPLETED';
 
   // Load club members when switching to add view
   useEffect(() => {
@@ -50,6 +77,14 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       loadClubMembers();
     }
   }, [view, userClubId, staffList]);
+  
+  // Load evaluations for completed events
+  useEffect(() => {
+    if (visible && view === 'list' && isEventCompleted) {
+      loadEvaluations();
+      loadTopEvaluations();
+    }
+  }, [visible, view, isEventCompleted, eventId]);
 
   const loadClubMembers = async () => {
     if (!userClubId) return;
@@ -59,11 +94,20 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       console.log('📋 All club members:', members);
       console.log('👥 Current staff list:', staffList);
       
-      // Filter out members who are already staff
-      const staffMemberIds = staffList.map(s => s.membershipId);
-      console.log('🔍 Staff membershipIds to filter:', staffMemberIds);
+      // Filter only members with "MEMBER" role and ACTIVE state
+      const filteredMembers = members.filter(
+        (member: any) => member.clubRole === 'MEMBER' && member.state === 'ACTIVE'
+      );
       
-      const availableMembers = members.filter((m: any) => !staffMemberIds.includes(m.membershipId));
+      // Filter out members who are already staff (only ACTIVE staff)
+      const activeStaffMemberIds = staffList
+        .filter(s => s.state === 'ACTIVE')
+        .map(s => s.membershipId);
+      console.log('🔍 Active staff membershipIds to filter:', activeStaffMemberIds);
+      
+      const availableMembers = filteredMembers.filter(
+        (m: any) => !activeStaffMemberIds.includes(m.membershipId)
+      );
       console.log('✅ Available members after filter:', availableMembers);
       
       setClubMembers(availableMembers || []);
@@ -79,31 +123,60 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       setLoadingMembers(false);
     }
   };
+  
+  const loadEvaluations = async () => {
+    setEvaluationsLoading(true);
+    try {
+      const data = await getEvaluateEventStaff(eventId);
+      setStaffEvaluations(data);
+    } catch (error: any) {
+      console.error('Failed to load evaluations:', error);
+      // Don't show error toast, it's not critical
+    } finally {
+      setEvaluationsLoading(false);
+    }
+  };
+  
+  const loadTopEvaluations = async () => {
+    try {
+      const data = await getTopEvaluatedStaff(eventId);
+      setTopEvaluations(data);
+    } catch (error: any) {
+      console.error('Failed to load top evaluations:', error);
+      // Don't show error toast, it's not critical
+    }
+  };
 
-  const handleAddStaff = async () => {
-    if (!selectedMember || !duty.trim()) {
+  const handleAddStaff = async (membershipId: number) => {
+    const duty = dutyInput[membershipId]?.trim();
+
+    if (!duty) {
       Toast.show({
         type: 'error',
-        text1: 'Missing Information',
-        text2: 'Please select a member and enter their duty',
+        text1: 'Error',
+        text2: 'Please enter a duty for this member',
       });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await postEventStaff(eventId, selectedMember.membershipId, duty.trim());
+      await postEventStaff(eventId, membershipId, duty);
       Toast.show({
         type: 'success',
         text1: 'Success',
         text2: 'Staff member assigned successfully',
       });
-      await refetchStaff();
-      setView('list');
-      setSelectedMember(null);
-      setDuty('');
-      setSearchTerm('');
+      // Clear duty input for this member
+      setDutyInput((prev) => {
+        const newInputs = { ...prev };
+        delete newInputs[membershipId];
+        return newInputs;
+      });
+      // Reload both lists after successful addition
+      await Promise.all([refetchStaff(), loadClubMembers()]);
     } catch (error: any) {
+      console.error('Failed to add staff:', error);
       const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Failed to assign staff';
       
       // Đóng modal trước rồi mới hiển thị toast để toast không bị che
@@ -125,11 +198,82 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       setIsSubmitting(false);
     }
   };
+  
+  const handleDeleteStaff = (staff: EventStaff) => {
+    setStaffToDelete(staff);
+    setShowDeleteConfirm(true);
+  };
+  
+  const handleConfirmDelete = async () => {
+    if (!staffToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteEventStaff(eventId, staffToDelete.id);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Staff member removed successfully',
+      });
+      await refetchStaff();
+      setShowDeleteConfirm(false);
+      setStaffToDelete(null);
+    } catch (error: any) {
+      console.error('Failed to delete staff:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error?.response?.data?.error || error?.response?.data?.message || 'Failed to remove staff member',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
+  const handleOpenEvaluateModal = (staff: EventStaff) => {
+    setSelectedStaffForEvaluation(staff);
+    setShowEvaluateModal(true);
+  };
+  
+  const handleCloseEvaluateModal = () => {
+    setShowEvaluateModal(false);
+    setSelectedStaffForEvaluation(null);
+  };
+  
+  const handleEvaluationSuccess = async () => {
+    // Reload staff list and evaluations after successful evaluation
+    await Promise.all([refetchStaff(), loadEvaluations(), loadTopEvaluations()]);
+  };
+  
+  const getStaffEvaluation = (membershipId: number): StaffEvaluation | undefined => {
+    return staffEvaluations.find(
+      (evaluation) => evaluation.membershipId === membershipId
+    );
+  };
+  
+  const handleOpenEvaluationDetail = (staff: EventStaff) => {
+    const evaluation = getStaffEvaluation(staff.membershipId);
+    if (evaluation) {
+      setSelectedEvaluation(evaluation);
+      setShowEvaluationDetailModal(true);
+    }
+  };
+  
+  const handleCloseEvaluationDetail = () => {
+    setShowEvaluationDetailModal(false);
+    setSelectedEvaluation(null);
+  };
+
+  const handleDutyChange = (membershipId: number, value: string) => {
+    setDutyInput((prev) => ({
+      ...prev,
+      [membershipId]: value,
+    }));
+  };
 
   const handleClose = () => {
     setView('list');
-    setSelectedMember(null);
-    setDuty('');
+    setDutyInput({});
     setSearchTerm('');
     onClose();
   };
@@ -139,6 +283,39 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
     member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.studentCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const filteredStaff = staffList
+    .filter((staff) => staff.state !== 'REMOVED') // Exclude REMOVED staff
+    .filter(
+      (staff) =>
+        staff.memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        staff.duty.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  
+  // Sort staff by performance if event is completed and top evaluations are available
+  const sortedFilteredStaff =
+    isEventCompleted && topEvaluations.length > 0
+      ? [...filteredStaff].sort((a, b) => {
+          const evalA = topEvaluations.find(
+            (e) => e.membershipId === a.membershipId
+          );
+          const evalB = topEvaluations.find(
+            (e) => e.membershipId === b.membershipId
+          );
+
+          // Performance order: EXCELLENT > GOOD > AVERAGE > POOR
+          const performanceOrder: { [key: string]: number } = {
+            EXCELLENT: 4,
+            GOOD: 3,
+            AVERAGE: 2,
+            POOR: 1,
+          };
+          const scoreA = evalA ? performanceOrder[evalA.performance] || 0 : 0;
+          const scoreB = evalB ? performanceOrder[evalB.performance] || 0 : 0;
+
+          return scoreB - scoreA; // Descending order
+        })
+      : filteredStaff;
 
   // Debug log
   console.log('🎯 Club members count:', clubMembers.length);
@@ -155,17 +332,67 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
           <View className="flex-row items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <View className="flex-1">
               <Text className="text-lg font-bold text-gray-900 dark:text-white">
-                {view === 'list' ? 'Event Staff' : 'Add Staff Member'}
+                Event Staff Management
               </Text>
               {view === 'list' && (
                 <Text className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  {staffList.length} staff member(s)
+                  {sortedFilteredStaff.length} staff member(s)
                 </Text>
               )}
             </View>
             <TouchableOpacity onPress={handleClose}>
               <Ionicons name="close" size={24} color="#6B7280" />
             </TouchableOpacity>
+          </View>
+          
+          {/* Tabs - Hide add tab for completed events */}
+          {!isEventCompleted && (
+            <View className="flex-row border-b border-gray-200 dark:border-gray-700">
+              <TouchableOpacity
+                onPress={() => setView('list')}
+                className={`flex-1 px-6 py-4 ${view === 'list' ? 'border-b-2 border-purple-600' : ''}` }
+              >
+                <View className="flex-row items-center justify-center">
+                  <Ionicons 
+                    name="people" 
+                    size={18} 
+                    color={view === 'list' ? '#9333EA' : '#6B7280'} 
+                  />
+                  <Text 
+                    className={`ml-2 text-sm font-medium ${view === 'list' ? 'text-purple-600' : 'text-gray-500'}`}
+                  >
+                    Event Staff
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setView('add')}
+                className={`flex-1 px-6 py-4 ${view === 'add' ? 'border-b-2 border-purple-600' : ''}` }
+              >
+                <View className="flex-row items-center justify-center">
+                  <Ionicons 
+                    name="person-add" 
+                    size={18} 
+                    color={view === 'add' ? '#9333EA' : '#6B7280'} 
+                  />
+                  <Text 
+                    className={`ml-2 text-sm font-medium ${view === 'add' ? 'text-purple-600' : 'text-gray-500'}`}
+                  >
+                    Add Staff
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Search Bar */}
+          <View className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <TextInput
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+              placeholder={view === 'list' ? 'Search by member name or duty...' : 'Search by name, student code, or email...'}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
           </View>
 
           {/* Content */}
@@ -175,70 +402,160 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
               <View className="p-4">
                 {staffLoading ? (
                   <View className="py-8 items-center">
-                    <ActivityIndicator size="large" color="#0D9488" />
+                    <ActivityIndicator size="large" color="#9333EA" />
                     <Text className="mt-3 text-gray-500 text-sm">Loading staff...</Text>
                   </View>
-                ) : staffList.length === 0 ? (
+                ) : sortedFilteredStaff.length === 0 ? (
                   <View className="py-8 items-center">
                     <Ionicons name="people-outline" size={48} color="#9CA3AF" />
                     <Text className="mt-3 text-base font-semibold text-gray-900 dark:text-white">
-                      No Staff Assigned
+                      {searchTerm ? 'No staff found matching your search' : 'No Staff Assigned'}
                     </Text>
-                    <Text className="mt-1 text-xs text-gray-600 dark:text-gray-400 text-center px-4">
-                      Add staff members to help manage this event
-                    </Text>
+                    {!searchTerm && (
+                      <Text className="mt-1 text-xs text-gray-600 dark:text-gray-400 text-center px-4">
+                        Add staff members to help manage this event
+                      </Text>
+                    )}
                   </View>
                 ) : (
                   <View className="space-y-3">
-                    {staffList.map((staff) => (
-                      <View
-                        key={staff.id}
-                        className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                      >
-                        <View className="flex-row items-start justify-between mb-1">
-                          <View className="flex-1 mr-2">
-                            <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {staff.memberName}
-                            </Text>
-                            {staff.memberEmail && (
+                    {sortedFilteredStaff.map((staff) => {
+                      const staffEvaluation = getStaffEvaluation(staff.membershipId);
+                      
+                      return (
+                        <View
+                          key={staff.id}
+                          className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                        >
+                          <View className="flex-row items-start justify-between mb-2">
+                            {/* Avatar */}
+                            <View className="mr-3">
+                              <View className="h-12 w-12 rounded-full bg-purple-600 items-center justify-center">
+                                <Text className="text-white font-semibold text-lg">
+                                  {staff.memberName.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            </View>
+                            
+                            {/* Staff Info */}
+                            <View className="flex-1">
+                              <View className="flex-row items-center gap-2 mb-1">
+                                <Text className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {staff.memberName}
+                                </Text>
+                                {/* Show performance badge for completed events */}
+                                {isEventCompleted && staffEvaluation && (
+                                  <View
+                                    className={`px-2 py-0.5 rounded flex-row items-center ${
+                                      staffEvaluation.performance === 'EXCELLENT'
+                                        ? 'bg-green-100 border border-green-500'
+                                        : staffEvaluation.performance === 'GOOD'
+                                        ? 'bg-blue-100 border border-blue-500'
+                                        : staffEvaluation.performance === 'AVERAGE'
+                                        ? 'bg-yellow-100 border border-yellow-500'
+                                        : 'bg-red-100 border border-red-500'
+                                    }`}
+                                  >
+                                    <Ionicons 
+                                      name="star" 
+                                      size={10} 
+                                      color={
+                                        staffEvaluation.performance === 'EXCELLENT'
+                                          ? '#15803D'
+                                          : staffEvaluation.performance === 'GOOD'
+                                          ? '#1E40AF'
+                                          : staffEvaluation.performance === 'AVERAGE'
+                                          ? '#A16207'
+                                          : '#991B1B'
+                                      } 
+                                    />
+                                    <Text
+                                      className={`text-xs font-semibold ml-1 ${
+                                        staffEvaluation.performance === 'EXCELLENT'
+                                          ? 'text-green-700'
+                                          : staffEvaluation.performance === 'GOOD'
+                                          ? 'text-blue-700'
+                                          : staffEvaluation.performance === 'AVERAGE'
+                                          ? 'text-yellow-700'
+                                          : 'text-red-700'
+                                      }`}
+                                    >
+                                      {staffEvaluation.performance}
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
                               <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                                {staff.memberEmail}
+                                Duty: {staff.duty}
                               </Text>
-                            )}
-                            <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                              {staff.duty}
-                            </Text>
-                          </View>
-                          <View
-                            className={`px-2 py-0.5 rounded ${
-                              staff.state === 'ACTIVE'
-                                ? 'bg-green-100 dark:bg-green-900'
-                                : staff.state === 'EXPIRED'
-                                ? 'bg-blue-100 dark:bg-blue-900'
-                                : 'bg-gray-100 dark:bg-gray-800'
-                            }`}
-                          >
-                            <Text
-                              className={`text-xs font-semibold ${
+                              <Text className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                Assigned: {new Date(staff.assignedAt).toLocaleDateString('vi-VN')}
+                              </Text>
+                            </View>
+                            
+                            {/* Status Badge */}
+                            <View
+                              className={`px-2 py-0.5 rounded ml-2 ${
                                 staff.state === 'ACTIVE'
-                                  ? 'text-green-800 dark:text-green-200'
-                                  : staff.state === 'EXPIRED'
-                                  ? 'text-blue-800 dark:text-blue-200'
-                                  : 'text-gray-800 dark:text-gray-200'
+                                  ? 'bg-green-100 border border-green-500'
+                                  : 'bg-gray-100 border border-gray-300'
                               }`}
                             >
-                              {staff.state}
-                            </Text>
+                              <Text
+                                className={`text-xs font-semibold ${
+                                  staff.state === 'ACTIVE'
+                                    ? 'text-green-700'
+                                    : 'text-gray-700'
+                                }`}
+                              >
+                                {staff.state}
+                              </Text>
+                            </View>
+                          </View>
+                          
+                          {/* Action Buttons */}
+                          <View className="flex-row items-center gap-2 mt-2">
+                            {/* Delete Button - Only show if event is not completed */}
+                            {!isEventCompleted && (
+                              <TouchableOpacity
+                                onPress={() => handleDeleteStaff(staff)}
+                                className="flex-1 border border-red-500 rounded-lg py-2 items-center"
+                              >
+                                <View className="flex-row items-center">
+                                  <Ionicons name="trash" size={16} color="#DC2626" />
+                                  <Text className="text-red-600 font-medium ml-1 text-xs">Remove</Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                            
+                            {/* Evaluate Button - Only show for completed events */}
+                            {isEventCompleted && (
+                              staffEvaluation ? (
+                                <TouchableOpacity
+                                  onPress={() => handleOpenEvaluationDetail(staff)}
+                                  className="flex-1 bg-green-600 rounded-lg py-2 items-center"
+                                >
+                                  <View className="flex-row items-center">
+                                    <Ionicons name="checkmark-circle" size={16} color="white" />
+                                    <Text className="text-white font-medium ml-1 text-xs">Has Been Evaluated</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              ) : (
+                                <TouchableOpacity
+                                  onPress={() => handleOpenEvaluateModal(staff)}
+                                  className="flex-1 bg-amber-600 rounded-lg py-2 items-center"
+                                >
+                                  <View className="flex-row items-center">
+                                    <Ionicons name="star" size={16} color="white" />
+                                    <Text className="text-white font-medium ml-1 text-xs">Evaluate</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              )
+                            )}
                           </View>
                         </View>
-                        <View className="flex-row items-center gap-1 mt-1">
-                          <Ionicons name="time-outline" size={12} color="#9CA3AF" />
-                          <Text className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(staff.assignedAt).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 )}
               </View>
@@ -247,110 +564,91 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
             <ScrollView className="flex-1">
               {/* Add Staff View */}
               <View className="p-4">
-                {/* Member Selection */}
-                <View className="mb-3">
-                  <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Select Member <Text className="text-red-500">*</Text>
-                  </Text>
-                  
-                  {/* Search */}
-                  <TextInput
-                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 mb-2"
-                    placeholder="Search members..."
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                  />
-
-                  {(() => {
-                    console.log('🎨 Rendering member list condition - loadingMembers:', loadingMembers, 'filteredMembers.length:', filteredMembers.length);
-                    
-                    if (loadingMembers) {
-                      return (
-                        <View className="py-6 items-center">
-                          <ActivityIndicator size="large" color="#0D9488" />
-                        </View>
-                      );
-                    }
-                    
-                    if (filteredMembers.length === 0) {
-                      return (
-                        <View className="py-6 items-center">
-                          <Ionicons name="search-outline" size={36} color="#9CA3AF" />
-                          <Text className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            {searchTerm ? 'No members found' : 'No available members'}
-                          </Text>
-                        </View>
-                      );
-                    }
-                    
-                    console.log('✅ About to render', filteredMembers.length, 'members');
-                    return (
-                      <View className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                        {filteredMembers.map((member, index) => {
-                          console.log('🔄 Rendering member:', member.fullName);
-                          return (
-                            <TouchableOpacity
-                              key={member.membershipId || member.id || index}
-                              className={`p-3 ${index < filteredMembers.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''} ${
-                                selectedMember?.membershipId === member.membershipId
-                                  ? 'bg-teal-50 dark:bg-teal-900/20'
-                                  : 'bg-white dark:bg-gray-700'
-                              }`}
-                              onPress={() => {
-                                console.log('🎯 Selected member:', member);
-                                setSelectedMember(member);
-                              }}
-                            >
-                              <View className="flex-row items-center justify-between">
-                                <View className="flex-1">
-                                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-                                    {member.fullName || 'Unknown'}
-                                  </Text>
-                                  <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                                    {member.email || member.studentCode || 'No email'}
+                {loadingMembers ? (
+                  <View className="py-8 items-center">
+                    <ActivityIndicator size="large" color="#3B82F6" />
+                    <Text className="mt-3 text-gray-500 text-sm">Loading members...</Text>
+                  </View>
+                ) : filteredMembers.length === 0 ? (
+                  <View className="py-8 items-center">
+                    <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+                    <Text className="mt-3 text-base font-semibold text-gray-900 dark:text-white">
+                      {searchTerm ? 'No members found matching your search' : 'No members available to add as staff'}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="space-y-3">
+                    {filteredMembers.map((member, index) => (
+                      <View
+                        key={member.membershipId || member.id || index}
+                        className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 mb-3"
+                      >
+                        <View className="flex-row items-center mb-3">
+                          {/* Avatar */}
+                          <View className="mr-3">
+                            {member.avatarUrl ? (
+                              <View className="h-12 w-12 rounded-full overflow-hidden">
+                                {/* Note: React Native Image would go here */}
+                                <View className="h-12 w-12 rounded-full bg-blue-600 items-center justify-center">
+                                  <Text className="text-white font-semibold text-lg">
+                                    {member.fullName.charAt(0).toUpperCase()}
                                   </Text>
                                 </View>
-                                {selectedMember?.membershipId === member.membershipId && (
-                                  <Ionicons name="checkmark-circle" size={20} color="#0D9488" />
-                                )}
                               </View>
-                            </TouchableOpacity>
-                          );
-                        })}
+                            ) : (
+                              <View className="h-12 w-12 rounded-full bg-blue-600 items-center justify-center">
+                                <Text className="text-white font-semibold text-lg">
+                                  {member.fullName.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          
+                          {/* Member Info */}
+                          <View className="flex-1">
+                            <Text className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {member.fullName || 'Unknown'}
+                            </Text>
+                            <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                              {member.studentCode} • {member.email || 'No email'}
+                            </Text>
+                            {member.major && (
+                              <Text className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                {member.major}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                        
+                        {/* Duty Input */}
+                        <TextInput
+                          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 mb-2"
+                          placeholder="Enter duty..."
+                          value={dutyInput[member.membershipId] || ''}
+                          onChangeText={(value) => handleDutyChange(member.membershipId, value)}
+                        />
+                        
+                        {/* Add Button */}
+                        <TouchableOpacity
+                          onPress={() => handleAddStaff(member.membershipId)}
+                          disabled={isSubmitting || eventStatus === 'ONGOING' || !dutyInput[member.membershipId]?.trim()}
+                          className={`bg-blue-600 rounded-lg py-2 items-center ${
+                            (isSubmitting || eventStatus === 'ONGOING' || !dutyInput[member.membershipId]?.trim()) ? 'opacity-50' : ''
+                          }`}
+                        >
+                          <View className="flex-row items-center">
+                            {isSubmitting ? (
+                              <ActivityIndicator size="small" color="white" />
+                            ) : (
+                              <>
+                                <Ionicons name="person-add" size={16} color="white" />
+                                <Text className="text-white font-medium ml-1 text-sm">Add</Text>
+                              </>
+                            )}
+                          </View>
+                        </TouchableOpacity>
                       </View>
-                    );
-                  })()}
-                </View>
-
-                {/* Duty Input */}
-                <View className="mb-3">
-                  <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Duty/Responsibility <Text className="text-red-500">*</Text>
-                  </Text>
-                  <TextInput
-                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700"
-                    placeholder="e.g., Registration Desk, Sound System"
-                    value={duty}
-                    onChangeText={setDuty}
-                    maxLength={100}
-                  />
-                  <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {duty.length}/100
-                  </Text>
-                </View>
-
-                {/* Selected Member Preview */}
-                {selectedMember && (
-                  <View className="p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700 rounded-lg">
-                    <Text className="text-xs font-medium text-teal-800 dark:text-teal-200 mb-1">
-                      Selected Member
-                    </Text>
-                    <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {selectedMember.fullName}
-                    </Text>
-                    <Text className="text-xs text-gray-600 dark:text-gray-400">
-                      {selectedMember.email || selectedMember.studentCode}
-                    </Text>
+                    ))}
                   </View>
                 )}
               </View>
@@ -359,60 +657,108 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
 
           {/* Footer */}
           <View className="p-4 border-t border-gray-200 dark:border-gray-700">
-            {view === 'list' ? (
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  className="flex-1 bg-teal-600 rounded-lg py-2.5 items-center"
-                  onPress={() => {
-                    setView('add');
-                    loadClubMembers();
-                  }}
-                >
-                  <View className="flex-row items-center">
-                    <Ionicons name="add-circle" size={18} color="white" />
-                    <Text className="text-white font-medium ml-1.5 text-sm">Add Staff</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-lg py-2.5 items-center"
-                  onPress={handleClose}
-                >
-                  <Text className="text-gray-700 dark:text-gray-300 font-medium text-sm">Close</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-lg py-2.5 items-center"
-                  onPress={() => {
-                    setView('list');
-                    setSelectedMember(null);
-                    setDuty('');
-                    setSearchTerm('');
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <Text className="text-gray-700 dark:text-gray-300 font-medium text-sm">Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className={`flex-1 bg-teal-600 rounded-lg py-2.5 items-center ${
-                    (!selectedMember || !duty.trim() || isSubmitting) ? 'opacity-50' : ''
-                  }`}
-                  onPress={handleAddStaff}
-                  disabled={!selectedMember || !duty.trim() || isSubmitting}
-                >
-                  <View className="flex-row items-center">
-                    {isSubmitting && <ActivityIndicator size="small" color="white" />}
-                    <Text className="text-white font-medium ml-1.5 text-sm">
-                      {isSubmitting ? 'Adding...' : 'Assign Staff'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
+            <TouchableOpacity
+              className="bg-gray-200 dark:bg-gray-700 rounded-lg py-2.5 items-center"
+              onPress={handleClose}
+            >
+              <Text className="text-gray-700 dark:text-gray-300 font-medium text-sm">Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
+      
+      {/* Evaluate Staff Modal */}
+      {selectedStaffForEvaluation && (
+        <EvaluateStaffModal
+          visible={showEvaluateModal}
+          onClose={handleCloseEvaluateModal}
+          onSubmit={async (membershipId: number, eventId: number, performance: any, note: string) => {
+            // This will be handled by the parent component
+            // But we need to call the service directly here
+            const { evaluateEventStaff } = require('@services/eventStaff.service');
+            await evaluateEventStaff(eventId, { membershipId, eventId, performance, note });
+            await handleEvaluationSuccess();
+          }}
+          staffMember={{
+            membershipId: selectedStaffForEvaluation.membershipId,
+            memberName: selectedStaffForEvaluation.memberName,
+            duty: selectedStaffForEvaluation.duty,
+          }}
+          eventId={eventId}
+          eventName={'Event'} // You may want to pass the actual event name
+        />
+      )}
+      
+      {/* Evaluation Detail Modal */}
+      {selectedEvaluation && (
+        <EvaluationDetailModal
+          visible={showEvaluationDetailModal}
+          onClose={handleCloseEvaluationDetail}
+          evaluations={[{
+            memberName: selectedStaffForEvaluation?.memberName || 'Unknown',
+            memberEmail: undefined,
+            duty: selectedStaffForEvaluation?.duty || 'N/A',
+            evaluation: selectedEvaluation,
+          }]}
+          eventName={'Event'} // You may want to pass the actual event name
+        />
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && staffToDelete && (
+        <Modal visible={true} animationType="fade" transparent>
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="bg-white dark:bg-gray-800 rounded-2xl w-11/12 max-w-md p-6">
+              <View className="items-center">
+                <View className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 items-center justify-center mb-4">
+                  <Ionicons name="trash" size={24} color="#DC2626" />
+                </View>
+                <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-center">
+                  Remove Staff Member
+                </Text>
+                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center">
+                  Are you sure you want to remove{' '}
+                  <Text className="font-semibold text-gray-900 dark:text-white">
+                    {staffToDelete.memberName}
+                  </Text>
+                  {' '}from this event? This action cannot be undone.
+                </Text>
+                <View className="flex-row gap-3 w-full">
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowDeleteConfirm(false);
+                      setStaffToDelete(null);
+                    }}
+                    disabled={isDeleting}
+                    className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg py-2.5 items-center"
+                  >
+                    <Text className="text-gray-700 dark:text-gray-300 font-medium">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleConfirmDelete}
+                    disabled={isDeleting}
+                    className="flex-1 bg-red-600 rounded-lg py-2.5 items-center"
+                  >
+                    <View className="flex-row items-center">
+                      {isDeleting ? (
+                        <>
+                          <ActivityIndicator size="small" color="white" />
+                          <Text className="text-white font-medium ml-2">Removing...</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name="trash" size={16} color="white" />
+                          <Text className="text-white font-medium ml-2">Remove</Text>
+                        </>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 };
