@@ -2,12 +2,12 @@ import { ENV } from '@configs/environment';
 import { Ionicons } from '@expo/vector-icons';
 import { SignUpCredentials } from '@models/auth/auth.types';
 import AuthService from '@services/auth.service';
-// import GoogleAuthService from '@services/googleAuth.service';
+import GoogleAuthService from '@services/googleAuth.service';
 import { useAuthStore } from '@stores/auth.store';
 import { getRoleRoute } from '@utils/roleRouting';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -45,9 +45,9 @@ export default function LoginScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Initialize Google Sign-In configuration on component mount
-  // useEffect(() => {
-  //   GoogleAuthService.configure();
-  // }, []);
+  useEffect(() => {
+    GoogleAuthService.configure();
+  }, []);
 
   const handleSubmit = async () => {
     if (isSignUpMode) {
@@ -325,15 +325,6 @@ export default function LoginScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    Toast.show({
-      type: 'info',
-      text1: 'Waiting Setup',
-      text2: 'Google Sign-In is being configured',
-      visibilityTime: 3000,
-      autoHide: true,
-    });
-    
-    /* 
     setIsGoogleLoading(true);
     
     try {
@@ -385,7 +376,6 @@ export default function LoginScreen() {
     } finally {
       setIsGoogleLoading(false);
     }
-    */
   };
 
   const resetForm = () => {

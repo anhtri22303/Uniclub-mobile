@@ -5,11 +5,11 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -140,34 +140,32 @@ export default function EventOrderScannerScreen() {
   if (!permission || !permission.granted) {
     return (
       <View className="flex-1 bg-gray-50 items-center justify-center p-6">
-        <View className="bg-white rounded-2xl p-8 items-center shadow-lg">
-          <View className="bg-red-100 rounded-full p-4 mb-4">
-            <Ionicons name="camera" size={48} color="#EF4444" />
-          </View>
-          <Text className="text-2xl font-bold text-gray-900 mb-2 text-center">
-            Camera Permission Required
-          </Text>
-          <Text className="text-gray-600 text-center mb-6">
-            Please grant camera access to scan QR codes
-          </Text>
-          <TouchableOpacity
-            onPress={requestPermission}
-            className="bg-teal-600 px-6 py-3 rounded-lg"
-          >
-            <Text className="text-white font-semibold">Grant Permission</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleCancel} className="mt-4">
+          <View className="bg-white rounded-2xl p-8 items-center shadow-lg">
+            <View className="bg-red-100 rounded-full p-4 mb-4">
+              <Ionicons name="camera" size={48} color="#EF4444" />
+            </View>
+            <Text className="text-2xl font-bold text-gray-900 mb-2 text-center">
+              Camera Permission Required
+            </Text>
+            <Text className="text-gray-600 text-center mb-6">
+              Please grant camera access to scan QR codes
+            </Text>
+            <TouchableOpacity
+              onPress={requestPermission}
+              className="bg-teal-600 px-6 py-3 rounded-lg"
+            >
+              <Text className="text-white font-semibold">Grant Permission</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleCancel} className="mt-4">
             <Text className="text-gray-600">Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
-  }
-
-  return (
+  }  return (
     <View className="flex-1 bg-black">
-      {/* Header */}
-      <View className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent pt-12 pb-6 px-6">
+        {/* Header */}
+        <View className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent pt-12 pb-6 px-6">
         <View className="flex-row items-center justify-between">
           <TouchableOpacity
             onPress={handleCancel}

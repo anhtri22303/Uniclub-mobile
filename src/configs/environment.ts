@@ -5,6 +5,7 @@ export const ENV = {
   
   // Google OAuth Configuration
   GOOGLE_WEB_CLIENT_ID: '772231604776-mrl2ick1aess5a4f2npfm7qctvksprd7.apps.googleusercontent.com',
+  GOOGLE_ANDROID_CLIENT_ID: '772231604776-clhf07dqjrren1capjg95cv1u481cr26.apps.googleusercontent.com',
   
   // Development settings
   IS_DEV: process.env.EXPO_PUBLIC_ENV === 'development',

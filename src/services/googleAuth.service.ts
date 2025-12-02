@@ -1,6 +1,6 @@
-// import { ENV } from '@configs/environment';
-// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-// import AuthService from '@services/auth.service';
+import { ENV } from '@configs/environment';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import AuthService from '@services/auth.service';
 import * as SecureStore from 'expo-secure-store';
 
 /**
@@ -16,12 +16,12 @@ export class GoogleAuthService {
    * Should be called once when app starts
    */
   static configure() {
-    // GoogleSignin.configure({
-    //   webClientId: ENV.GOOGLE_WEB_CLIENT_ID,
-    //   offlineAccess: true,
-    //   forceCodeForRefreshToken: true,
-    // });
-    console.log('⏳ Google Sign-In waiting setup');
+    GoogleSignin.configure({
+      webClientId: ENV.GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: true,
+      forceCodeForRefreshToken: true,
+    });
+    console.log('✅ Google Sign-In configured');
   }
 
   /**

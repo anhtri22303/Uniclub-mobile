@@ -37,7 +37,7 @@
         }
       ],
       "expo-secure-store",
-      "expo-barcode-scanner",
+      "expo-camera",
       "@react-native-google-signin/google-signin"
     ],
     "experiments": {

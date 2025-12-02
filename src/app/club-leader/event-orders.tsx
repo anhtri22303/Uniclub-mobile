@@ -1,21 +1,22 @@
+import NavigationBar from '@components/navigation/NavigationBar';
+import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getAllEventOrdersByClub, RedeemOrder } from '@services/redeem.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
-
-// Query key
+  ActivityIndicator,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native'; // Query key
 export const queryKeys = {
   eventOrders: (clubId: number) => ['eventOrders', clubId] as const,
 };
@@ -126,14 +127,14 @@ export default function EventOrdersScreen() {
   }
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <Sidebar role={user?.role} />
+      <View className="flex-1">
         {/* Header */}
         <View className="bg-teal-600 pt-12 pb-6 px-6 shadow-lg">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-1">
-            <Text className="text-white text-2xl font-bold">Event Orders</Text>
+            <Text className="text-white text-2xl font-bold">          Event Orders</Text>
             <Text className="text-teal-100 text-sm mt-1">
               Manage event product redemptions
             </Text>
@@ -425,6 +426,7 @@ export default function EventOrdersScreen() {
         )}
       </ScrollView>
       </View>
-    </>
+      <NavigationBar role={user?.role} user={user || undefined} />
+    </SafeAreaView>
   );
 }

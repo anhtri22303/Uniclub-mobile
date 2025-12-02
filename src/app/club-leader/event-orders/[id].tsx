@@ -1,25 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
-    completeRedeemOrder,
-    getAllEventOrdersByClub,
-    RedeemOrder,
-    refundPartialRedeemOrder,
-    RefundPayload,
-    refundRedeemOrder,
+  completeRedeemOrder,
+  getAllEventOrdersByClub,
+  RedeemOrder,
+  refundPartialRedeemOrder,
+  RefundPayload,
+  refundRedeemOrder,
 } from '@services/redeem.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -225,8 +225,8 @@ export default function EventOrderDetailScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className={`${statusInfo.bg} pt-12 pb-6 px-6`}>
+        {/* Header */}
+        <View className={`${statusInfo.bg} pt-12 pb-6 px-6`}>
         <TouchableOpacity
           onPress={() => router.back()}
           className="flex-row items-center mb-4"

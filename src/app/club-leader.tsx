@@ -16,12 +16,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ClubInfoCard,
-  CoHostEventsList,
-  MembersByMajorChart,
-  RecentApplicationsList,
-  StatsCard,
-} from './club-leader/components';
+    ClubInfoCard,
+    CoHostEventsList,
+    MembersByMajorChart,
+    RecentApplicationsList,
+    StatsCard,
+} from './club-leader/_components';
 
 // Helper function to check if event has expired
 const isEventExpired = (event: any): boolean => {
