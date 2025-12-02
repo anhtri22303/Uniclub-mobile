@@ -1,28 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEventStaff } from '@hooks/useQueryHooks';
 import {
-  deleteEventStaff,
-  EventStaff,
-  getEvaluateEventStaff,
-  getTopEvaluatedStaff,
-  postEventStaff,
-  StaffEvaluation
+    deleteEventStaff,
+    EventStaff,
+    getEvaluateEventStaff,
+    getTopEvaluatedStaff,
+    postEventStaff,
+    StaffEvaluation
 } from '@services/eventStaff.service';
 import { MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import EvaluateStaffModal from './EvaluateStaffModal';
 import EvaluationDetailModal from './EvaluationDetailModal';
+import { AppTextInput } from './ui';
 
 interface AddStaffModalProps {
   visible: boolean;
@@ -387,7 +387,7 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
           
           {/* Search Bar */}
           <View className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <TextInput
+            <AppTextInput
               className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700"
               placeholder={view === 'list' ? 'Search by member name or duty...' : 'Search by name, student code, or email...'}
               value={searchTerm}
@@ -621,7 +621,7 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
                         </View>
                         
                         {/* Duty Input */}
-                        <TextInput
+                        <AppTextInput
                           className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 mb-2"
                           placeholder="Enter duty..."
                           value={dutyInput[member.membershipId] || ''}

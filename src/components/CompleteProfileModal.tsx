@@ -7,10 +7,10 @@ import {
     Modal,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { AppTextInput } from './ui';
 
 interface CompleteProfileModalProps {
   visible: boolean;
@@ -183,7 +183,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
                       size={20}
                       color={studentCodeError ? '#EF4444' : '#6B7280'}
                     />
-                    <TextInput
+                    <AppTextInput
                       value={studentCode}
                       onChangeText={handleStudentCodeChange}
                       placeholder="SE000001"

@@ -1,6 +1,7 @@
 import CalendarModal from '@components/CalendarModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { useMyEventRegistrations, useRegisterForEvent } from '@hooks/useQueryHooks';
 import { ClubService } from '@services/club.service';
@@ -11,14 +12,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -341,66 +341,86 @@ export default function StudentEventsPage() {
   const userClubsDetails = clubs.filter((club) => userClubIds.includes(club.id));
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
-      <View className="flex-1 px-4">
+      <View className="flex-1 px-5">
         {/* Header */}
-        <View className="py-4">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-2xl font-bold text-gray-900">          Events</Text>
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => setClubSelectorVisible(true)}
-                className="bg-purple-500 px-4 py-2 rounded-lg"
-              >
-                <Text className="text-white font-semibold">🏫 Clubs</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setFilterModalVisible(true)}
-                className="bg-blue-500 px-4 py-2 rounded-lg"
-              >
-                <Text className="text-white font-semibold">🎛️ Filters</Text>
-              </TouchableOpacity>
+        <View className="bg-white rounded-3xl p-6 my-4 shadow-lg" style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+          <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center flex-1">
+              <View className="bg-teal-100 p-3 rounded-2xl mr-3">
+                <Ionicons name="calendar" size={28} color="#14B8A6" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-2xl font-bold text-gray-900">Events</Text>
+                <Text className="text-sm text-gray-500 mt-0.5">
+                  Discover upcoming events
+                </Text>
+              </View>
             </View>
           </View>
-          <Text className="text-sm text-gray-600 mt-1">
-            Discover upcoming events from your clubs
-          </Text>
+          
+          {/* Action Buttons */}
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={() => setClubSelectorVisible(true)}
+              className="flex-1 bg-purple-500 px-4 py-3 rounded-2xl flex-row items-center justify-center shadow-md"
+              style={{ shadowColor: '#A855F7', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }}
+            >
+              <Ionicons name="business" size={20} color="white" />
+              <Text className="text-white font-bold ml-2">Clubs</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilterModalVisible(true)}
+              className="flex-1 bg-blue-500 px-4 py-3 rounded-2xl flex-row items-center justify-center shadow-md"
+              style={{ shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }}
+            >
+              <Ionicons name="options" size={20} color="white" />
+              <Text className="text-white font-bold ml-2">Filters</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Info Badge */}
           {userClubIds.length > 0 && (
-            <Text className="text-xs text-gray-500 mt-1">
-              {selectedClubId && selectedClubId !== 'all' 
-                ? `Viewing events from ${clubs.find(c => String(c.id) === selectedClubId)?.name || 'selected club'}`
-                : `Showing events from ${userClubIds.length} club${userClubIds.length > 1 ? 's' : ''}`
-              }
-            </Text>
+            <View className="mt-3 bg-teal-50 rounded-2xl p-3">
+              <Text className="text-xs text-teal-700 font-semibold">
+                {selectedClubId && selectedClubId !== 'all' 
+                  ? `📍 ${clubs.find(c => String(c.id) === selectedClubId)?.name || 'Selected club'}`
+                  : `📚 Showing from ${userClubIds.length} club${userClubIds.length > 1 ? 's' : ''}`
+                }
+              </Text>
+            </View>
           )}
         </View>
 
         {/* Search Bar */}
-        <View className="mb-4 flex-row gap-2">
-          <View className="flex-1 flex-row items-center bg-white rounded-lg px-4 py-3 shadow-sm">
-            <Text className="text-gray-400 mr-2">🔍</Text>
-            <TextInput
+        <View className="mb-4 flex-row gap-3">
+          <View className="flex-1 flex-row items-center bg-white rounded-2xl px-5 py-4 shadow-md" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 }}>
+            <View className="bg-teal-50 p-2 rounded-xl mr-3">
+              <Ionicons name="search" size={22} color="#14B8A6" />
+            </View>
+            <AppTextInput
               placeholder="Search events..."
               value={searchTerm}
               onChangeText={setSearchTerm}
-              className="flex-1 text-base"
+              className="flex-1 text-base text-gray-900"
               placeholderTextColor="#9CA3AF"
             />
             {searchTerm.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchTerm('')}>
-                <Text className="text-gray-400 text-lg">✕</Text>
+              <TouchableOpacity onPress={() => setSearchTerm('')} className="bg-gray-100 p-2 rounded-xl ml-2">
+                <Ionicons name="close" size={18} color="#6B7280" />
               </TouchableOpacity>
             )}
           </View>
           
           <TouchableOpacity
             onPress={() => setShowCalendarModal(true)}
-            className="bg-blue-600 rounded-lg px-4 py-3 shadow-sm justify-center"
+            className="bg-teal-500 rounded-2xl px-5 py-4 shadow-lg justify-center"
+            style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }}
           >
-            <Ionicons name="calendar" size={20} color="#fff" />
+            <Ionicons name="calendar" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -413,27 +433,34 @@ export default function StudentEventsPage() {
           }
         >
           {loading ? (
-            <View className="flex-1 items-center justify-center py-20">
-              <ActivityIndicator size="large" color="#3B82F6" />
-              <Text className="text-gray-500 mt-4">Loading events...</Text>
+            <View className="bg-white rounded-3xl p-12 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-6 rounded-full mb-4">
+                <ActivityIndicator size="large" color="#14B8A6" />
+              </View>
+              <Text className="text-gray-800 font-semibold text-lg">Loading events...</Text>
+              <Text className="text-gray-500 text-sm mt-2">Please wait a moment</Text>
             </View>
           ) : userClubIds.length === 0 ? (
-            <View className="flex-1 items-center justify-center py-20">
-              <Text className="text-6xl mb-4">🏫</Text>
-              <Text className="text-lg font-semibold text-gray-900 mb-2">
-                No club membership found
+            <View className="bg-white rounded-3xl p-10 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-8 rounded-full mb-6">
+                <Ionicons name="business" size={56} color="#14B8A6" />
+              </View>
+              <Text className="text-2xl font-bold text-gray-900 mb-3">
+                No Club Membership
               </Text>
-              <Text className="text-gray-500 text-center px-8">
+              <Text className="text-gray-600 text-center text-base leading-6 px-4">
                 You need to join a club first to see events
               </Text>
             </View>
           ) : filteredEvents.length === 0 ? (
-            <View className="flex-1 items-center justify-center py-20">
-              <Text className="text-6xl mb-4">📅</Text>
-              <Text className="text-lg font-semibold text-gray-900 mb-2">
-                No events found
+            <View className="bg-white rounded-3xl p-10 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-8 rounded-full mb-6">
+                <Ionicons name="calendar-outline" size={56} color="#14B8A6" />
+              </View>
+              <Text className="text-2xl font-bold text-gray-900 mb-3">
+                No Events Found
               </Text>
-              <Text className="text-gray-500 text-center px-8">
+              <Text className="text-gray-600 text-center text-base leading-6 px-4">
                 {searchTerm
                   ? 'Try adjusting your search terms'
                   : showRegisteredOnly
@@ -453,21 +480,37 @@ export default function StudentEventsPage() {
                 return (
                   <View
                     key={event.id}
-                    className="bg-white rounded-xl shadow-sm mb-3 overflow-hidden"
+                    className="bg-white rounded-3xl shadow-lg mb-4 overflow-hidden"
+                    style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 }}
                   >
-                    <View className="p-4">
+                    {/* Colorful Top Bar */}
+                    <View 
+                      className={`h-2 ${
+                        isExpired 
+                          ? 'bg-gray-400' 
+                          : event.status === 'APPROVED' 
+                          ? 'bg-teal-500' 
+                          : event.status === 'ONGOING'
+                          ? 'bg-cyan-500'
+                          : event.status === 'PENDING'
+                          ? 'bg-blue-500'
+                          : 'bg-gray-400'
+                      }`}
+                    />
+                    
+                    <View className="p-5">
                       {/* Event Header */}
-                      <View className="flex-row items-start justify-between mb-2">
+                      <View className="flex-row items-start justify-between mb-4">
                         <View className="flex-1 mr-3">
                           <Text
-                            className="text-lg font-bold text-gray-900 mb-1"
+                            className="text-lg font-bold text-gray-900 mb-2"
                             numberOfLines={2}
                           >
                             {eventName}
                           </Text>
-                          <View className="flex-row items-center">
-                            <Text className="text-gray-400 mr-1">👥</Text>
-                            <Text className="text-sm text-gray-600">
+                          <View className="flex-row items-center bg-teal-50 px-3 py-1.5 rounded-full self-start">
+                            <View className="w-2 h-2 rounded-full bg-teal-500 mr-2" />
+                            <Text className="text-sm font-semibold text-teal-700">
                               {club?.name || 'Unknown Club'}
                             </Text>
                           </View>
@@ -475,85 +518,181 @@ export default function StudentEventsPage() {
 
                         {/* Status Badge */}
                         <View
-                          className={`${getStatusBadgeStyle(event)} px-3 py-1 rounded-full`}
+                          className={`${getStatusBadgeStyle(event)} px-4 py-2 rounded-2xl shadow-sm`}
                         >
-                          <Text className="text-white text-xs font-medium">
+                          <Text className="text-white text-xs font-bold">
                             {getStatusText(event)}
                           </Text>
                         </View>
                       </View>
 
-                      {/* Event Details */}
-                      <View className="space-y-2 mb-3">
+                      {/* Event Description */}
+                      {event.description && (
+                        <View className="bg-gray-50 px-4 py-3 rounded-2xl mb-3">
+                          <Text className="text-sm text-gray-600 leading-5" numberOfLines={3}>
+                            {event.description}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Event Info Grid */}
+                      <View className="space-y-3 mb-4">
                         {/* Date */}
                         {eventDate && (
-                          <View className="flex-row items-center">
-                            <Text className="text-gray-400 mr-2">📅</Text>
-                            <Text className="text-sm text-gray-600">
-                              {formatDate(eventDate)}
-                            </Text>
+                          <View className="flex-row items-center bg-gray-50 px-4 py-3 rounded-2xl">
+                            <View className="w-10 h-10 bg-teal-100 rounded-xl items-center justify-center mr-3">
+                              <Ionicons name="calendar" size={20} color="#14B8A6" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-gray-500 mb-0.5">Event Date</Text>
+                              <Text className="text-sm font-bold text-gray-800">
+                                {formatDate(eventDate)}
+                              </Text>
+                            </View>
                           </View>
                         )}
 
                         {/* Time */}
                         {event.startTime && event.endTime && (
-                          <View className="flex-row items-center">
-                            <Text className="text-gray-400 mr-2">🕐</Text>
-                            <Text className="text-sm text-gray-600">
-                              {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
-                            </Text>
+                          <View className="flex-row items-center bg-gray-50 px-4 py-3 rounded-2xl">
+                            <View className="w-10 h-10 bg-blue-100 rounded-xl items-center justify-center mr-3">
+                              <Ionicons name="time" size={20} color="#3B82F6" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-gray-500 mb-0.5">Time</Text>
+                              <Text className="text-sm font-bold text-gray-800">
+                                {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Location */}
+                        {event.locationName && (
+                          <View className="flex-row items-center bg-gray-50 px-4 py-3 rounded-2xl">
+                            <View className="w-10 h-10 bg-purple-100 rounded-xl items-center justify-center mr-3">
+                              <Ionicons name="location" size={20} color="#A855F7" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-gray-500 mb-0.5">Location</Text>
+                              <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>
+                                {event.locationName}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Type & Check-ins Grid */}
+                        <View className="flex-row gap-3">
+                          {/* Event Type */}
+                          <View className="flex-1 flex-row items-center bg-gray-50 px-3 py-3 rounded-2xl">
+                            <View className="w-9 h-9 bg-indigo-100 rounded-xl items-center justify-center mr-2.5">
+                              <Ionicons name="pricetag" size={18} color="#6366F1" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-gray-500 mb-0.5">Type</Text>
+                              <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>
+                                {event.type === 'PUBLIC' ? 'Public' : 'Private'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Check-in Count */}
+                          <View className="flex-1 flex-row items-center bg-gray-50 px-3 py-3 rounded-2xl">
+                            <View className="w-9 h-9 bg-green-100 rounded-xl items-center justify-center mr-2.5">
+                              <Ionicons name="people" size={18} color="#10B981" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-gray-500 mb-0.5">Attendees</Text>
+                              <Text className="text-sm font-bold text-gray-800">
+                                {event.currentCheckInCount}/{event.maxCheckInCount}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Registration Deadline */}
+                        {event.registrationDeadline && (
+                          <View className="flex-row items-center bg-orange-50 px-4 py-3 rounded-2xl border border-orange-200">
+                            <View className="w-10 h-10 bg-orange-100 rounded-xl items-center justify-center mr-3">
+                              <Ionicons name="alarm" size={20} color="#F97316" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-orange-600 mb-0.5 font-semibold">Registration Deadline</Text>
+                              <Text className="text-sm font-bold text-orange-700">
+                                {new Date(event.registrationDeadline).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </Text>
+                            </View>
                           </View>
                         )}
 
                         {/* Point Cost */}
                         {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
-                          <View className="flex-row items-center">
-                            <Text className="text-gray-400 mr-2">🏆</Text>
-                            <Text className="text-sm text-gray-600">
-                              Cost: <Text className="font-semibold text-amber-600">{event.commitPointCost}</Text> points
-                            </Text>
+                          <View className="flex-row items-center bg-amber-50 px-4 py-3 rounded-2xl border border-amber-200">
+                            <View className="w-10 h-10 bg-amber-100 rounded-xl items-center justify-center mr-3">
+                              <Ionicons name="trophy" size={20} color="#F59E0B" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-amber-600 mb-0.5 font-semibold">Commitment Cost</Text>
+                              <Text className="text-sm text-gray-700">
+                                <Text className="font-bold text-amber-600 text-lg">{event.commitPointCost}</Text> points required
+                              </Text>
+                            </View>
                           </View>
                         )}
                       </View>
 
                       {/* Action Buttons */}
-                      <View className="flex-row gap-2">
+                      <View className="flex-row gap-3">
                         <TouchableOpacity
                           onPress={() => handleEventDetail(event.id)}
-                          className="flex-1 py-3 rounded-lg items-center bg-gray-100"
+                          className="flex-1 py-3.5 rounded-2xl items-center bg-gray-100 shadow-sm"
                         >
-                          <Text className="font-semibold text-gray-700">
-                            View Details
-                          </Text>
+                          <View className="flex-row items-center">
+                            <Ionicons name="information-circle" size={18} color="#6B7280" />
+                            <Text className="font-bold text-gray-700 ml-2">
+                              Details
+                            </Text>
+                          </View>
                         </TouchableOpacity>
                         
                         {!isExpired && (event.status === 'APPROVED' || event.status === 'ONGOING') && (
                           <TouchableOpacity
                             onPress={() => handleRegisterClick(event)}
                             disabled={isRegistering || isRegistered}
-                            className={`flex-1 py-3 rounded-lg items-center ${
+                            className={`flex-1 py-3.5 rounded-2xl items-center shadow-lg ${
                               isRegistered
-                                ? 'bg-green-100'
+                                ? 'bg-green-500'
                                 : isRegistering
                                 ? 'bg-gray-300'
-                                : 'bg-blue-500'
+                                : 'bg-teal-500'
                             }`}
+                            style={!isRegistering && !isRegistered ? { shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 } : {}}
                           >
-                            <Text
-                              className={`font-semibold ${
-                                isRegistered
-                                  ? 'text-green-700'
-                                  : isRegistering
-                                  ? 'text-gray-500'
-                                  : 'text-white'
-                              }`}
-                            >
-                              {isRegistering
-                                ? 'Registering...'
-                                : isRegistered
-                                ? '✓ Registered'
-                                : '📝 Register'}
-                            </Text>
+                            <View className="flex-row items-center">
+                              {isRegistered ? (
+                                <Ionicons name="checkmark-circle" size={18} color="white" />
+                              ) : (
+                                <Ionicons name="add-circle" size={18} color="white" />
+                              )}
+                              <Text
+                                className={`font-bold ml-2 ${
+                                  isRegistering ? 'text-gray-500' : 'text-white'
+                                }`}
+                              >
+                                {isRegistering
+                                  ? 'Registering...'
+                                  : isRegistered
+                                  ? 'Registered'
+                                  : 'Register'}
+                              </Text>
+                            </View>
                           </TouchableOpacity>
                         )}
                       </View>

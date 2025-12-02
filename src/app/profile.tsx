@@ -3,13 +3,13 @@ import { ChangePasswordModal } from '@components/ChangePasswordModal';
 import { CompleteProfileModal } from '@components/CompleteProfileModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { Major, MajorService } from '@services/major.service';
 import UserService, { ApiMembershipWallet, EditProfileRequest, ProfileStats, UserProfile } from '@services/user.service';
 import { useAuthStore } from '@stores/auth.store';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
@@ -21,7 +21,6 @@ import {
   ImageBackground,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -590,7 +589,7 @@ export default function ProfileScreen() {
   // Loading state
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#0D9488" />
@@ -603,7 +602,7 @@ export default function ProfileScreen() {
   // Error state
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 justify-center items-center px-6">
           <Ionicons name="alert-circle" size={64} color="#EF4444" />
@@ -622,7 +621,7 @@ export default function ProfileScreen() {
 
   if (!profile) {
     return (
-      <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 justify-center items-center px-6">
           <Ionicons name="person-circle-outline" size={64} color="#F59E0B" />
@@ -635,21 +634,47 @@ export default function ProfileScreen() {
   const pointsStyle = getPointsCardStyle(getUserPoints());
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
       
-      {/* Header with view card */}
-      <View className="flex-row justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800">        Profile</Text>
-        <TouchableOpacity
-          onPress={() => router.push('/virtual-card' as any)}
-          className="flex-row items-center px-4 py-2 rounded-xl"
-          style={{ backgroundColor: '#3B82F6' }}
-        >
-          <Ionicons name="card" size={20} color="white" />
-          <Text className="text-white font-medium ml-2">View Card</Text>
-        </TouchableOpacity>
+      {/* Modern Header with Gradient */}
+      <View className="bg-white shadow-md">
+        <View className="px-6 pt-4 pb-3">
+          <View className="flex-row justify-between items-center">
+            {/* Left side - Title with icon */}
+            <View className="flex-row items-center flex-1">
+              {/* <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: '#6366F1' }}>
+                <Ionicons name="person" size={22} color="white" />
+              </View> */}
+              <View>
+                <Text className="text-2xl font-bold text-gray-900">         Profile</Text>
+                <Text className="text-xs text-gray-500 mt-0.5">                    {formatRoleName(user?.role)}
+                </Text>
+              </View>
+            </View>
+            
+            {/* Right side - View Card button */}
+            <TouchableOpacity
+              onPress={() => router.push('/virtual-card' as any)}
+              className="flex-row items-center px-4 py-2.5 rounded-xl shadow-sm"
+              style={{ 
+                backgroundColor: '#6366F1',
+                shadowColor: '#6366F1',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4,
+              }}
+            >
+              <Ionicons name="card" size={18} color="white" />
+              <Text className="text-white font-semibold ml-2 text-sm">View Card</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Bottom accent line */}
+        <View className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500" style={{ backgroundColor: '#6366F1' }} />
       </View>
 
       <ScrollView 
@@ -825,11 +850,11 @@ export default function ProfileScreen() {
                 </View>
               </ImageBackground>
             ) : (
-              <LinearGradient
-                colors={['#6366F1', '#EC4899']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+              <View 
                 className="p-6 pt-8 pb-8"
+                style={{
+                  backgroundColor: '#6366F1',
+                }}
               >
                 <View className="items-center">
                   <View className="relative">
@@ -869,7 +894,7 @@ export default function ProfileScreen() {
                     {formatRoleName(profile.role?.roleName)}
                   </Text>
                 </View>
-              </LinearGradient>
+              </View>
             )}
             
             {/* Change Background Button - Top Right */}
@@ -965,7 +990,7 @@ export default function ProfileScreen() {
                 <View className="space-y-4">
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Full Name</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.fullName}
                       onChangeText={(text) => setFormData({ ...formData, fullName: text })}
                       className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
@@ -975,7 +1000,7 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Phone</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.phone}
                       onChangeText={(text) => setFormData({ ...formData, phone: text })}
                       className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
@@ -986,7 +1011,7 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Student Code</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.studentCode}
                       onChangeText={(text) => {
                         const upperText = text.toUpperCase();
@@ -1037,7 +1062,7 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Bio</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.bio}
                       onChangeText={(text) => setFormData({ ...formData, bio: text })}
                       className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
@@ -1123,7 +1148,7 @@ export default function ProfileScreen() {
                 <View className="space-y-4">
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Full Name</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.fullName}
                       onChangeText={(text) => setFormData({ ...formData, fullName: text })}
                       className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
@@ -1133,7 +1158,7 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Phone</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.phone}
                       onChangeText={(text) => setFormData({ ...formData, phone: text })}
                       className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
@@ -1144,7 +1169,7 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Student Code</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.studentCode}
                       onChangeText={(text) => {
                         const upperText = text.toUpperCase();
@@ -1195,7 +1220,7 @@ export default function ProfileScreen() {
                   
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Bio</Text>
-                    <TextInput
+                    <AppTextInput
                       value={formData.bio}
                       onChangeText={(text) => setFormData({ ...formData, bio: text })}
                       className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"

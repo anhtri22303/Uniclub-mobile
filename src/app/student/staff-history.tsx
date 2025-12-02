@@ -9,7 +9,7 @@ export default function StaffHistoryScreen() {
   const { user } = useAuthStore();
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <Sidebar role={user?.role} />
       
       {/* Header */}

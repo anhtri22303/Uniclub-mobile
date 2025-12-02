@@ -99,18 +99,27 @@ export class WalletService {
   static async getWallet(): Promise<Wallet> {
     try {
       const response = await axiosClient.get<Wallet>('/api/wallets/me');
-      const data = response.data;
+      console.log('🔍 Raw wallet API response:', response.data);
+      
+      let walletData = response.data;
+      
+      // Handle nested data structure (e.g., { success: true, data: {...} })
+      if (walletData && typeof walletData === 'object' && 'data' in walletData) {
+        walletData = (walletData as any).data;
+        console.log('📦 Extracted wallet data:', walletData);
+      }
       
       // Normalize different response formats to consistent "points" field
       const points = Number(
-        (data as any).points ?? 
-        (data as any).balance ?? 
-        (data as any).balancePoints ?? 
-        (data as any).balance_points ?? 
+        (walletData as any).balancePoints ?? 
+        (walletData as any).points ?? 
+        (walletData as any).balance ?? 
+        (walletData as any).balance_points ?? 
         0
       );
       
-      return { ...data, points };
+      console.log('✅ Final wallet with points:', { ...walletData, points });
+      return { ...walletData, points };
     } catch (error) {
       console.error('Error fetching wallet:', error);
       throw error;

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppTextInput } from './ui';
 
 type PerformanceLevel = 'POOR' | 'AVERAGE' | 'GOOD' | 'EXCELLENT';
 
@@ -195,7 +196,7 @@ const EvaluateStaffModal: React.FC<EvaluateStaffModalProps> = ({
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Evaluation Notes <Text className="text-red-500">*</Text>
                 </Text>
-                <TextInput
+                <AppTextInput
                   className={`border ${errors.note ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700`}
                   value={note}
                   onChangeText={(text) => {

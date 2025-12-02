@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
@@ -15,10 +16,8 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Club {
@@ -291,7 +290,7 @@ export default function ClubLeaderMembersPage() {
   // Loading state
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#0D9488" />
@@ -302,7 +301,7 @@ export default function ClubLeaderMembersPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
@@ -368,7 +367,7 @@ export default function ClubLeaderMembersPage() {
           {/* Search Bar */}
           <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3 mb-3">
             <Ionicons name="search" size={20} color="#6B7280" />
-            <TextInput
+            <AppTextInput
               value={searchTerm}
               onChangeText={setSearchTerm}
               placeholder="Search by name, email, or student code..."

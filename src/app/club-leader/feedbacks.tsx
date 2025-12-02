@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { Feedback, FeedbackService } from '@services/feedback.service';
@@ -11,10 +12,8 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -224,7 +223,7 @@ export default function ClubLeaderFeedbacksPage() {
   // Loading state
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
@@ -236,7 +235,7 @@ export default function ClubLeaderFeedbacksPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
@@ -296,7 +295,7 @@ export default function ClubLeaderFeedbacksPage() {
         {/* Search Bar */}
         <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3 mb-3">
           <Ionicons name="search" size={20} color="#6B7280" />
-          <TextInput
+          <AppTextInput
             value={searchTerm}
             onChangeText={setSearchTerm}
             placeholder="Search by member, event, or comment..."

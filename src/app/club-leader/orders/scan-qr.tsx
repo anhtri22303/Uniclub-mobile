@@ -121,7 +121,7 @@ export default function ScanOrderQRPage() {
   // Handle permission not granted
   if (!permission) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <Sidebar role={user?.role} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#8B5CF6" />
@@ -132,7 +132,7 @@ export default function ScanOrderQRPage() {
 
   if (!permission.granted) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <Stack.Screen options={{ headerShown: false }} />
         <Sidebar role={user?.role} />
         
@@ -170,7 +170,7 @@ export default function ScanOrderQRPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="light" />
       <Sidebar role={user?.role} />

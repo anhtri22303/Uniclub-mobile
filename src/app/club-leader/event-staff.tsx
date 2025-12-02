@@ -263,7 +263,7 @@ export default function EventStaffPage() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar style="dark" />
         <Sidebar role={user?.role} />
@@ -277,7 +277,7 @@ export default function EventStaffPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 

@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -17,7 +18,6 @@ import {
     Modal,
     RefreshControl,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -334,7 +334,7 @@ export default function UniStaffClubRequestsPage() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-emerald-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
       
@@ -388,7 +388,7 @@ export default function UniStaffClubRequestsPage() {
         <View className="bg-white rounded-xl p-3 shadow-sm mb-4">
           <View className="flex-row items-center">
             <Ionicons name="search" size={18} color="#6B7280" />
-            <TextInput
+            <AppTextInput
               placeholder="Search by club name or requester..."
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -499,7 +499,7 @@ export default function UniStaffClubRequestsPage() {
             <View className="space-y-4">
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">Club Name</Text>
-                <TextInput
+                <AppTextInput
                   value={newClubName}
                   onChangeText={setNewClubName}
                   placeholder="Enter club name"
@@ -509,7 +509,7 @@ export default function UniStaffClubRequestsPage() {
               
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">Vision (Optional)</Text>
-                <TextInput
+                <AppTextInput
                   value={newVision}
                   onChangeText={setNewVision}
                   placeholder="Vision for the club"
@@ -522,7 +522,7 @@ export default function UniStaffClubRequestsPage() {
               
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
-                <TextInput
+                <AppTextInput
                   value={newDescription}
                   onChangeText={setNewDescription}
                   placeholder="Describe the club's purpose"
@@ -535,7 +535,7 @@ export default function UniStaffClubRequestsPage() {
               
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">Proposer Reason</Text>
-                <TextInput
+                <AppTextInput
                   value={newProposerReason}
                   onChangeText={setNewProposerReason}
                   placeholder="Why do you want to create this club?"

@@ -1,3 +1,4 @@
+import { AppTextInput } from '@components/ui';
 import { ENV } from '@configs/environment';
 import { Ionicons } from '@expo/vector-icons';
 import { SignUpCredentials } from '@models/auth/auth.types';
@@ -7,20 +8,23 @@ import { useAuthStore } from '@stores/auth.store';
 import { getRoleRoute } from '@utils/roleRouting';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
+    Dimensions,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import MajorSelector from './MajorSelector';
+
+const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -44,10 +48,89 @@ export default function LoginScreen() {
   const [isLoadingForgotPassword, setIsLoadingForgotPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  // Initialize Google Sign-In configuration on component mount
+  // Animation refs - Simplified and subtle
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const logoScale = useRef(new Animated.Value(1)).current;
+  const circleAnim1 = useRef(new Animated.Value(0)).current;
+  const circleAnim2 = useRef(new Animated.Value(0)).current;
+  const circleAnim3 = useRef(new Animated.Value(0)).current;
+
+  // Initialize animations and Google Sign-In
   useEffect(() => {
     GoogleAuthService.configure();
+
+    // Very subtle logo breathing animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoScale, {
+          toValue: 1.02,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoScale, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Slow background circles animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(circleAnim1, {
+            toValue: 1,
+            duration: 15000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(circleAnim2, {
+            toValue: 1,
+            duration: 18000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(circleAnim3, {
+            toValue: 1,
+            duration: 20000,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(circleAnim1, {
+            toValue: 0,
+            duration: 15000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(circleAnim2, {
+            toValue: 0,
+            duration: 18000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(circleAnim3, {
+            toValue: 0,
+            duration: 20000,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    ).start();
   }, []);
+
+  // Gentle fade on mode change
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0.7,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isSignUpMode]);
 
   const handleSubmit = async () => {
     if (isSignUpMode) {
@@ -404,40 +487,134 @@ export default function LoginScreen() {
     });
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <StatusBar style="dark" />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-      >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="flex-1 justify-center px-6 py-8">
+  // Animated circle positions - slower and more subtle
+  const circle1TranslateX = circleAnim1.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 20],
+  });
+  const circle1TranslateY = circleAnim1.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -30],
+  });
+  const circle2TranslateX = circleAnim2.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -25],
+  });
+  const circle2TranslateY = circleAnim2.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 35],
+  });
+  const circle3TranslateX = circleAnim3.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 30],
+  });
+  const circle3TranslateY = circleAnim3.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -40],
+  });
 
-            {/* Form Section */}
-            <View className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl p-6">
-              {/* Header */}
-              <View className="mb-6">
-                <Text className="text-2xl font-bold text-teal-600 mb-2">
-                  {isSignUpMode ? 'Create Account' : 'Welcome Back'}
+  return (
+    <View className="flex-1 bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50" style={{ backgroundColor: '#F0FDFA' }}>
+      <StatusBar style="dark" />
+      
+      {/* Animated Background Circles */}
+      <Animated.View
+        className="absolute rounded-full bg-teal-200/30"
+        style={{
+          width: 300,
+          height: 300,
+          top: -100,
+          left: -50,
+          transform: [
+            { translateX: circle1TranslateX },
+            { translateY: circle1TranslateY },
+          ],
+        }}
+      />
+      <Animated.View
+        className="absolute rounded-full bg-emerald-200/30"
+        style={{
+          width: 250,
+          height: 250,
+          top: height * 0.4,
+          right: -70,
+          transform: [
+            { translateX: circle2TranslateX },
+            { translateY: circle2TranslateY },
+          ],
+        }}
+      />
+      <Animated.View
+        className="absolute rounded-full bg-cyan-200/30"
+        style={{
+          width: 200,
+          height: 200,
+          bottom: 50,
+          left: width * 0.2,
+          transform: [
+            { translateX: circle3TranslateX },
+            { translateY: circle3TranslateY },
+          ],
+        }}
+      />
+
+      <SafeAreaView className="flex-1">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1 }}
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="flex-1 justify-center px-6 py-8">
+              {/* Logo/Icon - Subtle breathing animation */}
+              <Animated.View
+                className="items-center mb-6"
+                style={{
+                  transform: [{ scale: logoScale }],
+                }}
+              >
+                <View className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 items-center justify-center shadow-xl" style={{ backgroundColor: '#14B8A6' }}>
+                  <Ionicons name="school" size={48} color="white" />
+                </View>
+                <Text className="text-3xl font-bold text-teal-600 mt-4">
+                  UniClub
                 </Text>
-                <Text className="text-gray-600">
-                  {isSignUpMode
-                    ? 'Join UniClub and start your journey'
-                    : 'Sign in to your UniClub account'}
+                <Text className="text-gray-500 text-sm mt-1">
+                  Connect • Explore • Engage
                 </Text>
-              </View>
+              </Animated.View>
+
+              {/* Form Section - No movement, just fade on mode change */}
+              <Animated.View 
+                className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-6 border border-white/50"
+                style={{
+                  opacity: fadeAnim,
+                }}
+              >
+                {/* Header */}
+                <View className="mb-6">
+                  <View className="flex-row items-center mb-3">
+                    <View className="w-1 h-8 bg-teal-500 rounded-full mr-3" />
+                    <Text className="text-3xl font-bold text-gray-800">
+                      {isSignUpMode ? '✨ Create Account' : '👋 Welcome Back'}
+                    </Text>
+                  </View>
+                  <Text className="text-gray-600 ml-4">
+                    {isSignUpMode
+                      ? 'Join UniClub and start your journey'
+                      : 'Sign in to your UniClub account'}
+                  </Text>
+                </View>
 
               {/* Form Fields */}
               <View className="space-y-4">
                 {isSignUpMode && (
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Full Name</Text>
-                    <TextInput
+                    <AppTextInput
                       value={fullName}
                       onChangeText={setFullName}
                       placeholder="Enter your full name"
@@ -449,7 +626,7 @@ export default function LoginScreen() {
                 {isSignUpMode && (
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Student ID</Text>
-                    <TextInput
+                    <AppTextInput
                       value={studentCode}
                       onChangeText={(text) => setStudentCode(text.toUpperCase())}
                       placeholder="Enter your student ID (e.g. SE123456)"
@@ -473,7 +650,7 @@ export default function LoginScreen() {
                 {isSignUpMode && (
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Phone</Text>
-                    <TextInput
+                    <AppTextInput
                       value={phone}
                       onChangeText={setPhone}
                       placeholder="Enter your phone number"
@@ -485,7 +662,7 @@ export default function LoginScreen() {
 
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Email</Text>
-                  <TextInput
+                  <AppTextInput
                     value={email}
                     onChangeText={setEmail}
                     placeholder="Enter your email"
@@ -498,7 +675,7 @@ export default function LoginScreen() {
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Password</Text>
                   <View className="relative">
-                    <TextInput
+                    <AppTextInput
                       value={password}
                       onChangeText={setPassword}
                       placeholder="Enter your password"
@@ -522,7 +699,7 @@ export default function LoginScreen() {
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Confirm Password</Text>
                     <View className="relative">
-                      <TextInput
+                      <AppTextInput
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         placeholder="Confirm your password"
@@ -547,22 +724,36 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={handleSubmit}
                   disabled={isLoading}
-                  className="bg-teal-500 rounded-xl py-4 flex-row items-center justify-center shadow-lg"
+                  className="rounded-xl py-4 flex-row items-center justify-center shadow-2xl overflow-hidden"
+                  style={{
+                    backgroundColor: '#14B8A6',
+                    shadowColor: '#14B8A6',
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
                 >
+                  {/* Gradient overlay */}
+                  <View className="absolute inset-0 bg-gradient-to-r from-teal-400 to-emerald-500" style={{ backgroundColor: '#14B8A6', opacity: 0.9 }} />
+                  
                   {isLoading ? (
-                    <ActivityIndicator color="white" />
+                    <View className="flex-row items-center">
+                      <ActivityIndicator color="white" />
+                      <Text className="text-white font-semibold text-lg ml-2">Processing...</Text>
+                    </View>
                   ) : (
-                    <>
-                      <Text className="text-white font-medium text-lg">
-                        {isSignUpMode ? 'Sign Up' : 'Sign In'}
+                    <View className="flex-row items-center">
+                      <Text className="text-white font-bold text-lg">
+                        {isSignUpMode ? '🚀 Sign Up' : '🔓 Sign In'}
                       </Text>
                       <Ionicons
                         name={isSignUpMode ? 'person-add' : 'arrow-forward'}
-                        size={20}
+                        size={22}
                         color="white"
                         style={{ marginLeft: 8 }}
                       />
-                    </>
+                    </View>
                   )}
                 </TouchableOpacity>
 
@@ -571,49 +762,97 @@ export default function LoginScreen() {
                   <TouchableOpacity
                     onPress={handleForgotPassword}
                     disabled={isLoadingForgotPassword}
-                    className="border border-teal-200 rounded-xl py-3 flex-row items-center justify-center"
+                    className="border-2 border-teal-200 bg-teal-50/50 rounded-xl py-3 flex-row items-center justify-center"
+                    style={{
+                      shadowColor: '#14B8A6',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
                   >
                     {isLoadingForgotPassword ? (
                       <ActivityIndicator color="#0D9488" />
                     ) : (
-                      <Text className="text-teal-600 font-medium">Forgot Password?</Text>
+                      <View className="flex-row items-center">
+                        <Ionicons name="key-outline" size={18} color="#0D9488" />
+                        <Text className="text-teal-600 font-semibold ml-2">🔑 Forgot Password?</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 )}
+
+                {/* Divider */}
+                <View className="flex-row items-center my-2">
+                  <View className="flex-1 h-px bg-gray-300" />
+                  <Text className="mx-4 text-gray-500 font-medium">OR</Text>
+                  <View className="flex-1 h-px bg-gray-300" />
+                </View>
 
                 {/* Google Sign-In Button */}
                 <TouchableOpacity 
                   onPress={handleGoogleSignIn}
                   disabled={isGoogleLoading || isLoading}
-                  className="border border-gray-300 rounded-xl py-4 flex-row items-center justify-center"
+                  className="border-2 border-gray-300 bg-white rounded-xl py-4 flex-row items-center justify-center"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
                 >
                   {isGoogleLoading ? (
-                    <ActivityIndicator color="#DB4437" />
+                    <View className="flex-row items-center">
+                      <ActivityIndicator color="#DB4437" />
+                      <Text className="text-gray-700 font-medium ml-3">Connecting...</Text>
+                    </View>
                   ) : (
-                    <>
-                      <Ionicons name="logo-google" size={20} color="#DB4437" />
-                      <Text className="text-gray-700 font-medium ml-3">
+                    <View className="flex-row items-center">
+                      <View className="w-6 h-6 rounded-full bg-white items-center justify-center mr-3">
+                        <Ionicons name="logo-google" size={22} color="#DB4437" />
+                      </View>
+                      <Text className="text-gray-700 font-semibold">
                         Đăng nhập bằng Google
                       </Text>
-                    </>
+                    </View>
                   )}
                 </TouchableOpacity>
 
                 {/* Toggle Mode */}
-                <View className="border-t border-gray-200 pt-4">
-                  <TouchableOpacity onPress={toggleMode}>
-                    <Text className="text-center text-teal-600 underline">
+                <View className="border-t border-gray-200 pt-4 mt-2">
+                  <TouchableOpacity 
+                    onPress={toggleMode}
+                    className="bg-gray-50 rounded-xl py-3 px-4"
+                  >
+                    <Text className="text-center text-gray-600">
                       {isSignUpMode
-                        ? 'Already have an account? Sign In'
-                        : "Don't have an account? Sign Up"}
+                        ? 'Already have an account? '
+                        : "Don't have an account? "}
+                      <Text className="text-teal-600 font-bold underline">
+                        {isSignUpMode ? 'Sign In' : 'Sign Up'}
+                      </Text>
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
+              </Animated.View>
+
+              {/* Footer decoration */}
+              <View className="mt-6 items-center">
+                <View className="flex-row items-center space-x-2">
+                  <View className="w-2 h-2 rounded-full bg-teal-400" />
+                  <View className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <View className="w-2 h-2 rounded-full bg-cyan-400" />
+                </View>
+                <Text className="text-gray-500 text-xs mt-3">
+                  © 2025 UniClub • Secure & Trusted
+                </Text>
+              </View>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppTextInput } from './ui';
 
 interface TimeExtensionModalProps {
   visible: boolean;
@@ -136,7 +137,7 @@ const TimeExtensionModal: React.FC<TimeExtensionModalProps> = ({
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   New Date <Text className="text-red-500">*</Text>
                 </Text>
-                <TextInput
+                <AppTextInput
                   className={`border ${errors.date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700`}
                   value={newDate}
                   onChangeText={(text) => {
@@ -156,7 +157,7 @@ const TimeExtensionModal: React.FC<TimeExtensionModalProps> = ({
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Start Time <Text className="text-xs text-gray-500">(unchanged)</Text>
                 </Text>
-                <TextInput
+                <AppTextInput
                   className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800"
                   value={currentStartTime}
                   editable={false}
@@ -171,7 +172,7 @@ const TimeExtensionModal: React.FC<TimeExtensionModalProps> = ({
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   New End Time <Text className="text-red-500">*</Text>
                 </Text>
-                <TextInput
+                <AppTextInput
                   className={`border ${errors.endTime ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700`}
                   value={newEndTime}
                   onChangeText={(text) => {
@@ -191,7 +192,7 @@ const TimeExtensionModal: React.FC<TimeExtensionModalProps> = ({
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Reason for Extension <Text className="text-red-500">*</Text>
                 </Text>
-                <TextInput
+                <AppTextInput
                   className={`border ${errors.reason ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700`}
                   value={reason}
                   onChangeText={(text) => {

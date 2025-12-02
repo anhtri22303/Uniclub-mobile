@@ -11,7 +11,7 @@ export default function StaffPage() {
   const router = useRouter();
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       
       {/* Header */}

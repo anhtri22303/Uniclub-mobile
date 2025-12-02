@@ -12,6 +12,12 @@ module.exports = {
           dark: "#1D4ED8",
         },
         secondary: "#F59E0B",
+        background: {
+          DEFAULT: "#E2E2EF",
+        },
+      },
+      backgroundColor: {
+        app: "#E2E2EF",
       },
     },
   },

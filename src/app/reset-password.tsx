@@ -1,3 +1,4 @@
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import AuthService from '@services/auth.service';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,7 +11,6 @@ import {
     Platform,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -122,7 +122,7 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -155,7 +155,7 @@ export default function ResetPasswordScreen() {
                   <Text className="text-sm font-medium text-gray-700 mb-2 flex-row items-center">
                     <Ionicons name="mail" size={16} color="#374151" /> Email
                   </Text>
-                  <TextInput
+                  <AppTextInput
                     value={email}
                     editable={false}
                     className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-500"
@@ -167,7 +167,7 @@ export default function ResetPasswordScreen() {
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     <Ionicons name="key" size={16} color="#374151" /> Reset Token
                   </Text>
-                  <TextInput
+                  <AppTextInput
                     value={token}
                     editable={false}
                     className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-500 font-mono"
@@ -181,7 +181,7 @@ export default function ResetPasswordScreen() {
                     <Ionicons name="lock-closed" size={16} color="#374151" /> New Password
                   </Text>
                   <View className="relative">
-                    <TextInput
+                    <AppTextInput
                       value={newPassword}
                       onChangeText={setNewPassword}
                       onBlur={() => validatePassword(newPassword)}
@@ -211,7 +211,7 @@ export default function ResetPasswordScreen() {
                     <Ionicons name="checkmark-circle" size={16} color="#374151" /> Confirm New Password
                   </Text>
                   <View className="relative">
-                    <TextInput
+                    <AppTextInput
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
                       onBlur={() => validateConfirmPassword(confirmPassword)}

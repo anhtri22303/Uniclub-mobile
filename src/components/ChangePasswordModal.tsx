@@ -7,10 +7,10 @@ import {
     Alert,
     Modal,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { AppTextInput } from './ui';
 
 interface ChangePasswordModalProps {
   visible: boolean;
@@ -121,7 +121,7 @@ export function ChangePasswordModal({ visible, onClose }: ChangePasswordModalPro
           <View className="mb-4">
             <Text className="text-sm font-medium text-gray-700 mb-2">Current Password</Text>
             <View className="relative">
-              <TextInput
+              <AppTextInput
                 value={oldPassword}
                 onChangeText={setOldPassword}
                 placeholder="Enter current password"
@@ -145,7 +145,7 @@ export function ChangePasswordModal({ visible, onClose }: ChangePasswordModalPro
           <View className="mb-4">
             <Text className="text-sm font-medium text-gray-700 mb-2">New Password</Text>
             <View className="relative">
-              <TextInput
+              <AppTextInput
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="Enter new password"
@@ -169,7 +169,7 @@ export function ChangePasswordModal({ visible, onClose }: ChangePasswordModalPro
           <View className="mb-6">
             <Text className="text-sm font-medium text-gray-700 mb-2">Confirm New Password</Text>
             <View className="relative">
-              <TextInput
+              <AppTextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Confirm new password"

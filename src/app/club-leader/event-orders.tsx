@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -13,7 +14,6 @@ import {
   SafeAreaView,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native'; // Query key
@@ -127,7 +127,7 @@ export default function EventOrdersScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <Sidebar role={user?.role} />
       <View className="flex-1">
         {/* Header */}
@@ -208,7 +208,7 @@ export default function EventOrdersScreen() {
               {/* Search */}
               <View className="flex-row items-center bg-gray-50 rounded-lg px-3 py-2">
                 <Ionicons name="search" size={20} color="#6B7280" />
-                <TextInput
+                <AppTextInput
                   placeholder="Search by product, member, or code..."
                   value={searchTerm}
                   onChangeText={setSearchTerm}

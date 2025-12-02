@@ -1,7 +1,10 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubApiResponse, ClubService } from '@services/club.service';
+import DisciplineService, { PenaltyRule } from '@services/discipline.service';
+import MemberActivityReportService from '@services/memberActivityReport.service';
 import { ApiMembership, MembershipsService } from '@services/memberships.service';
 import PointRequestService from '@services/point-request.service';
 import WalletService, { ClubToMemberTransaction } from '@services/wallet.service';
@@ -11,14 +14,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   Modal,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View
-} from 'react-native';
+  View} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -75,6 +77,30 @@ export default function ClubLeaderPointsPage() {
   const [requestReason, setRequestReason] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
+  // Penalty modal
+  const [showPenaltyModal, setShowPenaltyModal] = useState(false);
+  const [penaltyRules, setPenaltyRules] = useState<PenaltyRule[]>([]);
+  const [penaltyRulesLoading, setPenaltyRulesLoading] = useState(false);
+  const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
+  const [penaltyReason, setPenaltyReason] = useState('');
+  const [isSubmittingPenalty, setIsSubmittingPenalty] = useState(false);
+  const [memberToPenalize, setMemberToPenalize] = useState<ClubMember | null>(null);
+
+  // Sync modal for activity scores
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncYear, setSyncYear] = useState(new Date().getFullYear());
+  const [syncMonth, setSyncMonth] = useState(new Date().getMonth() + 1);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Individual scores (null = manual mode, object = sync mode)
+  const [individualScores, setIndividualScores] = useState<Record<number, number> | null>(null);
+
+  // Distribution progress
+  const [distributionProgress, setDistributionProgress] = useState<{ current: number; total: number } | null>(null);
+
+  // Get screen dimensions for responsive design
+  const screenWidth = Dimensions.get('window').width;
+
   // Load members and wallet on mount
   useEffect(() => {
     console.log('=== POINTS PAGE MOUNTED ===');
@@ -117,6 +143,18 @@ export default function ClubLeaderPointsPage() {
         console.error('Failed to load club wallet:', walletErr);
       } finally {
         setWalletLoading(false);
+      }
+
+      // Load penalty rules
+      setPenaltyRulesLoading(true);
+      try {
+        const rules = await DisciplineService.getClubPenaltyRules(clubId);
+        console.log('Loaded penalty rules:', rules);
+        setPenaltyRules(rules);
+      } catch (ruleErr) {
+        console.error('Failed to load penalty rules:', ruleErr);
+      } finally {
+        setPenaltyRulesLoading(false);
       }
 
       // Load members using getMembersByClubId
@@ -239,6 +277,14 @@ export default function ClubLeaderPointsPage() {
 
   // Check if filters are active
   const hasActiveFilters = searchTerm || (roleFilter !== 'all') || (staffFilter !== 'all');
+
+  // Budget checking logic
+  const currentBalance = clubWallet?.balancePoints || 0;
+  const recipientCount = selectedMembersList.length;
+  const currentRewardAmount = rewardAmount ? parseInt(rewardAmount) : 0;
+  const totalRequired = currentRewardAmount * recipientCount;
+  const isOverBudget = totalRequired > currentBalance;
+  const maxPerMember = recipientCount > 0 ? Math.floor(currentBalance / recipientCount) : 0;
 
   // Clear all filters
   const clearFilters = () => {
@@ -363,21 +409,153 @@ export default function ClubLeaderPointsPage() {
     }
   };
 
-  // Distribute rewards using batch API
-  const handleDistributeRewards = async () => {
-    const amount = parseInt(rewardAmount);
+  // Sync activity scores handler
+  const handleSyncActivityScores = async () => {
+    if (!managedClub?.id) return;
 
-    if (!rewardAmount || amount <= 0) {
+    setIsSyncing(true);
+    try {
+      const activities = await MemberActivityReportService.getClubMemberActivity({
+        clubId: managedClub.id,
+        year: syncYear,
+        month: syncMonth,
+      });
+
+      const scoreMap: Record<number, number> = {};
+      const userIdsToSelect: number[] = [];
+      let countZero = 0;
+
+      activities.forEach((act) => {
+        if (act.finalScore && act.finalScore > 0) {
+          scoreMap[act.userId] = Math.round(act.finalScore);
+          userIdsToSelect.push(act.userId);
+        } else {
+          countZero++;
+        }
+      });
+
+      if (Object.keys(scoreMap).length === 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'No Scores Found',
+          text2: countZero > 0
+            ? "Members found but all have 0 points. Please 'Save' the report in the Activity page first."
+            : 'No activity data found for this period.',
+          visibilityTime: 4000,
+          autoHide: true,
+        });
+        setIsSyncing(false);
+        return;
+      }
+
+      setIndividualScores(scoreMap);
+
+      // Auto-select members with scores
+      setSelectedMembers((prev) => {
+        const newSelected = { ...prev };
+        filteredMembers.forEach((m) => {
+          const uId = Number(m.userId);
+          if (scoreMap[uId] !== undefined) {
+            newSelected[m.id] = true;
+          }
+        });
+        return newSelected;
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Scores Imported',
+        text2: `Loaded final scores for ${Object.keys(scoreMap).length} members.`,
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+
+      setShowSyncModal(false);
+      setRewardReason(`Activity Bonus ${syncMonth}/${syncYear}`);
+    } catch (error: any) {
+      console.error(error);
       Toast.show({
         type: 'error',
-        text1: 'Invalid Amount',
-        text2: 'Please enter a valid reward amount.',
+        text1: 'Sync Failed',
+        text2: 'Could not fetch activity history.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Clear sync mode
+  const handleClearSync = () => {
+    setIndividualScores(null);
+    setRewardAmount('');
+    Toast.show({
+      type: 'success',
+      text1: 'Reset',
+      text2: 'Switched back to manual input mode.',
+      visibilityTime: 2000,
+      autoHide: true,
+    });
+  };
+
+  // Open penalty modal
+  const handleOpenPenaltyModal = (member: ClubMember) => {
+    setMemberToPenalize(member);
+    setSelectedRuleId(null);
+    setPenaltyReason('');
+    setShowPenaltyModal(true);
+  };
+
+  // Create penalty
+  const handleCreatePenalty = async () => {
+    if (!selectedRuleId || !penaltyReason.trim() || !memberToPenalize || !managedClub) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Input',
+        text2: 'Please select a rule and provide a reason.',
         visibilityTime: 3000,
         autoHide: true,
       });
       return;
     }
 
+    const rule = penaltyRules.find((r) => r.id === selectedRuleId);
+    if (!rule) return;
+
+    setIsSubmittingPenalty(true);
+    try {
+      await DisciplineService.createClubPenalty(managedClub.id, {
+        membershipId: Number(memberToPenalize.id),
+        ruleId: selectedRuleId,
+        reason: penaltyReason.trim(),
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Penalty Issued',
+        text2: `Issued -${rule.penaltyPoints} pts to ${memberToPenalize.fullName}.`,
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+
+      setShowPenaltyModal(false);
+    } catch (err: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to issue penalty.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+    } finally {
+      setIsSubmittingPenalty(false);
+    }
+  };
+
+  // Distribute rewards using batch API
+  const handleDistributeRewards = async () => {
+    // Validation
     if (!rewardReason.trim()) {
       Toast.show({
         type: 'error',
@@ -389,10 +567,23 @@ export default function ClubLeaderPointsPage() {
       return;
     }
 
-    if (selectedMembersList.length === 0) {
+    if (clubMembers.length === 0) {
+      Toast.show({
+        type: 'info',
+        text1: 'Notification',
+        text2: 'There are no members.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      return;
+    }
+
+    const targetUserIds = selectedMembersList.map((m) => Number(m.userId));
+
+    if (targetUserIds.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'No Members Selected',
+        text1: 'No Selection',
         text2: 'Please select at least one member.',
         visibilityTime: 3000,
         autoHide: true,
@@ -400,93 +591,165 @@ export default function ClubLeaderPointsPage() {
       return;
     }
 
-    // Confirmation alert
-    Alert.alert(
-      'Confirm Distribution',
-      `Distribute ${formatNumber(amount)} points to ${selectedMembersList.length} selected member(s)?\n\nReason: ${rewardReason}`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            setIsDistributing(true);
+    // CASE 1: MANUAL MODE (same points for all)
+    if (!individualScores) {
+      const amount = parseInt(rewardAmount);
+      if (!rewardAmount || amount <= 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid Amount',
+          text2: 'Please enter a valid reward amount.',
+          visibilityTime: 3000,
+          autoHide: true,
+        });
+        return;
+      }
 
-            try {
-              // Collect all membershipIds as numbers
-              const targetIds = selectedMembersList.map((member) => Number(member.id));
+      // Confirmation alert
+      Alert.alert(
+        'Confirm Distribution',
+        `Distribute ${formatNumber(amount)} points to ${targetUserIds.length} selected member(s)?\n\nReason: ${rewardReason}`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Confirm',
+            onPress: async () => {
+              setIsDistributing(true);
 
-              // Call the batch reward API with reason
-              const response = await WalletService.rewardPointsToMembers(
-                targetIds,
-                amount,
-                rewardReason.trim()
-              );
+              try {
+                const response = await WalletService.rewardPointsToMembers(
+                  targetUserIds,
+                  amount,
+                  rewardReason.trim()
+                );
 
-              if (response.success) {
+                if (response.success) {
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: response.message || `Distributed ${formatNumber(amount)} points to ${targetUserIds.length} member(s).`,
+                    visibilityTime: 4000,
+                    autoHide: true,
+                  });
+
+                  // Reset form
+                  setRewardAmount('');
+                  setRewardReason('');
+                  setSelectedMembers({});
+
+                  // Reload wallet balance
+                  const clubId = user?.clubIds?.[0];
+                  if (clubId) {
+                    try {
+                      const updatedWallet = await WalletService.getClubWallet(clubId);
+                      setClubWallet(updatedWallet);
+                    } catch (walletErr) {
+                      console.error('Failed to reload club wallet:', walletErr);
+                    }
+                  }
+                } else {
+                  throw new Error(response.message || 'Failed to distribute points');
+                }
+              } catch (error: any) {
+                console.error('Distribution error:', error);
+                const errorMessage = error?.response?.data?.message || error?.message || 'An error occurred while distributing points.';
+                
                 Toast.show({
-                  type: 'success',
-                  text1: 'Success',
-                  text2:
-                    response.message ||
-                    `Distributed ${formatNumber(amount)} points to ${selectedMembersList.length} member(s).`,
-                  visibilityTime: 4000,
+                  type: 'error',
+                  text1: 'Distribution Failed',
+                  text2: errorMessage,
+                  visibilityTime: 3000,
                   autoHide: true,
                 });
+              } finally {
+                setIsDistributing(false);
+              }
+            },
+          },
+        ]
+      );
+    }
+    // CASE 2: SYNC MODE (individual scores for each member - batching)
+    else {
+      Alert.alert(
+        'Confirm Distribution',
+        `Distribute activity points to ${targetUserIds.length} selected member(s)?\n\nReason: ${rewardReason}`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Confirm',
+            onPress: async () => {
+              setIsDistributing(true);
+              setDistributionProgress({ current: 0, total: targetUserIds.length });
 
-                // Reset form
-                setRewardAmount('');
-                setRewardReason('');
-                setSelectedMembers((prev) => {
-                  const newSelected = { ...prev };
-                  Object.keys(newSelected).forEach((key) => {
-                    newSelected[key] = false;
-                  });
-                  return newSelected;
-                });
+              let successCount = 0;
+              let failCount = 0;
 
-                // Reload wallet balance using clubId from user
-                const clubId = user?.clubIds?.[0];
-                if (clubId) {
+              for (let i = 0; i < targetUserIds.length; i++) {
+                const userId = targetUserIds[i];
+                const score = individualScores[userId];
+
+                if (score && score > 0) {
                   try {
-                    const updatedWallet = await WalletService.getClubWallet(clubId);
-                    setClubWallet(updatedWallet);
-                    console.log('Reloaded club wallet:', updatedWallet);
-                  } catch (walletErr) {
-                    console.error('Failed to reload club wallet:', walletErr);
+                    await WalletService.rewardPointsToMembers(
+                      [userId],
+                      score,
+                      rewardReason.trim()
+                    );
+                    successCount++;
+                  } catch (error) {
+                    console.error(`Failed to send to user ${userId}`, error);
+                    failCount++;
                   }
                 }
-              } else {
-                throw new Error(response.message || 'Failed to distribute points');
+
+                setDistributionProgress({ current: i + 1, total: targetUserIds.length });
               }
-            } catch (error: any) {
-              console.error('Distribution error:', error);
-              const errorMessage = error?.response?.data?.message || error?.message || 'An error occurred while distributing points.';
-              const isTimeout = error?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout');
-              
+
+              setIsDistributing(false);
+              setDistributionProgress(null);
+
               Toast.show({
-                type: 'error',
-                text1: isTimeout ? 'Request Timeout' : 'Distribution Failed',
-                text2: isTimeout 
-                  ? `The request took too long (processing ${selectedMembersList.length} members). The points may still be distributed successfully. Please check the transaction history.`
-                  : errorMessage,
-                visibilityTime: isTimeout ? 5000 : 3000,
+                type: failCount > 0 ? 'error' : 'success',
+                text1: 'Distribution Complete',
+                text2: `Sent points to ${successCount} members. Failed: ${failCount}.`,
+                visibilityTime: 4000,
                 autoHide: true,
               });
-            } finally {
-              setIsDistributing(false);
-            }
+
+              // Reload wallet
+              const clubId = user?.clubIds?.[0];
+              if (clubId) {
+                try {
+                  const updatedWallet = await WalletService.getClubWallet(clubId);
+                  setClubWallet(updatedWallet);
+                } catch (e) {
+                  console.error('Failed to reload wallet:', e);
+                }
+              }
+
+              // Reset if all successful
+              if (failCount === 0) {
+                handleClearSync();
+                setSelectedMembers({});
+                setRewardReason('');
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#3B82F6" />
@@ -498,7 +761,7 @@ export default function ClubLeaderPointsPage() {
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <Sidebar role={user?.role} />
         
@@ -527,7 +790,7 @@ export default function ClubLeaderPointsPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       
       {/* Sidebar */}
@@ -620,29 +883,102 @@ export default function ClubLeaderPointsPage() {
 
         {/* Reward Settings Card */}
         <View className="bg-white rounded-3xl p-6 shadow-lg mb-4">
-          <Text className="text-xl font-bold text-gray-800 mb-4">Distribution Settings</Text>
-          
-          {/* Amount Input */}
-          <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">
-              Points per Member
-            </Text>
-            <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
-              <Ionicons name="gift-outline" size={20} color="#6B7280" />
-              <TextInput
-                className="flex-1 ml-3 text-base text-gray-800"
-                placeholder="e.g., 1,000"
-                keyboardType="numeric"
-                value={rewardAmount ? formatNumber(rewardAmount) : ''}
-                onChangeText={(text) => {
-                  // Remove all non-numeric characters
-                  const unformatted = text.replace(/[^0-9]/g, '');
-                  setRewardAmount(unformatted);
-                }}
-                editable={!isDistributing}
-              />
-            </View>
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-xl font-bold text-gray-800">Distribution Settings</Text>
+            {/* Sync Mode Toggle Buttons */}
+            {!individualScores ? (
+              <TouchableOpacity
+                onPress={() => setShowSyncModal(true)}
+                disabled={isDistributing}
+                className="bg-blue-50 rounded-lg px-3 py-2 flex-row items-center"
+              >
+                <Ionicons name="download-outline" size={16} color="#3B82F6" />
+                <Text className="text-blue-600 font-medium text-xs ml-1">Sync</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={handleClearSync}
+                disabled={isDistributing}
+                className="bg-red-50 rounded-lg px-3 py-2 flex-row items-center"
+              >
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                <Text className="text-red-600 font-medium text-xs ml-1">Clear</Text>
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Sync Mode Indicator */}
+          {individualScores && (
+            <View className="bg-blue-50 rounded-xl p-3 mb-4 border border-blue-200">
+              <View className="flex-row items-center">
+                <Ionicons name="sync" size={20} color="#3B82F6" />
+                <View className="flex-1 ml-2">
+                  <Text className="text-sm font-bold text-blue-700">
+                    Activity Scores Mode
+                  </Text>
+                  <Text className="text-xs text-blue-600">
+                    Individual points based on activity report
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+          
+          {/* Amount Input - Only show in manual mode */}
+          {!individualScores && (
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Points per Member
+              </Text>
+              <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+                <Ionicons name="gift-outline" size={20} color="#6B7280" />
+                <AppTextInput
+                  className="flex-1 ml-3 text-base text-gray-800"
+                  placeholder="e.g., 1,000"
+                  keyboardType="numeric"
+                  value={rewardAmount ? formatNumber(rewardAmount) : ''}
+                  onChangeText={(text) => {
+                    const unformatted = text.replace(/[^0-9]/g, '');
+                    setRewardAmount(unformatted);
+                  }}
+                  editable={!isDistributing}
+                />
+              </View>
+              
+              {/* Budget Warning */}
+              {isOverBudget && recipientCount > 0 && (
+                <View className="mt-2 bg-red-50 rounded-lg p-3 border border-red-200">
+                  <View className="flex-row items-start">
+                    <Ionicons name="warning" size={16} color="#EF4444" />
+                    <View className="flex-1 ml-2">
+                      <Text className="text-xs font-bold text-red-600 mb-1">
+                        Exceeds wallet balance!
+                      </Text>
+                      <Text className="text-xs text-red-600">
+                        Max possible:{' '}
+                        <Text
+                          className="font-bold underline"
+                          onPress={() => setRewardAmount(String(maxPerMember))}
+                        >
+                          {formatNumber(maxPerMember)}
+                        </Text>
+                        {' '}pts/member
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+              
+              {/* Budget Info */}
+              {!isOverBudget && currentRewardAmount > 0 && recipientCount > 0 && (
+                <View className="mt-2">
+                  <Text className="text-xs text-gray-600">
+                    Total: <Text className="font-bold text-gray-800">{formatNumber(totalRequired)}</Text> / {formatNumber(currentBalance)} pts
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Reason Input */}
           <View className="mb-4">
@@ -650,7 +986,7 @@ export default function ClubLeaderPointsPage() {
               Reason for Distribution
             </Text>
             <View className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
-              <TextInput
+              <AppTextInput
                 className="text-base text-gray-800 min-h-[100px]"
                 placeholder="e.g., Event giving, Monthly bonus, Achievement reward..."
                 multiline
@@ -663,6 +999,26 @@ export default function ClubLeaderPointsPage() {
             </View>
           </View>
 
+          {/* Distribution Progress Bar */}
+          {distributionProgress && (
+            <View className="mb-4">
+              <View className="flex-row justify-between mb-2">
+                <Text className="text-xs text-gray-600">Processing transactions...</Text>
+                <Text className="text-xs font-bold text-blue-600">
+                  {distributionProgress.current} / {distributionProgress.total}
+                </Text>
+              </View>
+              <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <View
+                  className="h-full bg-blue-600"
+                  style={{
+                    width: `${(distributionProgress.current / distributionProgress.total) * 100}%`,
+                  }}
+                />
+              </View>
+            </View>
+          )}
+
           {/* Selected Members Info */}
           <View className="bg-blue-50 rounded-xl p-4 mb-4">
             <View className="flex-row items-center justify-between">
@@ -671,6 +1027,11 @@ export default function ClubLeaderPointsPage() {
                 {selectedMembersList.length}
               </Text>
             </View>
+            {individualScores && (
+              <Text className="text-xs text-blue-600 mt-1">
+                {Object.keys(individualScores).length} members have activity scores
+              </Text>
+            )}
           </View>
 
           {/* Distribute Button */}
@@ -678,15 +1039,13 @@ export default function ClubLeaderPointsPage() {
             onPress={handleDistributeRewards}
             disabled={
               isDistributing ||
-              !rewardAmount ||
-              parseInt(rewardAmount) <= 0 ||
+              (!individualScores && (!rewardAmount || parseInt(rewardAmount) <= 0)) ||
               !rewardReason.trim() ||
               selectedMembersList.length === 0
             }
             className={`rounded-xl py-4 items-center ${
               isDistributing ||
-              !rewardAmount ||
-              parseInt(rewardAmount) <= 0 ||
+              (!individualScores && (!rewardAmount || parseInt(rewardAmount) <= 0)) ||
               !rewardReason.trim() ||
               selectedMembersList.length === 0
                 ? 'bg-gray-300'
@@ -694,12 +1053,19 @@ export default function ClubLeaderPointsPage() {
             }`}
           >
             {isDistributing ? (
-              <ActivityIndicator color="white" />
+              <View className="items-center">
+                <ActivityIndicator color="white" />
+                <Text className="text-white text-xs mt-1">
+                  {individualScores ? 'Distributing batch...' : 'Processing...'}
+                </Text>
+              </View>
             ) : (
               <View className="flex-row items-center">
                 <Ionicons name="send" size={20} color="white" />
                 <Text className="text-white font-bold ml-2">
-                  Distribute {formatNumber(rewardAmount || '0')} pts to {selectedMembersList.length} member(s)
+                  {individualScores
+                    ? `Distribute Activity Points to ${selectedMembersList.length} member(s)`
+                    : `Distribute ${formatNumber(rewardAmount || '0')} pts to ${selectedMembersList.length} member(s)`}
                 </Text>
               </View>
             )}
@@ -712,7 +1078,7 @@ export default function ClubLeaderPointsPage() {
             <View className="flex-1">
               <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
                 <Ionicons name="search" size={20} color="#6B7280" />
-                <TextInput
+                <AppTextInput
                   className="flex-1 ml-3 text-base text-gray-800"
                   placeholder="Search by name or student code..."
                   value={searchTerm}
@@ -923,6 +1289,15 @@ export default function ClubLeaderPointsPage() {
                       </View>
 
                       <View className="items-center">
+                        {/* Penalty Button */}
+                        <TouchableOpacity
+                          onPress={() => handleOpenPenaltyModal(member)}
+                          className="mb-2 w-8 h-8 bg-red-100 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="warning" size={16} color="#EF4444" />
+                        </TouchableOpacity>
+
+                        {/* Checkbox */}
                         <View
                           className={`w-7 h-7 rounded-full border-2 items-center justify-center ${
                             isSelected
@@ -934,10 +1309,16 @@ export default function ClubLeaderPointsPage() {
                             <Ionicons name="checkmark" size={18} color="white" />
                           )}
                         </View>
-                        {isSelected && rewardAmount && parseInt(rewardAmount) > 0 && (
+
+                        {/* Points Display - Support both manual and sync modes */}
+                        {isSelected && (
                           <View className="mt-2 bg-green-100 px-2 py-1 rounded-lg">
                             <Text className="text-sm text-green-700 font-bold">
-                              +{formatNumber(rewardAmount)} pts
+                              +{formatNumber(
+                                individualScores
+                                  ? individualScores[Number(member.userId)] || 0
+                                  : rewardAmount ? parseInt(rewardAmount) : 0
+                              )} pts
                             </Text>
                           </View>
                         )}
@@ -1129,7 +1510,7 @@ export default function ClubLeaderPointsPage() {
                 </Text>
                 <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
                   <Ionicons name="diamond-outline" size={20} color="#6B7280" />
-                  <TextInput
+                  <AppTextInput
                     className="flex-1 ml-3 text-base text-gray-800"
                     placeholder="e.g., 1,000,000"
                     keyboardType="numeric"
@@ -1147,7 +1528,7 @@ export default function ClubLeaderPointsPage() {
               <View>
                 <Text className="text-sm font-semibold text-gray-700 mb-2">Reason</Text>
                 <View className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
-                  <TextInput
+                  <AppTextInput
                     className="text-base text-gray-800 min-h-[100px]"
                     placeholder="e.g., Funding for 'TechSpark 2025' event prizes..."
                     multiline
@@ -1192,6 +1573,293 @@ export default function ClubLeaderPointsPage() {
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white font-bold">Submit Request</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sync Activity Scores Modal */}
+      <Modal
+        visible={showSyncModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSyncModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-3xl w-11/12 max-w-md p-6 shadow-2xl">
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center">
+                <Ionicons name="download-outline" size={28} color="#3B82F6" />
+                <Text className="text-2xl font-bold text-gray-800 ml-2">
+                  Import Activity Scores
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowSyncModal(false)}
+                disabled={isSyncing}
+              >
+                <Ionicons name="close-circle" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="bg-yellow-50 rounded-xl p-3 mb-4 border border-yellow-200">
+              <View className="flex-row items-start">
+                <Ionicons name="information-circle" size={20} color="#F59E0B" />
+                <Text className="text-xs text-yellow-800 ml-2 flex-1">
+                  Use <Text className="font-bold">Final Scores</Text> currently saved in the Activity Report.{' '}
+                  If scores are 0, please go to Activity Report and click "Save".
+                </Text>
+              </View>
+            </View>
+
+            <View className="space-y-4">
+              {/* Year Selector */}
+              <View>
+                <Text className="text-sm font-semibold text-gray-700 mb-2">Year</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View className="flex-row gap-2">
+                    {[2023, 2024, 2025, 2026].map((year) => (
+                      <TouchableOpacity
+                        key={year}
+                        onPress={() => setSyncYear(year)}
+                        className={`px-4 py-2 rounded-lg ${
+                          syncYear === year
+                            ? 'bg-blue-600'
+                            : 'bg-gray-100 border border-gray-300'
+                        }`}
+                      >
+                        <Text
+                          className={syncYear === year ? 'text-white font-bold' : 'text-gray-700'}
+                        >
+                          {year}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+
+              {/* Month Selector */}
+              <View>
+                <Text className="text-sm font-semibold text-gray-700 mb-2">Month</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View className="flex-row gap-2 flex-wrap">
+                    {[...Array(12)].map((_, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        onPress={() => setSyncMonth(i + 1)}
+                        className={`px-3 py-2 rounded-lg mb-2 ${
+                          syncMonth === i + 1
+                            ? 'bg-blue-600'
+                            : 'bg-gray-100 border border-gray-300'
+                        }`}
+                      >
+                        <Text
+                          className={syncMonth === i + 1 ? 'text-white font-bold' : 'text-gray-700'}
+                        >
+                          {i + 1}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row gap-3 mt-6">
+              <TouchableOpacity
+                onPress={() => setShowSyncModal(false)}
+                disabled={isSyncing}
+                className="flex-1 bg-gray-200 rounded-xl py-3 items-center"
+              >
+                <Text className="text-gray-700 font-bold">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSyncActivityScores}
+                disabled={isSyncing}
+                className={`flex-1 rounded-xl py-3 items-center ${
+                  isSyncing ? 'bg-gray-300' : 'bg-blue-600'
+                }`}
+              >
+                {isSyncing ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="white" />
+                    <Text className="text-white font-bold ml-2">Loading...</Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center">
+                    <Ionicons name="download" size={18} color="white" />
+                    <Text className="text-white font-bold ml-2">Import Scores</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Penalty Modal */}
+      <Modal
+        visible={showPenaltyModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPenaltyModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-3xl w-11/12 max-w-md p-6 shadow-2xl">
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center">
+                <Ionicons name="warning" size={28} color="#EF4444" />
+                <Text className="text-2xl font-bold text-gray-800 ml-2">
+                  Issue Penalty
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowPenaltyModal(false)}
+                disabled={isSubmittingPenalty}
+              >
+                <Ionicons name="close-circle" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {memberToPenalize && (
+              <View className="bg-gray-50 rounded-xl p-4 mb-4">
+                <View className="flex-row items-center">
+                  <View className="w-12 h-12 rounded-full bg-gray-300 items-center justify-center mr-3 overflow-hidden">
+                    {memberToPenalize.avatarUrl ? (
+                      <Image
+                        source={{ uri: memberToPenalize.avatarUrl }}
+                        className="w-full h-full"
+                      />
+                    ) : (
+                      <Text className="text-white font-bold text-lg">
+                        {memberToPenalize.fullName.charAt(0).toUpperCase()}
+                      </Text>
+                    )}
+                  </View>
+                  <View>
+                    <Text className="text-base font-bold text-gray-800">
+                      {memberToPenalize.fullName}
+                    </Text>
+                    <Text className="text-sm text-gray-600">
+                      {memberToPenalize.studentCode}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <View className="space-y-4">
+              {/* Penalty Rule Selector */}
+              <View>
+                <Text className="text-sm font-semibold text-gray-700 mb-2">
+                  Violation Rule
+                </Text>
+                {penaltyRulesLoading ? (
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                ) : penaltyRules.length === 0 ? (
+                  <View className="bg-yellow-50 rounded-xl p-3 border border-yellow-200">
+                    <Text className="text-sm text-yellow-800">
+                      No penalty rules available. Please contact university staff.
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView style={{ maxHeight: 200 }} className="border border-gray-200 rounded-xl">
+                    {penaltyRules.map((rule) => (
+                      <TouchableOpacity
+                        key={rule.id}
+                        onPress={() => setSelectedRuleId(rule.id)}
+                        className={`p-4 border-b border-gray-100 ${
+                          selectedRuleId === rule.id ? 'bg-blue-50' : 'bg-white'
+                        }`}
+                      >
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-1 mr-3">
+                            <Text className="text-base font-bold text-gray-800">
+                              {rule.name}
+                            </Text>
+                            <Text className="text-sm text-gray-600 mt-1">
+                              {rule.description}
+                            </Text>
+                            <View className="flex-row items-center mt-2">
+                              <View className="px-2 py-1 bg-gray-200 rounded">
+                                <Text className="text-xs font-medium text-gray-700">
+                                  {rule.level}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                          <View className="items-center">
+                            <Text className="text-lg font-bold text-red-600">
+                              -{rule.penaltyPoints}
+                            </Text>
+                            <Text className="text-xs text-gray-600">pts</Text>
+                          </View>
+                        </View>
+                        {selectedRuleId === rule.id && (
+                          <View className="absolute right-4 top-4">
+                            <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+
+              {/* Reason Input */}
+              <View>
+                <Text className="text-sm font-semibold text-gray-700 mb-2">Reason</Text>
+                <View className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+                  <AppTextInput
+                    className="text-base text-gray-800 min-h-[80px]"
+                    placeholder="Provide details about the violation..."
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    value={penaltyReason}
+                    onChangeText={setPenaltyReason}
+                    editable={!isSubmittingPenalty}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row gap-3 mt-6">
+              <TouchableOpacity
+                onPress={() => setShowPenaltyModal(false)}
+                disabled={isSubmittingPenalty}
+                className="flex-1 bg-gray-200 rounded-xl py-3 items-center"
+              >
+                <Text className="text-gray-700 font-bold">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleCreatePenalty}
+                disabled={
+                  isSubmittingPenalty ||
+                  !selectedRuleId ||
+                  !penaltyReason.trim() ||
+                  penaltyRules.length === 0
+                }
+                className={`flex-1 rounded-xl py-3 items-center ${
+                  isSubmittingPenalty ||
+                  !selectedRuleId ||
+                  !penaltyReason.trim() ||
+                  penaltyRules.length === 0
+                    ? 'bg-gray-300'
+                    : 'bg-red-600'
+                }`}
+              >
+                {isSubmittingPenalty ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white font-bold">Issue Penalty</Text>
                 )}
               </TouchableOpacity>
             </View>

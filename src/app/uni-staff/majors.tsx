@@ -1,4 +1,5 @@
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import MajorService, {
@@ -16,10 +17,8 @@ import {
     ScrollView,
     Switch,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
-} from 'react-native';
+    View} from 'react-native';
 
 // Color options for major selection
 const COLOR_OPTIONS = [
@@ -277,7 +276,7 @@ export default function UniStaffMajorsPage() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <Sidebar role="uni_staff" />
         <ScrollView
           className="flex-1"
@@ -334,7 +333,7 @@ export default function UniStaffMajorsPage() {
             <View className="bg-white rounded-xl p-4 shadow-sm">
               <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
                 <Ionicons name="search" size={20} color="#6B7280" />
-                <TextInput
+                <AppTextInput
                   className="flex-1 ml-2 text-base text-gray-900"
                   placeholder="Search majors..."
                   placeholderTextColor="#9CA3AF"
@@ -493,7 +492,7 @@ export default function UniStaffMajorsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Major Name <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={createFormData.name}
                       onChangeText={(value) =>
@@ -509,7 +508,7 @@ export default function UniStaffMajorsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Major Code <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={createFormData.majorCode}
                       onChangeText={(value) =>
@@ -559,7 +558,7 @@ export default function UniStaffMajorsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Description
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={createFormData.description}
                       onChangeText={(value) =>
@@ -635,7 +634,7 @@ export default function UniStaffMajorsPage() {
                   {/* Major ID */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Major ID</Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-600"
                       value={String(selectedMajor?.id || '')}
                       editable={false}
@@ -647,7 +646,7 @@ export default function UniStaffMajorsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Major Name <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={editFormData.name}
                       onChangeText={(value) =>
@@ -663,7 +662,7 @@ export default function UniStaffMajorsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Major Code <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={editFormData.majorCode}
                       onChangeText={(value) =>
@@ -713,7 +712,7 @@ export default function UniStaffMajorsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Description
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={editFormData.description}
                       onChangeText={(value) =>

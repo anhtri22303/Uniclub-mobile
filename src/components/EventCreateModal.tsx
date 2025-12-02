@@ -7,10 +7,10 @@ import {
     Modal,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { AppTextInput } from './ui';
 
 interface EventCreateModalProps {
   visible: boolean;
@@ -157,7 +157,7 @@ export default function EventCreateModal({
               <Text className="text-sm font-medium text-gray-700 mb-2">
                 Event Name <Text className="text-red-500">*</Text>
               </Text>
-              <TextInput
+              <AppTextInput
                 className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                 placeholder="Enter event name"
                 value={formData.name}
@@ -169,7 +169,7 @@ export default function EventCreateModal({
             {/* Description */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
-              <TextInput
+              <AppTextInput
                 className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                 placeholder="Describe your event..."
                 value={formData.description}
@@ -201,7 +201,7 @@ export default function EventCreateModal({
               <Text className="text-sm font-medium text-gray-700 mb-2">
                 Date <Text className="text-red-500">*</Text>
               </Text>
-              <TextInput
+              <AppTextInput
                 className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                 placeholder="YYYY-MM-DD"
                 value={formData.date}
@@ -216,7 +216,7 @@ export default function EventCreateModal({
                 <Text className="text-sm font-medium text-gray-700 mb-2">
                   Start Time <Text className="text-red-500">*</Text>
                 </Text>
-                <TextInput
+                <AppTextInput
                   className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                   placeholder="HH:MM:SS"
                   value={formData.startTime}
@@ -228,7 +228,7 @@ export default function EventCreateModal({
                 <Text className="text-sm font-medium text-gray-700 mb-2">
                   End Time <Text className="text-red-500">*</Text>
                 </Text>
-                <TextInput
+                <AppTextInput
                   className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                   placeholder="HH:MM:SS"
                   value={formData.endTime}
@@ -268,7 +268,7 @@ export default function EventCreateModal({
             {/* Max Check-ins */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-gray-700 mb-2">Max Check-ins</Text>
-              <TextInput
+              <AppTextInput
                 className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                 placeholder="100"
                 value={String(formData.maxCheckInCount)}
@@ -283,7 +283,7 @@ export default function EventCreateModal({
             {/* Point Cost */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-gray-700 mb-2">Point Cost</Text>
-              <TextInput
+              <AppTextInput
                 className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                 placeholder="0"
                 value={String(formData.commitPointCost || 0)}
@@ -298,7 +298,7 @@ export default function EventCreateModal({
             {/* Budget Points */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-gray-700 mb-2">Budget Points</Text>
-              <TextInput
+              <AppTextInput
                 className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
                 placeholder="0"
                 value={String(formData.budgetPoints || 0)}

@@ -15,12 +15,12 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import {
-  AttendanceSummaryCard,
-  ClubApplicationsList,
-  DataSummaryTables,
-  EventRequestsList,
-  StatisticsCards,
-  TopClubsRanking
+    AttendanceSummaryCard,
+    ClubApplicationsList,
+    DataSummaryTables,
+    EventRequestsList,
+    StatisticsCards,
+    TopClubsRanking
 } from '@components/uni-staff';
 import { Ionicons } from '@expo/vector-icons';
 import { useClubApplications, useClubs, useEvents, usePolicies } from '@hooks/useQueryHooks';
@@ -35,12 +35,12 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -265,7 +265,7 @@ export default function UniStaffPage() {
   }, [attendanceSummary]);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 

@@ -1,4 +1,5 @@
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { ClubService } from '@services/club.service';
@@ -10,10 +11,8 @@ import {
     Alert,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
-} from 'react-native';
+    View} from 'react-native';
 
 interface Club {
   id: number;
@@ -175,7 +174,7 @@ export default function UniStaffFeedbacksPage() {
     <>
       {/* Remove default header */}
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         {/* Sidebar Toggle Button */}
         <Sidebar role="uni_staff" />
         <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -280,7 +279,7 @@ export default function UniStaffFeedbacksPage() {
               <Text className="text-sm font-medium text-gray-700 mb-2">Search</Text>
               <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
                 <Ionicons name="search" size={20} color="#6B7280" />
-                <TextInput
+                <AppTextInput
                   className="flex-1 ml-2 text-base text-gray-900"
                   placeholder="Search by member, event, or comment..."
                   placeholderTextColor="#9CA3AF"

@@ -1,5 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { useProfile } from '@contexts/ProfileContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
@@ -16,9 +17,8 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -288,7 +288,7 @@ export default function StudentMembersPage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
@@ -300,34 +300,48 @@ export default function StudentMembersPage() {
         <View className="px-6 py-4 space-y-4">
           {/* Club Selector */}
           {userClubIds.length > 0 && (
-            <View className="bg-white rounded-2xl p-4 shadow-sm">
-              <Text className="text-sm font-semibold text-gray-700 mb-2">     Select Club</Text>
+            <View className="bg-white rounded-3xl p-6 shadow-lg" style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="flex-row items-center mb-4">
+                <View className="bg-teal-100 p-3 rounded-2xl mr-3">
+                  <Ionicons name="business" size={24} color="#14B8A6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-lg font-bold text-gray-900">Your Club</Text>
+                  <Text className="text-xs text-gray-500">{userClubIds.length} club{userClubIds.length > 1 ? 's' : ''} available</Text>
+                </View>
+              </View>
+              
               <TouchableOpacity
                 onPress={() => setShowClubPicker(!showClubPicker)}
-                className="flex-row items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-200"
+                className="flex-row items-center justify-between bg-teal-50 rounded-2xl px-5 py-4 border-2 border-teal-200"
               >
-                <View className="flex-1">
+                <View className="flex-1 flex-row items-center">
                   {selectedClub ? (
-                    <View className="flex-row items-center">
-                      <Text className="text-gray-900 font-semibold flex-1">{selectedClub.name}</Text>
-                      <View className="bg-indigo-100 px-2 py-1 rounded-md">
-                        <Text className="text-indigo-700 text-xs font-bold">ID: {selectedClub.id}</Text>
+                    <>
+                      <View className="bg-teal-500 p-2 rounded-xl mr-3">
+                        <Ionicons name="checkmark" size={16} color="white" />
                       </View>
-                    </View>
+                      <View className="flex-1">
+                        <Text className="text-gray-900 font-bold text-base">{selectedClub.name}</Text>
+                        <Text className="text-teal-600 text-xs font-semibold mt-0.5">ID: {selectedClub.id}</Text>
+                      </View>
+                    </>
                   ) : (
-                    <Text className="text-gray-400">Choose a club</Text>
+                    <Text className="text-gray-400 font-medium">Choose a club</Text>
                   )}
                 </View>
-                <Ionicons
-                  name={showClubPicker ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color="#6B7280"
-                />
+                <View className="bg-teal-500 p-2 rounded-xl">
+                  <Ionicons
+                    name={showClubPicker ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color="white"
+                  />
+                </View>
               </TouchableOpacity>
 
               {/* Club picker dropdown */}
               {showClubPicker && (
-                <View className="mt-2 bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
+                <View className="mt-3 bg-white rounded-2xl overflow-hidden border-2 border-teal-100 shadow-md">
                   {userClubsDetails.map((club, index) => (
                     <TouchableOpacity
                       key={club.id}
@@ -335,39 +349,39 @@ export default function StudentMembersPage() {
                         setSelectedClubId(club.id);
                         setShowClubPicker(false);
                       }}
-                      className={`flex-row items-center justify-between p-3 ${
-                        index !== userClubsDetails.length - 1 ? 'border-b border-gray-200' : ''
-                      } ${selectedClubId === club.id ? 'bg-indigo-50' : ''}`}
+                      className={`flex-row items-center p-4 ${
+                        index !== userClubsDetails.length - 1 ? 'border-b border-gray-100' : ''
+                      } ${selectedClubId === club.id ? 'bg-teal-50' : ''}`}
                     >
+                      <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${
+                        selectedClubId === club.id ? 'bg-teal-500' : 'bg-gray-200'
+                      }`}>
+                        <Ionicons name="people" size={20} color={selectedClubId === club.id ? 'white' : '#6B7280'} />
+                      </View>
                       <Text
-                        className={`flex-1 font-medium ${
-                          selectedClubId === club.id ? 'text-indigo-700' : 'text-gray-700'
+                        className={`flex-1 font-semibold ${
+                          selectedClubId === club.id ? 'text-teal-700' : 'text-gray-700'
                         }`}
                       >
                         {club.name}
                       </Text>
                       {selectedClubId === club.id && (
-                        <Ionicons name="checkmark-circle" size={20} color="#6366F1" />
+                        <Ionicons name="checkmark-circle" size={24} color="#14B8A6" />
                       )}
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
 
-              {userClubIds.length > 1 && (
-                <Text className="text-xs text-gray-500 mt-2">
-                  {userClubIds.length} clubs available
-                </Text>
-              )}
-
               {/* Leave Club Button */}
               {selectedClubId && (
                 <TouchableOpacity
                   onPress={handleOpenLeaveModal}
-                  className="mt-3 bg-red-500 px-4 py-3 rounded-xl flex-row items-center justify-center gap-2"
+                  className="mt-4 bg-red-500 px-6 py-4 rounded-2xl flex-row items-center justify-center shadow-lg"
+                  style={{ shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
                 >
-                  <Ionicons name="log-out-outline" size={20} color="white" />
-                  <Text className="text-white font-semibold">Leave Club</Text>
+                  <Ionicons name="log-out-outline" size={22} color="white" />
+                  <Text className="text-white font-bold ml-2 text-base">Leave Club</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -375,131 +389,148 @@ export default function StudentMembersPage() {
 
           {/* Search and Filters */}
           {!membersLoading && apiMembers.length > 0 && selectedClubId && (
-            <View className="space-y-3">
+            <View>
               {/* Search Bar */}
-              <View className="bg-white rounded-2xl px-4 py-3 shadow-sm flex-row items-center">
-                <Ionicons name="search" size={20} color="#9CA3AF" />
-                <TextInput
+              <View className="bg-white rounded-2xl px-5 py-4 mb-4 shadow-md flex-row items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 }}>
+                <View className="bg-teal-50 p-2 rounded-xl mr-3">
+                  <Ionicons name="search" size={22} color="#14B8A6" />
+                </View>
+                <AppTextInput
                   placeholder="Search by name, email, or student code..."
                   value={searchTerm}
                   onChangeText={setSearchTerm}
-                  className="flex-1 ml-3 text-gray-900"
+                  className="flex-1 text-gray-900 text-base"
                   placeholderTextColor="#9CA3AF"
                 />
                 {searchTerm !== '' && (
-                  <TouchableOpacity onPress={() => setSearchTerm('')}>
-                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                  <TouchableOpacity onPress={() => setSearchTerm('')} className="bg-gray-100 p-2 rounded-xl ml-2">
+                    <Ionicons name="close" size={18} color="#6B7280" />
                   </TouchableOpacity>
                 )}
               </View>
 
               {/* Filter Buttons */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                <TouchableOpacity
-                  onPress={() => setActiveFilter('all')}
-                  className={`px-4 py-2 rounded-xl ${
-                    activeFilter === 'all' ? 'bg-indigo-500' : 'bg-white border border-gray-200'
-                  }`}
-                >
-                  <Text
-                    className={`font-semibold text-sm ${
-                      activeFilter === 'all' ? 'text-white' : 'text-gray-700'
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                <View className="flex-row gap-3 px-1">
+                  <TouchableOpacity
+                    onPress={() => setActiveFilter('all')}
+                    className={`px-6 py-3 rounded-2xl flex-row items-center shadow-sm ${
+                      activeFilter === 'all' ? 'bg-teal-500' : 'bg-white'
                     }`}
+                    style={activeFilter === 'all' ? { shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 } : {}}
                   >
-                    All
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons name="apps" size={18} color={activeFilter === 'all' ? 'white' : '#6B7280'} />
+                    <Text
+                      className={`font-bold text-sm ml-2 ${
+                        activeFilter === 'all' ? 'text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      All Members
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => setActiveFilter('leader')}
-                  className={`px-4 py-2 rounded-xl ${
-                    activeFilter === 'leader' ? 'bg-purple-500' : 'bg-white border border-gray-200'
-                  }`}
-                >
-                  <Text
-                    className={`font-semibold text-sm ${
-                      activeFilter === 'leader' ? 'text-white' : 'text-gray-700'
+                  <TouchableOpacity
+                    onPress={() => setActiveFilter('leader')}
+                    className={`px-6 py-3 rounded-2xl flex-row items-center shadow-sm ${
+                      activeFilter === 'leader' ? 'bg-purple-500' : 'bg-white'
                     }`}
+                    style={activeFilter === 'leader' ? { shadowColor: '#A855F7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 } : {}}
                   >
-                    Leaders
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons name="star" size={18} color={activeFilter === 'leader' ? 'white' : '#6B7280'} />
+                    <Text
+                      className={`font-bold text-sm ml-2 ${
+                        activeFilter === 'leader' ? 'text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      Leaders
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => setActiveFilter('staff')}
-                  className={`px-4 py-2 rounded-xl ${
-                    activeFilter === 'staff' ? 'bg-blue-500' : 'bg-white border border-gray-200'
-                  }`}
-                >
-                  <Text
-                    className={`font-semibold text-sm ${
-                      activeFilter === 'staff' ? 'text-white' : 'text-gray-700'
+                  <TouchableOpacity
+                    onPress={() => setActiveFilter('staff')}
+                    className={`px-6 py-3 rounded-2xl flex-row items-center shadow-sm ${
+                      activeFilter === 'staff' ? 'bg-blue-500' : 'bg-white'
                     }`}
+                    style={activeFilter === 'staff' ? { shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 } : {}}
                   >
-                    Staff
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons name="briefcase" size={18} color={activeFilter === 'staff' ? 'white' : '#6B7280'} />
+                    <Text
+                      className={`font-bold text-sm ml-2 ${
+                        activeFilter === 'staff' ? 'text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      Staff
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => setActiveFilter('member')}
-                  className={`px-4 py-2 rounded-xl ${
-                    activeFilter === 'member' ? 'bg-green-500' : 'bg-white border border-gray-200'
-                  }`}
-                >
-                  <Text
-                    className={`font-semibold text-sm ${
-                      activeFilter === 'member' ? 'text-white' : 'text-gray-700'
+                  <TouchableOpacity
+                    onPress={() => setActiveFilter('member')}
+                    className={`px-6 py-3 rounded-2xl flex-row items-center shadow-sm ${
+                      activeFilter === 'member' ? 'bg-emerald-500' : 'bg-white'
                     }`}
+                    style={activeFilter === 'member' ? { shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 } : {}}
                   >
-                    Members
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons name="person" size={18} color={activeFilter === 'member' ? 'white' : '#6B7280'} />
+                    <Text
+                      className={`font-bold text-sm ml-2 ${
+                        activeFilter === 'member' ? 'text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      Members
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </ScrollView>
             </View>
           )}
 
           {/* Members List */}
           {userClubIds.length === 0 ? (
-            <View className="bg-white rounded-3xl p-8 shadow-sm items-center">
-              <View className="bg-gray-100 p-6 rounded-full mb-4">
-                <Ionicons name="people" size={48} color="#9CA3AF" />
+            <View className="bg-white rounded-3xl p-10 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-8 rounded-full mb-6">
+                <Ionicons name="people" size={56} color="#14B8A6" />
               </View>
-              <Text className="text-xl font-bold text-gray-800 mb-2">No Club Membership</Text>
-              <Text className="text-gray-600 text-center mb-4">
+              <Text className="text-2xl font-bold text-gray-900 mb-3">No Club Membership</Text>
+              <Text className="text-gray-600 text-center mb-6 text-base leading-6">
                 You need to join a club first to view members
               </Text>
               <TouchableOpacity
                 onPress={() => router.push('/student/clubs' as any)}
-                className="bg-indigo-500 px-6 py-3 rounded-xl"
+                className="bg-teal-500 px-8 py-4 rounded-2xl shadow-lg flex-row items-center"
+                style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
               >
-                <Text className="text-white font-semibold">Browse Clubs</Text>
+                <Ionicons name="search" size={22} color="white" />
+                <Text className="text-white font-bold ml-2 text-base">Browse Clubs</Text>
               </TouchableOpacity>
             </View>
           ) : !selectedClubId ? (
-            <View className="bg-white rounded-3xl p-8 shadow-sm items-center">
-              <View className="bg-gray-100 p-6 rounded-full mb-4">
-                <Ionicons name="people" size={48} color="#9CA3AF" />
+            <View className="bg-white rounded-3xl p-10 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-8 rounded-full mb-6">
+                <Ionicons name="people" size={56} color="#14B8A6" />
               </View>
-              <Text className="text-xl font-bold text-gray-800 mb-2">Select a Club</Text>
-              <Text className="text-gray-600 text-center">
+              <Text className="text-2xl font-bold text-gray-900 mb-3">Select a Club</Text>
+              <Text className="text-gray-600 text-center text-base leading-6">
                 You have {userClubIds.length} club{userClubIds.length > 1 ? 's' : ''}. Please select
                 one to view its members.
               </Text>
             </View>
           ) : membersLoading ? (
-            <View className="bg-white rounded-3xl p-8 shadow-sm items-center">
-              <ActivityIndicator size="large" color="#6366F1" />
-              <Text className="text-gray-600 mt-4">Loading members...</Text>
+            <View className="bg-white rounded-3xl p-12 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-6 rounded-full mb-4">
+                <ActivityIndicator size="large" color="#14B8A6" />
+              </View>
+              <Text className="text-gray-800 font-semibold text-lg">Loading members...</Text>
+              <Text className="text-gray-500 text-sm mt-2">Please wait a moment</Text>
             </View>
           ) : filteredMembers.length === 0 ? (
-            <View className="bg-white rounded-3xl p-8 shadow-sm items-center">
-              <View className="bg-gray-100 p-6 rounded-full mb-4">
-                <Ionicons name="search" size={48} color="#9CA3AF" />
+            <View className="bg-white rounded-3xl p-10 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-8 rounded-full mb-6">
+                <Ionicons name="search" size={56} color="#14B8A6" />
               </View>
-              <Text className="text-xl font-bold text-gray-800 mb-2">No Members Found</Text>
-              <Text className="text-gray-600 text-center mb-4">
+              <Text className="text-2xl font-bold text-gray-900 mb-3">No Members Found</Text>
+              <Text className="text-gray-600 text-center mb-6 text-base leading-6">
                 {searchTerm || activeFilter !== 'all'
-                  ? 'No members match your search or filters'
+                  ? 'No members match your search criteria.\nTry adjusting your filters.'
                   : 'This club currently has no active members'}
               </Text>
               {(searchTerm || activeFilter !== 'all') && (
@@ -508,105 +539,113 @@ export default function StudentMembersPage() {
                     setSearchTerm('');
                     setActiveFilter('all');
                   }}
-                  className="bg-gray-100 px-6 py-3 rounded-xl"
+                  className="bg-teal-500 px-8 py-4 rounded-2xl shadow-lg flex-row items-center"
+                  style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
                 >
-                  <Text className="text-gray-700 font-semibold">Clear Filters</Text>
+                  <Ionicons name="refresh" size={20} color="white" />
+                  <Text className="text-white font-bold ml-2 text-base">Clear Filters</Text>
                 </TouchableOpacity>
               )}
             </View>
           ) : (
-            <View className="space-y-3">
+            <View className="space-y-4">
               {filteredMembers.map((member) => {
-                const borderColorClass =
-                  member.role === 'LEADER'
-                    ? 'border-l-purple-500'
+                const roleConfig =
+                  member.role === 'LEADER' || member.role === 'VICE_LEADER'
+                    ? { bg: 'bg-purple-500', gradient: 'from-purple-500 to-purple-600', icon: 'star', borderColor: '#A855F7' }
                     : member.isStaff
-                    ? 'border-l-blue-500'
-                    : 'border-l-green-500';
+                    ? { bg: 'bg-blue-500', gradient: 'from-blue-500 to-blue-600', icon: 'briefcase', borderColor: '#3B82F6' }
+                    : { bg: 'bg-teal-500', gradient: 'from-teal-500 to-teal-600', icon: 'person', borderColor: '#14B8A6' };
 
                 return (
                   <View
                     key={member.id}
-                    className={`bg-white rounded-2xl p-4 shadow-sm border-l-4 ${borderColorClass}`}
+                    className="bg-white rounded-3xl overflow-hidden shadow-lg"
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}
                   >
-                    <View className="flex-row items-start gap-3">
-                      {/* Avatar */}
-                      <View className="relative">
-                        {member.avatarUrl ? (
-                          <Image
-                            source={{ uri: member.avatarUrl }}
-                            className="w-14 h-14 rounded-full bg-gray-200"
-                          />
-                        ) : (
-                          <View className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 items-center justify-center">
-                            <Text className="text-white font-bold text-lg">
-                              {getInitials(member.fullName)}
-                            </Text>
-                          </View>
-                        )}
-                        
-                        {/* Online status indicator (optional) */}
-                        <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
-                      </View>
-
-                      {/* Member Info */}
-                      <View className="flex-1">
-                        {/* Name and Badges */}
-                        <View className="flex-row items-center flex-wrap gap-2 mb-2">
-                          <Text className="text-base font-bold text-gray-900 flex-shrink">
-                            {member.fullName}
-                          </Text>
-                          <View
-                            className={`px-2 py-1 rounded-full ${
-                              member.role === 'LEADER' || member.role === 'VICE_LEADER' 
-                                ? 'bg-purple-100' 
-                                : 'bg-green-100'
-                            }`}
-                          >
-                            <Text
-                              className={`text-xs font-bold ${
-                                member.role === 'LEADER' || member.role === 'VICE_LEADER'
-                                  ? 'text-purple-700' 
-                                  : 'text-green-700'
-                              }`}
-                            >
-                              {member.role === 'VICE_LEADER' ? 'VICE LEADER' : member.role}
-                            </Text>
-                          </View>
-                          {member.isStaff && (
-                            <View className="px-2 py-1 rounded-full bg-blue-100">
-                              <Text className="text-xs font-bold text-blue-700">Staff</Text>
+                    {/* Colorful Top Bar */}
+                    <View className="h-2" style={{ backgroundColor: roleConfig.borderColor }} />
+                    
+                    <View className="p-5">
+                      <View className="flex-row items-start">
+                        {/* Avatar */}
+                        <View className="relative mr-4">
+                          {member.avatarUrl ? (
+                            <Image
+                              source={{ uri: member.avatarUrl }}
+                              className="w-16 h-16 rounded-2xl bg-gray-200"
+                            />
+                          ) : (
+                            <View className={`w-16 h-16 rounded-2xl ${roleConfig.bg} items-center justify-center shadow-md`}>
+                              <Text className="text-white font-bold text-xl">
+                                {getInitials(member.fullName)}
+                              </Text>
                             </View>
                           )}
+                          
+                          {/* Online status indicator */}
+                          <View className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-3 border-white rounded-full" />
                         </View>
 
-                        {/* Contact Info */}
-                        <View className="space-y-1.5">
-                          <View className="flex-row items-center gap-2">
-                            <Ionicons name="mail" size={14} color="#6366F1" />
-                            <Text className="text-sm text-gray-600 flex-1" numberOfLines={1}>
-                              {member.email}
-                            </Text>
+                        {/* Member Info */}
+                        <View className="flex-1">
+                          {/* Name */}
+                          <Text className="text-lg font-bold text-gray-900 mb-2">
+                            {member.fullName}
+                          </Text>
+                          
+                          {/* Role Badges */}
+                          <View className="flex-row flex-wrap gap-2 mb-3">
+                            <View className={`${roleConfig.bg} px-3 py-1.5 rounded-xl flex-row items-center shadow-sm`}>
+                              <Ionicons name={roleConfig.icon as any} size={14} color="white" />
+                              <Text className="text-white text-xs font-bold ml-1">
+                                {member.role === 'VICE_LEADER' ? 'VICE LEADER' : member.role}
+                              </Text>
+                            </View>
+                            {member.isStaff && (
+                              <View className="bg-blue-500 px-3 py-1.5 rounded-xl flex-row items-center shadow-sm">
+                                <Ionicons name="briefcase" size={14} color="white" />
+                                <Text className="text-white text-xs font-bold ml-1">STAFF</Text>
+                              </View>
+                            )}
                           </View>
+                        </View>
+                      </View>
 
-                          <View className="flex-row items-center gap-2">
-                            <Ionicons name="person" size={14} color="#6366F1" />
-                            <Text className="text-sm text-gray-600">
-                              Student: {member.studentCode}
-                            </Text>
+                      {/* Contact Info Grid */}
+                      <View className="mt-4 bg-gray-50 rounded-2xl p-4 space-y-3">
+                        <View className="flex-row items-center">
+                          <View className="bg-teal-100 p-2 rounded-xl mr-3">
+                            <Ionicons name="mail" size={16} color="#14B8A6" />
                           </View>
+                          <Text className="text-sm text-gray-700 flex-1 font-medium" numberOfLines={1}>
+                            {member.email}
+                          </Text>
+                        </View>
 
-                          <View className="flex-row items-center gap-2">
-                            <Ionicons name="school" size={14} color="#6366F1" />
-                            <Text className="text-sm text-gray-600 flex-1" numberOfLines={1}>
-                              {member.majorName}
-                            </Text>
+                        <View className="flex-row items-center">
+                          <View className="bg-purple-100 p-2 rounded-xl mr-3">
+                            <Ionicons name="card" size={16} color="#A855F7" />
                           </View>
+                          <Text className="text-sm text-gray-700 font-medium">
+                            {member.studentCode}
+                          </Text>
+                        </View>
 
-                          <View className="flex-row items-center gap-2">
-                            <Ionicons name="calendar" size={14} color="#6366F1" />
-                            <Text className="text-sm text-gray-600">Joined: {member.joinedAt}</Text>
+                        <View className="flex-row items-center">
+                          <View className="bg-blue-100 p-2 rounded-xl mr-3">
+                            <Ionicons name="school" size={16} color="#3B82F6" />
                           </View>
+                          <Text className="text-sm text-gray-700 flex-1 font-medium" numberOfLines={1}>
+                            {member.majorName}
+                          </Text>
+                        </View>
+
+                        <View className="flex-row items-center">
+                          <View className="bg-green-100 p-2 rounded-xl mr-3">
+                            <Ionicons name="calendar" size={16} color="#10B981" />
+                          </View>
+                          <Text className="text-sm text-gray-700 font-medium">Joined: {member.joinedAt}</Text>
                         </View>
                       </View>
                     </View>
@@ -651,7 +690,7 @@ export default function StudentMembersPage() {
               <Text className="text-sm font-medium text-gray-700 mb-2">
                 Reason for leaving the club <Text className="text-red-500">*</Text>
               </Text>
-              <TextInput
+              <AppTextInput
                 placeholder="Enter your reason..."
                 value={leaveReason}
                 onChangeText={setLeaveReason}

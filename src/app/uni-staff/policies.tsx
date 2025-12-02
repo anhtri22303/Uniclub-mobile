@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import PolicyService, { Policy } from '@services/policy.service';
@@ -11,7 +12,6 @@ import {
   Modal,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -264,7 +264,7 @@ export default function UniStaffPoliciesPage() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#3B82F6" />
@@ -275,7 +275,7 @@ export default function UniStaffPoliciesPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
 
       {/* Sidebar */}
@@ -309,7 +309,7 @@ export default function UniStaffPoliciesPage() {
         <View className="bg-white rounded-3xl p-6 shadow-lg mb-4">
           <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 mb-3">
             <Ionicons name="search" size={20} color="#6B7280" />
-            <TextInput
+            <AppTextInput
               className="flex-1 ml-3 text-base text-gray-800"
               placeholder="Search policies..."
               value={searchQuery}
@@ -489,7 +489,7 @@ export default function UniStaffPoliciesPage() {
               <View className="space-y-4">
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Policy Name</Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                     value={editPolicyName}
                     onChangeText={setEditPolicyName}
@@ -499,7 +499,7 @@ export default function UniStaffPoliciesPage() {
 
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                     value={editDescription}
                     onChangeText={setEditDescription}
@@ -512,7 +512,7 @@ export default function UniStaffPoliciesPage() {
 
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Major ID</Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                     value={editMajorId}
                     onChangeText={setEditMajorId}
@@ -524,7 +524,7 @@ export default function UniStaffPoliciesPage() {
                 <View className="flex-row gap-3">
                   <View className="flex-1">
                     <Text className="text-sm font-medium text-gray-700 mb-2">Max Club Join</Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                       value={editMaxClubJoin}
                       onChangeText={setEditMaxClubJoin}
@@ -536,7 +536,7 @@ export default function UniStaffPoliciesPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Reward Multiplier
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                       value={editRewardMultiplier}
                       onChangeText={setEditRewardMultiplier}
@@ -611,7 +611,7 @@ export default function UniStaffPoliciesPage() {
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     Policy Name <Text className="text-red-500">*</Text>
                   </Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                     value={createPolicyName}
                     onChangeText={setCreatePolicyName}
@@ -621,7 +621,7 @@ export default function UniStaffPoliciesPage() {
 
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                     value={createDescription}
                     onChangeText={setCreateDescription}
@@ -634,7 +634,7 @@ export default function UniStaffPoliciesPage() {
 
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Major ID</Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                     value={createMajorId}
                     onChangeText={setCreateMajorId}
@@ -646,7 +646,7 @@ export default function UniStaffPoliciesPage() {
                 <View className="flex-row gap-3">
                   <View className="flex-1">
                     <Text className="text-sm font-medium text-gray-700 mb-2">Max Club Join</Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                       value={createMaxClubJoin}
                       onChangeText={setCreateMaxClubJoin}
@@ -658,7 +658,7 @@ export default function UniStaffPoliciesPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Reward Multiplier
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
                       value={createRewardMultiplier}
                       onChangeText={setCreateRewardMultiplier}

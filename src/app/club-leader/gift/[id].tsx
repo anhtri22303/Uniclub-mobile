@@ -6,7 +6,7 @@ import { Tag, TagService } from '@services/tag.service';
 import { useAuthStore } from '@stores/auth.store';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,13 +15,13 @@ import {
   Image,
   Modal,
   RefreshControl,
+  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 type TabType = 'details' | 'media' | 'stock' | 'redemptions';
@@ -542,7 +542,7 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#3b82f6" />
           <Text className="text-gray-600 mt-4">Loading product...</Text>
@@ -553,7 +553,7 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <View className="flex-1 items-center justify-center">
           <Ionicons name="alert-circle-outline" size={64} color="#d1d5db" />
           <Text className="text-gray-600 text-lg font-semibold mt-4">Product not found</Text>
@@ -565,13 +565,15 @@ export default function ProductDetailPage() {
   const thumbnail = product.media?.filter(m => m && m.url).find(m => m.thumbnail)?.url || product.media?.filter(m => m && m.url)[0]?.url;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView
-        className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
+        <ScrollView
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
             {/* Header */}
             <View className="bg-white border-b border-gray-200 p-4">
               <View className="flex-row items-center justify-between mb-3">
@@ -1131,9 +1133,9 @@ export default function ProductDetailPage() {
                 </View>
               )}
             </View>
-      </ScrollView>
+        </ScrollView>
 
-      {/* Stock Update Modal */}
+        {/* Stock Update Modal */}
       <Modal
         visible={showStockModal}
         transparent
@@ -1311,7 +1313,8 @@ export default function ProductDetailPage() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 }
 

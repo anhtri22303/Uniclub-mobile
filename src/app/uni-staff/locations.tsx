@@ -1,4 +1,5 @@
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import LocationService, {
@@ -15,10 +16,8 @@ import {
     RefreshControl,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
-} from 'react-native';
+    View} from 'react-native';
 
 type SortField = 'name' | 'capacity' | 'id';
 type SortOrder = 'asc' | 'desc';
@@ -249,7 +248,7 @@ export default function UniStaffLocationsPage() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <Sidebar role="uni_staff" />
         <ScrollView
           className="flex-1"
@@ -314,7 +313,7 @@ export default function UniStaffLocationsPage() {
               <View className="mb-3">
                 <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
                   <Ionicons name="search" size={20} color="#6B7280" />
-                  <TextInput
+                  <AppTextInput
                     className="flex-1 ml-2 text-base text-gray-900"
                     placeholder="Search by name or address..."
                     placeholderTextColor="#9CA3AF"
@@ -578,7 +577,7 @@ export default function UniStaffLocationsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Location Name <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={formData.name}
                       onChangeText={(value) =>
@@ -594,7 +593,7 @@ export default function UniStaffLocationsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Address <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={formData.address}
                       onChangeText={(value) =>
@@ -613,7 +612,7 @@ export default function UniStaffLocationsPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Capacity <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={formData.capacity ? formData.capacity.toString() : ''}
                       onChangeText={(value) =>

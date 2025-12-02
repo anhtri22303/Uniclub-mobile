@@ -1,4 +1,5 @@
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import MultiplierPolicyService, {
@@ -16,10 +17,8 @@ import {
     ScrollView,
     Switch,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
-} from 'react-native';
+    View} from 'react-native';
 
 type TabType = PolicyTargetType;
 
@@ -313,7 +312,7 @@ export default function UniStaffMultiplierPolicyPage() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <Sidebar role="uni_staff" />
         <ScrollView
           className="flex-1"
@@ -615,7 +614,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Rule Name <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={createFormData.ruleName}
                       onChangeText={(value) =>
@@ -631,7 +630,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Activity Type <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={createFormData.activityType}
                       onChangeText={(value) =>
@@ -670,7 +669,7 @@ export default function UniStaffMultiplierPolicyPage() {
                       <Text className="text-sm font-medium text-gray-700 mb-2">
                         Min Threshold <Text className="text-red-500">*</Text>
                       </Text>
-                      <TextInput
+                      <AppTextInput
                         className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                         value={createFormData.minThresholdString}
                         onChangeText={(value) =>
@@ -688,7 +687,7 @@ export default function UniStaffMultiplierPolicyPage() {
                       <Text className="text-sm font-medium text-gray-700 mb-2">
                         Max Threshold <Text className="text-red-500">*</Text>
                       </Text>
-                      <TextInput
+                      <AppTextInput
                         className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                         value={createFormData.maxThresholdString}
                         onChangeText={(value) =>
@@ -709,7 +708,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Multiplier <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={createFormData.multiplierString}
                       onChangeText={(value) =>
@@ -732,7 +731,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Description (Optional)
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={createFormData.policyDescription || ''}
                       onChangeText={(value) =>
@@ -814,7 +813,7 @@ export default function UniStaffMultiplierPolicyPage() {
                   {/* Policy ID */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Policy ID</Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-600"
                       value={String(selectedPolicy?.id || '')}
                       editable={false}
@@ -845,7 +844,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Rule Name <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={editFormData.ruleName}
                       onChangeText={(value) =>
@@ -861,7 +860,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Activity Type <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={editFormData.activityType}
                       onChangeText={(value) =>
@@ -900,7 +899,7 @@ export default function UniStaffMultiplierPolicyPage() {
                       <Text className="text-sm font-medium text-gray-700 mb-2">
                         Min Threshold <Text className="text-red-500">*</Text>
                       </Text>
-                      <TextInput
+                      <AppTextInput
                         className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                         value={editFormData.minThresholdString || ''}
                         onChangeText={(value) =>
@@ -918,7 +917,7 @@ export default function UniStaffMultiplierPolicyPage() {
                       <Text className="text-sm font-medium text-gray-700 mb-2">
                         Max Threshold <Text className="text-red-500">*</Text>
                       </Text>
-                      <TextInput
+                      <AppTextInput
                         className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                         value={editFormData.maxThresholdString || ''}
                         onChangeText={(value) =>
@@ -939,7 +938,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Multiplier <Text className="text-red-500">*</Text>
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={editFormData.multiplierString || ''}
                       onChangeText={(value) =>
@@ -959,7 +958,7 @@ export default function UniStaffMultiplierPolicyPage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">
                       Description (Optional)
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                       value={editFormData.policyDescription || ''}
                       onChangeText={(value) =>

@@ -8,11 +8,11 @@ import {
     Modal,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { AppTextInput } from '../ui';
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -158,7 +158,7 @@ export default function ChangePasswordModal({ open, onOpenChange }: ChangePasswo
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">Current Password</Text>
                 <View className="relative">
-                  <TextInput
+                  <AppTextInput
                     value={oldPassword}
                     onChangeText={setOldPassword}
                     placeholder="Enter current password"
@@ -182,7 +182,7 @@ export default function ChangePasswordModal({ open, onOpenChange }: ChangePasswo
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">New Password</Text>
                 <View className="relative">
-                  <TextInput
+                  <AppTextInput
                     value={newPassword}
                     onChangeText={setNewPassword}
                     placeholder="Enter new password"
@@ -206,7 +206,7 @@ export default function ChangePasswordModal({ open, onOpenChange }: ChangePasswo
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">Confirm New Password</Text>
                 <View className="relative">
-                  <TextInput
+                  <AppTextInput
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     placeholder="Confirm new password"

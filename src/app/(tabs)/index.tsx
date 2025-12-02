@@ -28,7 +28,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <ScrollView className="flex-1 px-6 py-8">
         {/* Header */}
         <View className="bg-white rounded-3xl p-6 shadow-lg mb-6">

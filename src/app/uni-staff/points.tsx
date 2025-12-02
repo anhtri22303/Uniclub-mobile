@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
@@ -13,7 +14,6 @@ import {
   Modal,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -369,7 +369,7 @@ export default function UniStaffPointsPage() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#3B82F6" />
@@ -380,7 +380,7 @@ export default function UniStaffPointsPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       
       {/* Sidebar */}
@@ -425,7 +425,7 @@ export default function UniStaffPointsPage() {
             </Text>
             <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
               <Ionicons name="wallet-outline" size={20} color="#6B7280" />
-              <TextInput
+              <AppTextInput
                 className="flex-1 ml-3 text-base text-gray-800"
                 placeholder="Enter reward points..."
                 keyboardType="numeric"
@@ -553,7 +553,7 @@ export default function UniStaffPointsPage() {
             {/* Show custom reason input if other */}
             {reasonType === 'other' && (
               <View className="ml-8 mt-2">
-                <TextInput
+                <AppTextInput
                   className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-800"
                   placeholder="Enter specific reason..."
                   value={customReason}
@@ -635,7 +635,7 @@ export default function UniStaffPointsPage() {
           {allClubs.length > 0 && (
             <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 mb-4">
               <Ionicons name="search" size={20} color="#6B7280" />
-              <TextInput
+              <AppTextInput
                 className="flex-1 ml-3 text-base text-gray-800"
                 placeholder="Search by club name..."
                 value={searchQuery}

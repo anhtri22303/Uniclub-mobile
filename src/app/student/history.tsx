@@ -3,7 +3,9 @@ import Sidebar from '@components/navigation/Sidebar';
 import { useMyClubApplications, useMyMemberApplications, useMyRedeemOrders } from '@hooks/useQueryHooks';
 import { Picker } from '@react-native-picker/picker';
 import type { ClubApplication } from '@services/clubApplication.service';
-import EventService, { type Event, type EventFeedback, timeObjectToString } from '@services/event.service';
+import EventService, { type Event, timeObjectToString } from '@services/event.service';
+import EventStaffService, { type StaffHistoryOrder } from '@services/eventStaff.service';
+import FeedbackService, { type Feedback } from '@services/feedback.service';
 import type { MemberApplication } from '@services/memberApplication.service';
 import type { RedeemOrder } from '@services/redeem.service';
 import UserService, { type ApiMembershipWallet } from '@services/user.service';
@@ -52,9 +54,15 @@ export default function StudentHistoryPage() {
   const [selectedMembershipId, setSelectedMembershipId] = useState<string | number | null>(null);
   const [myFeedbackLoading, setMyFeedbackLoading] = useState(false);
   const [myFeedbackError, setMyFeedbackError] = useState<string | null>(null);
-  const [myFeedbacks, setMyFeedbacks] = useState<EventFeedback[]>([]);
+  const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([]);
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null);
   const [myMemberships, setMyMemberships] = useState<ApiMembershipWallet[]>([]);
+
+  // Staff History state
+  const [showStaffHistory, setShowStaffHistory] = useState(false);
+  const [staffHistoryOrders, setStaffHistoryOrders] = useState<StaffHistoryOrder[]>([]);
+  const [staffHistoryLoading, setStaffHistoryLoading] = useState(false);
+  const [staffHistoryError, setStaffHistoryError] = useState<string | null>(null);
 
   // ✅ USE REACT QUERY for applications
   const {
@@ -86,16 +94,37 @@ export default function StudentHistoryPage() {
     try {
       setWalletLoading(true);
       setWalletError(null);
+      console.log('📱 Loading wallet data...');
+      
       const [walletResponse, transactionsResponse] = await Promise.all([
         WalletService.getWallet(),
         WalletService.getWalletTransactions()
       ]);
+      
+      console.log('💰 Wallet response:', walletResponse);
+      console.log('📊 Transactions response:', transactionsResponse);
+      
       setMyWallet(walletResponse);
       setWalletTransactions(transactionsResponse);
     } catch (err: any) {
+      console.error('❌ Wallet loading error:', err);
       setWalletError(err?.response?.data?.message || err?.message || 'Failed to load wallet');
     } finally {
       setWalletLoading(false);
+    }
+  };
+
+  // Load staff history data
+  const loadStaffHistory = async () => {
+    try {
+      setStaffHistoryLoading(true);
+      setStaffHistoryError(null);
+      const data = await EventStaffService.getStaffHistory();
+      setStaffHistoryOrders(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setStaffHistoryError(err?.response?.data?.message || err?.message || 'Failed to load staff history');
+    } finally {
+      setStaffHistoryLoading(false);
     }
   };
 
@@ -130,14 +159,13 @@ export default function StudentHistoryPage() {
     loadMemberships();
   }, []);
 
-  // Initialize default membership when available
+  // Reset membership selection when toggling feedback off
   useEffect(() => {
-    if (!showMyFeedback) return;
-    if (selectedMembershipId) return;
-    if (myMemberships.length > 0) {
-      setSelectedMembershipId(myMemberships[0].walletId);
+    if (!showMyFeedback) {
+      setSelectedMembershipId(null);
+      setMyFeedbacks([]);
     }
-  }, [showMyFeedback, myMemberships, selectedMembershipId]);
+  }, [showMyFeedback]);
 
   // Fetch feedbacks when toggled on and membership chosen
   useEffect(() => {
@@ -146,7 +174,7 @@ export default function StudentHistoryPage() {
       try {
         setMyFeedbackLoading(true);
         setMyFeedbackError(null);
-        const data = await EventService.getFeedbacksByMembership(selectedMembershipId);
+        const data = await FeedbackService.getMyFeedbackByMembershipId(selectedMembershipId);
         setMyFeedbacks(Array.isArray(data) ? data : []);
       } catch (err: any) {
         setMyFeedbackError(err?.response?.data?.message || err?.message || 'Failed to load feedbacks');
@@ -157,9 +185,16 @@ export default function StudentHistoryPage() {
     loadFeedbacks();
   }, [showMyFeedback, selectedMembershipId]);
 
+  // Fetch staff history when toggled on
+  useEffect(() => {
+    if (showStaffHistory) {
+      loadStaffHistory();
+    }
+  }, [showStaffHistory]);
+
   // Group feedbacks by eventId
   const feedbackGroups = useMemo(() => {
-    const groups: Record<number, { eventId: number; eventName: string; clubName: string; items: EventFeedback[] }> = {};
+    const groups: Record<number, { eventId: number; eventName: string; clubName: string; items: Feedback[] }> = {};
     for (const fb of myFeedbacks) {
       const key = fb.eventId;
       if (!groups[key]) {
@@ -190,6 +225,7 @@ export default function StudentHistoryPage() {
     setActiveTab(tab);
     setFilter('all');
     setShowMyFeedback(false); // Reset feedback view when changing tabs
+    setShowStaffHistory(false); // Reset staff history view when changing tabs
 
     if (tab === 'wallet' && !myWallet) {
       loadWalletData();
@@ -365,7 +401,7 @@ export default function StudentHistoryPage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
@@ -503,9 +539,9 @@ export default function StudentHistoryPage() {
           </ScrollView>
         </View>
 
-        {/* Filter and Feedback Toggle */}
+        {/* Filter and Feedback Toggle for Events */}
         {activeTab === 'event' && (
-          <View className="mb-4 flex-row items-center gap-2">
+          <View className="mb-4 gap-2">
             <TouchableOpacity
               className={`px-3 py-2 rounded-md border ${
                 showMyFeedback
@@ -527,29 +563,68 @@ export default function StudentHistoryPage() {
             </TouchableOpacity>
 
             {showMyFeedback && myMemberships.length > 0 && (
-              <View className="flex-1">
-                <View className="bg-white rounded-lg border border-gray-200">
-                  <Picker
-                    selectedValue={selectedMembershipId ? String(selectedMembershipId) : ''}
-                    onValueChange={(val) => setSelectedMembershipId(Number(val))}
-                    style={{ height: 40 }}
-                  >
-                    {myMemberships.map((m) => (
-                      <Picker.Item
-                        key={m.walletId}
-                        label={`${m.clubName} (#${m.walletId})`}
-                        value={String(m.walletId)}
-                      />
-                    ))}
-                  </Picker>
-                </View>
+              <View className="bg-white rounded-lg border border-gray-200 p-2">
+                <Text className="text-xs text-gray-600 mb-1 px-2">Select Club/Membership:</Text>
+                <Picker
+                  selectedValue={selectedMembershipId ? String(selectedMembershipId) : ''}
+                  onValueChange={(val) => setSelectedMembershipId(Number(val))}
+                  style={{ height: 45 }}
+                >
+                  <Picker.Item 
+                    label="-- Select a club --" 
+                    value="" 
+                    enabled={false}
+                  />
+                  {myMemberships.map((m) => (
+                    <Picker.Item
+                      key={m.walletId}
+                      label={`${m.clubName} (ID: ${m.walletId})`}
+                      value={String(m.walletId)}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            )}
+
+            {showMyFeedback && myMemberships.length === 0 && (
+              <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <Text className="text-sm text-yellow-800">
+                  You need to be a member of at least one club to view feedback.
+                </Text>
               </View>
             )}
           </View>
         )}
 
-        {/* Filter Dropdown (hidden for wallet tab and when showing feedback) */}
-        {activeTab !== 'wallet' && !(activeTab === 'event' && showMyFeedback) && (
+        {/* Staff History Toggle for Order tab */}
+        {activeTab === 'order' && (
+          <View className="mb-4">
+            <TouchableOpacity
+              className={`px-3 py-2 rounded-md border ${
+                showStaffHistory
+                  ? 'bg-green-50 border-green-300'
+                  : 'bg-white border-gray-200'
+              }`}
+              onPress={() => setShowStaffHistory(!showStaffHistory)}
+            >
+              <View className="flex-row items-center gap-2">
+                <Text className="text-lg">📋</Text>
+                <Text
+                  className={`font-semibold ${
+                    showStaffHistory ? 'text-green-600' : 'text-gray-700'
+                  }`}
+                >
+                  Staff Approval History
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Filter Dropdown (hidden for wallet tab, feedback view, and staff history) */}
+        {activeTab !== 'wallet' && 
+         !(activeTab === 'event' && showMyFeedback) && 
+         !(activeTab === 'order' && showStaffHistory) && (
           <View className="mb-4">
             <View className="bg-white rounded-lg border border-gray-200">
               <TouchableOpacity
@@ -613,7 +688,7 @@ export default function StudentHistoryPage() {
               <View className="pb-4">
                 {/* Wallet Summary Card */}
                 <View className="bg-white rounded-xl shadow-sm mb-4 border-l-4 border-l-green-500 p-4">
-                  <View className="flex-row items-start gap-3">
+                  <View className="flex-row items-start gap-3 mb-4">
                     <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center">
                       <Text className="text-2xl">💰</Text>
                     </View>
@@ -621,23 +696,59 @@ export default function StudentHistoryPage() {
                       <Text className="text-lg font-bold text-gray-900 mb-1">
                         My Wallet
                       </Text>
-                      <Text className="text-sm text-gray-600 mb-3">
-                        {myWallet.clubName || 'Personal Wallet'}
+                      <Text className="text-sm text-gray-600">
+                        {myWallet.clubName || myWallet.userFullName || 'Personal Wallet'}
                       </Text>
-                      <View className="bg-green-50 p-3 rounded-lg mb-2">
-                        <View className="flex-row justify-between items-center">
-                          <Text className="text-sm text-gray-600">Balance:</Text>
-                          <Text className="text-2xl font-bold text-green-600">
-                            {myWallet.points || myWallet.balancePoints || 0} pts
-                          </Text>
-                        </View>
-                      </View>
-                      <View className="bg-gray-50 p-2 rounded-lg">
-                        <Text className="text-xs text-gray-600">
-                          Owner Type: <Text className="font-semibold">{myWallet.ownerType}</Text>
+                    </View>
+                  </View>
+
+                  {/* Balance - Prominent Display */}
+                  <View className="bg-green-50 border border-green-200 p-4 rounded-lg mb-3">
+                    <Text className="text-xs text-green-600 font-semibold mb-1">Balance:</Text>
+                    <Text className="text-3xl font-bold text-green-600">
+                      {myWallet.points ?? myWallet.balancePoints ?? myWallet.balance ?? 0} pts
+                    </Text>
+                  </View>
+
+                  {/* Additional Info Grid */}
+                  <View className="gap-2">
+                    <View className="bg-gray-50 p-3 rounded-lg flex-row justify-between items-center">
+                      <Text className="text-xs text-gray-600">Owner Type:</Text>
+                      <View className={`px-2 py-1 rounded ${
+                        (myWallet.ownerType || 'USER') === 'USER' 
+                          ? 'bg-blue-100 border border-blue-300' 
+                          : 'bg-purple-100 border border-purple-300'
+                      }`}>
+                        <Text className={`text-xs font-semibold ${
+                          (myWallet.ownerType || 'USER') === 'USER' 
+                            ? 'text-blue-800' 
+                            : 'text-purple-800'
+                        }`}>
+                          {myWallet.ownerType || 'USER'}
                         </Text>
                       </View>
                     </View>
+
+                    {myWallet.walletId && (
+                      <View className="bg-gray-50 p-3 rounded-lg flex-row justify-between items-center">
+                        <Text className="text-xs text-gray-600">Wallet ID:</Text>
+                        <Text className="text-xs font-semibold text-gray-900">#{myWallet.walletId}</Text>
+                      </View>
+                    )}
+
+                    {myWallet.userId && (
+                      <View className="bg-gray-50 p-3 rounded-lg flex-row justify-between items-center">
+                        <Text className="text-xs text-gray-600">User ID:</Text>
+                        <Text className="text-xs font-semibold text-gray-900">#{myWallet.userId}</Text>
+                      </View>
+                    )}
+
+                    {myWallet.clubId && (
+                      <View className="bg-gray-50 p-3 rounded-lg flex-row justify-between items-center">
+                        <Text className="text-xs text-gray-600">Club ID:</Text>
+                        <Text className="text-xs font-semibold text-gray-900">#{myWallet.clubId}</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -720,7 +831,17 @@ export default function StudentHistoryPage() {
             )
           ) : activeTab === 'event' && showMyFeedback ? (
             /* Feedback View */
-            myFeedbackLoading ? (
+            !selectedMembershipId ? (
+              <View className="items-center py-20">
+                <Text className="text-6xl mb-4">👆</Text>
+                <Text className="text-lg font-semibold text-gray-900 mb-2">
+                  Select a Club
+                </Text>
+                <Text className="text-gray-500 text-center px-8">
+                  Please select a club from the dropdown above to view your feedback for that club's events.
+                </Text>
+              </View>
+            ) : myFeedbackLoading ? (
               <View className="items-center py-20">
                 <ActivityIndicator size="large" color="#3B82F6" />
                 <Text className="text-gray-500 mt-4">Loading feedbacks...</Text>
@@ -740,11 +861,24 @@ export default function StudentHistoryPage() {
                   No Feedback Yet
                 </Text>
                 <Text className="text-gray-500 text-center px-8">
-                  You have not submitted any feedback for your events.
+                  You have not submitted any feedback for events in this club.
                 </Text>
               </View>
             ) : (
               <View className="pb-4">
+                {/* Selected Club Info */}
+                <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <Text className="text-xs text-blue-600 font-semibold mb-1">
+                    Viewing Feedback For:
+                  </Text>
+                  <Text className="text-sm font-bold text-blue-900">
+                    {myMemberships.find((m) => m.walletId === selectedMembershipId)?.clubName || 'Selected Club'}
+                  </Text>
+                  <Text className="text-xs text-blue-700 mt-1">
+                    {feedbackGroups.length} event(s) with feedback
+                  </Text>
+                </View>
+
                 {feedbackGroups.map((group, idx) => {
                   const cardKey = `${group.eventId}-${idx}`;
                   const expanded = expandedEventKey === cardKey;
@@ -803,6 +937,111 @@ export default function StudentHistoryPage() {
                           ))}
                         </View>
                       )}
+                    </View>
+                  );
+                })}
+              </View>
+            )
+          ) : activeTab === 'order' && showStaffHistory ? (
+            /* Staff History View */
+            staffHistoryLoading ? (
+              <View className="items-center py-20">
+                <ActivityIndicator size="large" color="#10B981" />
+                <Text className="text-gray-500 mt-4">Loading staff history...</Text>
+              </View>
+            ) : staffHistoryError ? (
+              <View className="items-center py-20">
+                <Text className="text-6xl mb-4">⚠️</Text>
+                <Text className="text-lg font-semibold text-gray-900 mb-2">
+                  Error Loading Staff History
+                </Text>
+                <Text className="text-gray-500 text-center px-8">{staffHistoryError}</Text>
+              </View>
+            ) : staffHistoryOrders.length === 0 ? (
+              <View className="items-center py-20">
+                <Text className="text-6xl mb-4">📋</Text>
+                <Text className="text-lg font-semibold text-gray-900 mb-2">
+                  No Staff Approval History
+                </Text>
+                <Text className="text-gray-500 text-center px-8">
+                  You have not approved any orders as staff.
+                </Text>
+              </View>
+            ) : (
+              <View className="pb-4">
+                {staffHistoryOrders.map((order) => {
+                  const statusColors: Record<string, string> = {
+                    PENDING: 'border-l-yellow-500',
+                    COMPLETED: 'border-l-green-500',
+                    REFUNDED: 'border-l-red-500',
+                    PARTIALLY_REFUNDED: 'border-l-orange-500',
+                    CANCELLED: 'border-l-gray-500',
+                  };
+                  const statusColor = statusColors[order.status] || 'border-l-gray-300';
+
+                  return (
+                    <View
+                      key={order.orderId}
+                      className={`bg-white rounded-xl shadow-sm mb-3 border-l-4 ${statusColor} p-4`}
+                    >
+                      <View className="flex-row items-start justify-between gap-3 mb-3">
+                        <View className="flex-1">
+                          <Text className="text-base font-bold text-gray-900 mb-1">
+                            {order.productName}
+                          </Text>
+                          <Text className="text-sm text-gray-600">Order: {order.orderCode}</Text>
+                        </View>
+                        <View className={`px-2 py-1 rounded ${getStatusBadgeColor(order.status)}`}>
+                          <Text className={`text-xs font-semibold ${getStatusTextColor(order.status)}`}>
+                            {order.status}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className="gap-2">
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm text-gray-600">Member:</Text>
+                          <Text className="text-sm font-semibold text-gray-900">{order.memberName}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm text-gray-600">Club:</Text>
+                          <Text className="text-sm font-semibold text-gray-900">{order.clubName}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm text-gray-600">Type:</Text>
+                          <Text className="text-sm font-semibold text-gray-900">{order.productType}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm text-gray-600">Quantity:</Text>
+                          <Text className="text-sm font-semibold text-gray-900">{order.quantity}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm text-gray-600">Total Points:</Text>
+                          <Text className="text-sm font-bold text-blue-600">{order.totalPoints} pts</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm text-gray-600">Created:</Text>
+                          <Text className="text-sm text-gray-900">{new Date(order.createdAt).toLocaleDateString()}</Text>
+                        </View>
+                        {order.completedAt && (
+                          <View className="flex-row justify-between">
+                            <Text className="text-sm text-gray-600">Completed:</Text>
+                            <Text className="text-sm text-gray-900">{new Date(order.completedAt).toLocaleDateString()}</Text>
+                          </View>
+                        )}
+                        {order.reasonRefund && (
+                          <View className="pt-2 border-t border-gray-200 mt-2">
+                            <Text className="text-sm text-gray-600 mb-1">Refund Reason:</Text>
+                            <Text className="text-sm text-red-600">{order.reasonRefund}</Text>
+                          </View>
+                        )}
+                        {order.errorImages && order.errorImages.length > 0 && (
+                          <View className="pt-2 border-t border-gray-200 mt-2">
+                            <Text className="text-sm text-gray-600 mb-1">Error Images:</Text>
+                            <Text className="text-xs text-blue-600">{order.errorImages.length} image(s) attached</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   );
                 })}

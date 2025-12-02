@@ -148,14 +148,14 @@ export default function StudentAttendancesPage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
       <View className="flex-1">
         {/* Header */}
         <View className="px-4 py-4 bg-white border-b border-gray-200">
-          <Text className="text-2xl font-bold text-gray-900">Attendance History</Text>
+          <Text className="text-2xl font-bold text-gray-900">          Attendance History</Text>
           <Text className="text-sm text-gray-600 mt-1">
             View your personal attendance records
           </Text>

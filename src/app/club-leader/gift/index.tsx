@@ -1,3 +1,4 @@
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
@@ -11,9 +12,8 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 // Services
@@ -387,7 +387,7 @@ export default function ClubLeaderGiftPage() {
   // Show loading while auth or data is loading
   if ((loading && !refreshing) || authLoading) {
     return (
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <Sidebar role={user?.role} />
         <View className="flex-1 items-center justify-center">
@@ -401,7 +401,7 @@ export default function ClubLeaderGiftPage() {
   // Show error if clubId is not found AFTER auth is loaded
   if (!clubId && !authLoading) {
     return (
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <Sidebar role={user?.role} />
         <View className="flex-1 items-center justify-center px-8">
@@ -425,7 +425,7 @@ export default function ClubLeaderGiftPage() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="light" />
         <Sidebar role={user?.role} />
 
@@ -460,7 +460,7 @@ export default function ClubLeaderGiftPage() {
         <View className="flex-row items-center gap-2">
           <View className="flex-1 flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
             <Ionicons name="search" size={20} color="#9CA3AF" />
-            <TextInput
+            <AppTextInput
               placeholder="Search products..."
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -711,7 +711,7 @@ export default function ClubLeaderGiftPage() {
               {/* Product Name */}
               <View className="mb-4">
                 <Text className="text-sm font-semibold text-gray-700 mb-2">Product Name</Text>
-                <TextInput
+                <AppTextInput
                   placeholder="e.g., F-Code Club T-Shirt"
                   value={form.name}
                   onChangeText={(text) => handleChange('name', text)}
@@ -722,7 +722,7 @@ export default function ClubLeaderGiftPage() {
               {/* Description */}
               <View className="mb-4">
                 <Text className="text-sm font-semibold text-gray-700 mb-2">Description</Text>
-                <TextInput
+                <AppTextInput
                   placeholder="Detailed product description..."
                   value={form.description}
                   onChangeText={(text) => handleChange('description', text)}
@@ -754,7 +754,7 @@ export default function ClubLeaderGiftPage() {
               <View className="flex-row gap-3 mb-4">
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-gray-700 mb-2">Price (Points)</Text>
-                  <TextInput
+                  <AppTextInput
                     placeholder="0"
                     value={form.pointCost.toLocaleString('en-US')}
                     onChangeText={(text) => handleNumericChange('pointCost', text)}
@@ -764,7 +764,7 @@ export default function ClubLeaderGiftPage() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-gray-700 mb-2">Stock</Text>
-                  <TextInput
+                  <AppTextInput
                     placeholder="0"
                     value={form.stockQuantity.toLocaleString('en-US')}
                     onChangeText={(text) => handleNumericChange('stockQuantity', text)}
@@ -777,7 +777,7 @@ export default function ClubLeaderGiftPage() {
               {/* Tags */}
               <View className="mb-4">
                 <Text className="text-sm font-semibold text-gray-700 mb-2">Tags</Text>
-                <TextInput
+                <AppTextInput
                   placeholder="Search tags..."
                   value={tagSearchTerm}
                   onChangeText={setTagSearchTerm}

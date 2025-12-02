@@ -212,7 +212,7 @@ export default function CalendarModal({
       transparent={false}
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         {/* Header */}
         <View className="bg-white border-b border-gray-200 pt-12 pb-4 px-4">
           <View className="flex-row items-center justify-between mb-4">

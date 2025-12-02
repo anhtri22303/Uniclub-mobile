@@ -377,9 +377,14 @@ export default function Sidebar({ role }: SidebarProps) {
   };
 
   const handleLogout = async () => {
-    await logout();
+    // Close sidebar first to prevent any re-renders during logout
     toggleSidebar();
-    router.replace('/login' as any);
+    
+    // Small delay to ensure sidebar animation completes
+    setTimeout(async () => {
+      await logout();
+      router.replace('/login' as any);
+    }, 300);
   };
 
   // Only show sidebar for CLUB_LEADER, UNIVERSITY_STAFF, and STUDENT

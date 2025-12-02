@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchEvent, getMyEventRegistrations, registerForEvent, timeObjectToString, type Event, type EventRegistration } from '@services/event.service';
@@ -12,7 +13,6 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -295,7 +295,7 @@ export default function PublicEventsPage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
@@ -320,7 +320,7 @@ export default function PublicEventsPage() {
         <View className="mb-4">
           <View className="flex-row items-center bg-white rounded-lg px-4 py-3 shadow-sm">
             <Ionicons name="search" size={20} color="#9CA3AF" />
-            <TextInput
+            <AppTextInput
               placeholder="Search events..."
               value={searchTerm}
               onChangeText={setSearchTerm}

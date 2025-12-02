@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { AppTextInput } from '../ui';
 
 interface Club {
   clubId: number;
@@ -73,7 +74,7 @@ export const AllClubsList: React.FC<AllClubsListProps> = ({
     <View className="gap-3">
       {showSearch && (
         <View className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <TextInput
+          <AppTextInput
             className="px-4 py-3 text-sm"
             placeholder="Search clubs by name..."
             value={searchQuery}

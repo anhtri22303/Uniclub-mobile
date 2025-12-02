@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { AppTextInput } from '@components/ui';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
@@ -9,7 +10,6 @@ import {
     RefreshControl,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -212,7 +212,7 @@ export default function ClubLeaderOrdersPage() {
   // Show loading while auth or data is loading
   if ((isLoading && !refreshing) || authLoading) {
     return (
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#8B5CF6" />
@@ -225,7 +225,7 @@ export default function ClubLeaderOrdersPage() {
   // Show error if clubId is not found AFTER auth is loaded
   if (!clubId && !authLoading) {
     return (
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
@@ -249,7 +249,7 @@ export default function ClubLeaderOrdersPage() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <Sidebar role={user?.role} />
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="light" />
 
         {/* Header */}
@@ -311,7 +311,7 @@ export default function ClubLeaderOrdersPage() {
           <View className="flex-row items-center gap-2">
             <View className="flex-1 flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
               <Ionicons name="search" size={20} color="#9CA3AF" />
-              <TextInput
+              <AppTextInput
                 placeholder="Search orders..."
                 value={searchTerm}
                 onChangeText={setSearchTerm}
@@ -331,7 +331,7 @@ export default function ClubLeaderOrdersPage() {
             <View className="mt-3 space-y-2">
               <View className="flex-row items-center gap-2">
                 <Text className="text-sm font-medium text-gray-700 w-16">From:</Text>
-                <TextInput
+                <AppTextInput
                   className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm"
                   placeholder="YYYY-MM-DD"
                   value={dateFromFilter}
@@ -340,7 +340,7 @@ export default function ClubLeaderOrdersPage() {
               </View>
               <View className="flex-row items-center gap-2">
                 <Text className="text-sm font-medium text-gray-700 w-16">To:</Text>
-                <TextInput
+                <AppTextInput
                   className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm"
                   placeholder="YYYY-MM-DD"
                   value={dateToFilter}

@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { Club, ClubService } from '@services/club.service';
@@ -14,10 +15,8 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Category colors matching web version
@@ -285,7 +284,7 @@ export default function UniStaffClubsPage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
@@ -346,7 +345,7 @@ export default function UniStaffClubsPage() {
         {/* Search Bar */}
         <View className="bg-gray-100 rounded-xl px-4 py-3 flex-row items-center mb-3">
           <Ionicons name="search" size={20} color="#6B7280" />
-          <TextInput
+          <AppTextInput
             className="flex-1 ml-2 text-base text-gray-800"
             placeholder="Search clubs..."
             value={searchQuery}
@@ -581,7 +580,7 @@ export default function UniStaffClubsPage() {
                 {/* Club Name */}
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Club Name</Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                     value={editName}
                     onChangeText={setEditName}
@@ -592,7 +591,7 @@ export default function UniStaffClubsPage() {
                 {/* Description */}
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
-                  <TextInput
+                  <AppTextInput
                     className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-base"
                     value={editDescription}
                     onChangeText={setEditDescription}
@@ -651,7 +650,7 @@ export default function UniStaffClubsPage() {
                 <Text className="text-sm font-medium text-gray-700 mb-2">Student Email</Text>
                 <View className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 flex-row items-center">
                   <Ionicons name="mail-outline" size={20} color="#6B7280" />
-                  <TextInput
+                  <AppTextInput
                     className="flex-1 ml-3 text-base"
                     value={otpEmail}
                     onChangeText={setOtpEmail}

@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Badge } from '@components/ui/Badge';
 import { Card, CardContent } from '@components/ui/Card';
@@ -28,10 +29,8 @@ import {
   Platform,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type PageAttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
@@ -567,7 +566,7 @@ export default function ClubLeaderAttendancesPage() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <Sidebar role={user?.role} />
         <View className="flex-1 items-center justify-center">
@@ -580,7 +579,7 @@ export default function ClubLeaderAttendancesPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
       
@@ -631,7 +630,7 @@ export default function ClubLeaderAttendancesPage() {
         <View className="px-4 py-2">
           <View className="bg-white border border-gray-300 rounded-lg flex-row items-center px-3 py-2">
             <Ionicons name="search-outline" size={20} color="#9ca3af" />
-            <TextInput
+            <AppTextInput
               placeholder="Search by name or student code..."
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -926,7 +925,7 @@ export default function ClubLeaderAttendancesPage() {
               </TouchableOpacity>
             </View>
 
-            <TextInput
+            <AppTextInput
               placeholder="E.g., Excused (sick), Late (traffic)..."
               value={currentNote}
               onChangeText={setCurrentNote}

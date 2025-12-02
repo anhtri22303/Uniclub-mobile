@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
@@ -16,10 +17,8 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type TabType = 'pending' | 'reviewed';
@@ -271,7 +270,7 @@ export default function ClubLeaderApplicationPage() {
   // Loading state
   if (loading && !managedClubId) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#0D9488" />
@@ -282,7 +281,7 @@ export default function ClubLeaderApplicationPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
 
@@ -605,7 +604,7 @@ export default function ClubLeaderApplicationPage() {
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     Review Note (Optional)
                   </Text>
-                  <TextInput
+                  <AppTextInput
                     value={reviewNote}
                     onChangeText={setReviewNote}
                     placeholder="Add a note about your decision..."

@@ -7,10 +7,10 @@ import {
     Modal,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import { AppTextInput } from './ui';
 
 // Point allocation policies
 const POINT_POLICIES = [
@@ -125,7 +125,7 @@ export default function ApproveBudgetModal({
               <Text className="text-base font-semibold text-gray-800 mb-2">
                 Approved Budget Points
               </Text>
-              <TextInput
+              <AppTextInput
                 value={approvedPointsInput}
                 onChangeText={(text) => {
                   if (text === '' || /^\d+$/.test(text)) {

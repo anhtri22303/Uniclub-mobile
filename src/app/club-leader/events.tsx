@@ -1,4 +1,5 @@
 import CalendarModal from '@components/CalendarModal';
+import { AppTextInput } from '@components/ui';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +7,7 @@ import { useClub, useEventCoHostByClub, useEventsByClub } from '@hooks/useQueryH
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -307,7 +308,7 @@ export default function Events() {
   const loading = eventsLoading || coHostEventsLoading || clubLoading;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <Sidebar role={user?.role} />
       <View className="flex-1">
         {/* Header */}
@@ -373,7 +374,7 @@ export default function Events() {
 
         {/* Search, Status Filter, and Create Button */}
         <View className="px-4 pb-2 flex-row items-center gap-2">
-          <TextInput
+          <AppTextInput
             className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 text-gray-800"
             placeholder="Search events..."
             value={searchTerm}

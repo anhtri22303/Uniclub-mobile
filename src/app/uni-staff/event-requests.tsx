@@ -1,4 +1,5 @@
 import NavigationBar from '@components/navigation/NavigationBar';
+import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -20,7 +21,6 @@ import {
   FlatList,
   RefreshControl,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -449,7 +449,7 @@ export default function UniStaffEventRequestsPage() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-emerald-50">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#E2E2EF' }}>
       <StatusBar style="dark" />
       <Sidebar role={user?.role} />
       
@@ -503,7 +503,7 @@ export default function UniStaffEventRequestsPage() {
         <View className="bg-white rounded-xl p-3 shadow-sm mb-4">
           <View className="flex-row items-center">
             <Ionicons name="search" size={18} color="#6B7280" />
-            <TextInput
+            <AppTextInput
               placeholder="Search by event name..."
               value={searchTerm}
               onChangeText={setSearchTerm}
