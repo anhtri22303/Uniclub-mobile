@@ -33,7 +33,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         {showLogo && (
           <View className="mr-3">
             <Image
-              source={require('@assets/images/uniclub-logo.png')}
+              source={require('@assets/images/logo1.jpg')}
               className="w-8 h-8"
               resizeMode="contain"
             />

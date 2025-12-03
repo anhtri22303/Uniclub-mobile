@@ -3,7 +3,7 @@
 
 Since we created a custom SVG UniClub logo component, we need to generate PNG files for:
 
-1. **App Icon** (512x512): `assets/images/uniclub-logo.png`
+1. **App Icon** (512x512): `assets/images/logo1.jpg`
 2. **Adaptive Icon** (1024x1024): `assets/images/adaptive-icon.png` 
 3. **Splash Screen** (200x200): For splash screen display
 4. **Favicon** (48x48): `assets/images/favicon.png`

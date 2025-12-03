@@ -5,22 +5,22 @@
 
 echo "Setting up UniClub logo..."
 
-# Check if uniclub-logo.png exists
-if [ -f "assets/images/uniclub-logo.png" ]; then
-    echo "✅ Found uniclub-logo.png"
+# Check if logo1.jpg exists
+if [ -f "assets/images/logo1.jpg" ]; then
+    echo "✅ Found logo1.jpg"
     
     # Copy to required locations
-    cp assets/images/uniclub-logo.png assets/images/icon.png
-    cp assets/images/uniclub-logo.png assets/images/adaptive-icon.png
-    cp assets/images/uniclub-logo.png assets/images/favicon.png
-    cp assets/images/uniclub-logo.png assets/images/splash-icon.png
+    cp assets/images/logo1.jpg assets/images/icon.png
+    cp assets/images/logo1.jpg assets/images/adaptive-icon.png
+    cp assets/images/logo1.jpg assets/images/favicon.png
+    cp assets/images/logo1.jpg assets/images/splash-icon.png
     
     echo "✅ Logo copied to all required locations"
     echo "🚀 Ready to build with UniClub branding!"
 else
-    echo "❌ Please place your UniClub logo as 'assets/images/uniclub-logo.png'"
+    echo "❌ Please place your UniClub logo as 'assets/images/logo1.jpg'"
     echo "📝 Logo should be:"
     echo "   - Square format (recommended: 512x512px)"
-    echo "   - PNG format"
+    echo "   - JPG format"
     echo "   - Transparent background preferred"
 fi

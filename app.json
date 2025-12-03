@@ -4,7 +4,7 @@
     "slug": "uniclub",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/uniclub-logo.png",
+    "icon": "./assets/images/logo1.jpg",
     "scheme": "uniclub",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/unilogo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -30,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/uniclub-logo.png",
+          "image": "./assets/images/logo1.jpg",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
