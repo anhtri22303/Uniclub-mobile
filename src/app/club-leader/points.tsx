@@ -1,6 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubApiResponse, ClubService } from '@services/club.service';
 import DisciplineService, { PenaltyRule } from '@services/discipline.service';
@@ -12,15 +12,16 @@ import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View} from 'react-native';
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -103,13 +104,24 @@ export default function ClubLeaderPointsPage() {
 
   // Load members and wallet on mount
   useEffect(() => {
-    console.log('=== POINTS PAGE MOUNTED ===');
-    console.log('User data:', JSON.stringify(user, null, 2));
-    console.log('User clubIds:', user?.clubIds);
-    loadData();
-  }, []);
+    // Only load if user exists
+    if (user) {
+      console.log('=== POINTS PAGE MOUNTED ===');
+      console.log('User data:', JSON.stringify(user, null, 2));
+      console.log('User clubIds:', user?.clubIds);
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   const loadData = async () => {
+    // Don't load if no user
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -797,26 +809,34 @@ export default function ClubLeaderPointsPage() {
       <Sidebar role={user?.role} />
 
       {/* Header */}
-      <View className="px-6 py-4 bg-white border-b border-gray-200">
-        <View className="flex-row items-center mb-2">
-          <Text className="text-2xl font-bold text-gray-800 ml-2">       Reward Distribution</Text>
+      <View className="px-4 pt-4 pb-2">
+        <View className="bg-white rounded-3xl p-6" style={{
+          shadowColor: '#14B8A6',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
+          elevation: 8
+        }}>
+          <View className="flex-row items-center mb-3">
+            <View className="w-12 h-12 rounded-2xl items-center justify-center mr-3" style={{ backgroundColor: '#14B8A6' }}>
+              <Ionicons name="gift-outline" size={24} color="white" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-2xl font-bold text-gray-900">Reward Distribution</Text>
+              <Text className="text-sm text-gray-600 mt-1">
+                Distribute points to {managedClub ? <Text className="font-semibold" style={{ color: '#14B8A6' }}>"{managedClub.name}"</Text> : 'your club'}
+              </Text>
+            </View>
+          </View>
         </View>
-        <Text className="text-gray-600">
-          Distribute bonus points from club funds to members of{' '}
-          {managedClub ? (
-            <Text className="font-semibold text-blue-600">"{managedClub.name}"</Text>
-          ) : (
-            'your club'
-          )}
-        </Text>
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
         {/* Club Wallet Balance Card */}
-        <View className="bg-blue-600 rounded-3xl p-6 shadow-xl mt-6 mb-4 border-2 border-blue-700">
+        <View className="rounded-3xl p-6 shadow-xl mt-6 mb-4" style={{ backgroundColor: '#14B8A6' }}>
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center flex-1">
-              <View className="w-14 h-14 rounded-full bg-blue-500 items-center justify-center mr-4 border-2 border-white/30">
+              <View className="w-14 h-14 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                 <Ionicons name="wallet" size={28} color="white" />
               </View>
               <View className="flex-1">
@@ -855,7 +875,7 @@ export default function ClubLeaderPointsPage() {
                 }
               }}
               disabled={walletLoading}
-              className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+              className="w-10 h-10 rounded-2xl items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
             >
               <Ionicons name="refresh" size={20} color="white" />
             </TouchableOpacity>
@@ -865,7 +885,7 @@ export default function ClubLeaderPointsPage() {
           <View className="flex-row gap-2">
             <TouchableOpacity
               onPress={handleOpenHistoryModal}
-              className="flex-1 bg-white/20 rounded-xl py-3 px-4 flex-row items-center justify-center"
+              className="flex-1 rounded-2xl py-3 px-4 flex-row items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
             >
               <Ionicons name="time-outline" size={18} color="white" />
               <Text className="text-white font-semibold ml-2 text-sm">History</Text>
@@ -873,7 +893,7 @@ export default function ClubLeaderPointsPage() {
             
             <TouchableOpacity
               onPress={() => setShowRequestModal(true)}
-              className="flex-1 bg-white/20 rounded-xl py-3 px-4 flex-row items-center justify-center"
+              className="flex-1 rounded-2xl py-3 px-4 flex-row items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
             >
               <Ionicons name="add-circle-outline" size={18} color="white" />
               <Text className="text-white font-semibold ml-2 text-sm">Request</Text>
@@ -882,7 +902,13 @@ export default function ClubLeaderPointsPage() {
         </View>
 
         {/* Reward Settings Card */}
-        <View className="bg-white rounded-3xl p-6 shadow-lg mb-4">
+        <View className="bg-white rounded-3xl p-6 shadow-lg mb-4" style={{
+          shadowColor: '#14B8A6',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4
+        }}>
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-xl font-bold text-gray-800">Distribution Settings</Text>
             {/* Sync Mode Toggle Buttons */}
@@ -890,33 +916,35 @@ export default function ClubLeaderPointsPage() {
               <TouchableOpacity
                 onPress={() => setShowSyncModal(true)}
                 disabled={isDistributing}
-                className="bg-blue-50 rounded-lg px-3 py-2 flex-row items-center"
+                className="rounded-xl px-3 py-2 flex-row items-center" style={{ backgroundColor: '#D1FAE5' }}
               >
-                <Ionicons name="download-outline" size={16} color="#3B82F6" />
-                <Text className="text-blue-600 font-medium text-xs ml-1">Sync</Text>
+                <Ionicons name="download-outline" size={16} color="#14B8A6" />
+                <Text className="font-bold text-xs ml-1" style={{ color: '#14B8A6' }}>Sync</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 onPress={handleClearSync}
                 disabled={isDistributing}
-                className="bg-red-50 rounded-lg px-3 py-2 flex-row items-center"
+                className="bg-red-50 rounded-xl px-3 py-2 flex-row items-center"
               >
                 <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                <Text className="text-red-600 font-medium text-xs ml-1">Clear</Text>
+                <Text className="text-red-600 font-bold text-xs ml-1">Clear</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Sync Mode Indicator */}
           {individualScores && (
-            <View className="bg-blue-50 rounded-xl p-3 mb-4 border border-blue-200">
+            <View className="rounded-xl p-3 mb-4 border-2" style={{ backgroundColor: '#D1FAE5', borderColor: '#14B8A6' }}>
               <View className="flex-row items-center">
-                <Ionicons name="sync" size={20} color="#3B82F6" />
-                <View className="flex-1 ml-2">
-                  <Text className="text-sm font-bold text-blue-700">
+                <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: '#14B8A6' }}>
+                  <Ionicons name="sync" size={20} color="white" />
+                </View>
+                <View className="flex-1 ml-3">
+                  <Text className="text-sm font-bold" style={{ color: '#14B8A6' }}>
                     Activity Scores Mode
                   </Text>
-                  <Text className="text-xs text-blue-600">
+                  <Text className="text-xs" style={{ color: '#059669' }}>
                     Individual points based on activity report
                   </Text>
                 </View>
@@ -1043,14 +1071,18 @@ export default function ClubLeaderPointsPage() {
               !rewardReason.trim() ||
               selectedMembersList.length === 0
             }
-            className={`rounded-xl py-4 items-center ${
-              isDistributing ||
+            className="rounded-xl py-4 items-center"
+            style={{
+              backgroundColor: (isDistributing ||
               (!individualScores && (!rewardAmount || parseInt(rewardAmount) <= 0)) ||
               !rewardReason.trim() ||
-              selectedMembersList.length === 0
-                ? 'bg-gray-300'
-                : 'bg-blue-600'
-            }`}
+              selectedMembersList.length === 0) ? '#D1D5DB' : '#14B8A6',
+              shadowColor: '#14B8A6',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 4
+            }}
           >
             {isDistributing ? (
               <View className="items-center">
@@ -1073,11 +1105,25 @@ export default function ClubLeaderPointsPage() {
         </View>
 
         {/* Search and Filters */}
-        <View className="bg-white rounded-3xl p-6 shadow-lg mb-4">
+        <View className="bg-white rounded-3xl p-6 shadow-lg mb-4" style={{
+          shadowColor: '#14B8A6',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4
+        }}>
           <View className="flex-row items-center gap-2 mb-3">
             <View className="flex-1">
-              <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
-                <Ionicons name="search" size={20} color="#6B7280" />
+              <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 border-2 border-gray-100" style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+                elevation: 2
+              }}>
+                <View className="w-8 h-8 rounded-xl items-center justify-center" style={{ backgroundColor: '#14B8A6' }}>
+                  <Ionicons name="search" size={18} color="white" />
+                </View>
                 <AppTextInput
                   className="flex-1 ml-3 text-base text-gray-800"
                   placeholder="Search by name or student code..."
@@ -1091,11 +1137,11 @@ export default function ClubLeaderPointsPage() {
             </View>
             <TouchableOpacity
               onPress={() => setShowFilters(!showFilters)}
-              className="w-12 h-12 bg-gray-100 rounded-xl items-center justify-center"
+              className="w-12 h-12 rounded-2xl items-center justify-center" style={{ backgroundColor: '#14B8A6', shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }}
             >
-              <Ionicons name="options" size={24} color="#4B5563" />
+              <Ionicons name="options" size={24} color="white" />
               {hasActiveFilters && (
-                <View className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full items-center justify-center">
+                <View className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center" style={{ backgroundColor: '#F59E0B' }}>
                   <Text className="text-white text-xs font-bold">
                     {(searchTerm ? 1 : 0) + (roleFilter !== 'all' ? 1 : 0) + (staffFilter !== 'all' ? 1 : 0)}
                   </Text>
@@ -1204,7 +1250,13 @@ export default function ClubLeaderPointsPage() {
         </View>
 
         {/* Members List */}
-        <View className="bg-white rounded-3xl p-6 shadow-lg mb-6">
+        <View className="bg-white rounded-3xl p-6 shadow-lg mb-6" style={{
+          shadowColor: '#14B8A6',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4
+        }}>
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-xl font-bold text-gray-800">
               Members List ({filteredMembers.length})
@@ -1212,9 +1264,9 @@ export default function ClubLeaderPointsPage() {
             {filteredMembers.length > 0 && (
               <TouchableOpacity
                 onPress={handleToggleSelectAll}
-                className="px-4 py-2 bg-blue-50 rounded-lg"
+                className="px-4 py-2 rounded-xl" style={{ backgroundColor: '#D1FAE5' }}
               >
-                <Text className="text-blue-600 font-medium text-sm">
+                <Text className="font-bold text-sm" style={{ color: '#14B8A6' }}>
                   {allFilteredSelected ? 'Deselect All' : 'Select All'}
                 </Text>
               </TouchableOpacity>
@@ -1242,11 +1294,11 @@ export default function ClubLeaderPointsPage() {
                   <TouchableOpacity
                     key={member.id}
                     onPress={() => handleToggleSelect(member.id)}
-                    className={`mb-3 p-4 rounded-2xl border-2 ${
-                      isSelected
-                        ? 'bg-blue-50 border-blue-500'
-                        : 'bg-gray-50 border-transparent'
-                    }`}
+                    className="mb-3 p-4 rounded-2xl border-2"
+                    style={{
+                      backgroundColor: isSelected ? '#D1FAE5' : '#F9FAFB',
+                      borderColor: isSelected ? '#14B8A6' : 'transparent'
+                    }}
                   >
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center flex-1 mr-3">

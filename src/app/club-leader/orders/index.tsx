@@ -1,17 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
 import { AppTextInput } from '@components/ui';
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 // Services
@@ -47,6 +46,9 @@ export default function ClubLeaderOrdersPage() {
   // Get clubId from user
   useEffect(() => {
     const getClubId = () => {
+      // Don't load if no user
+      if (!user) return null;
+      
       // Try to get clubId from user
       if (user?.clubIds && user.clubIds.length > 0) {
         return user.clubIds[0];
@@ -70,7 +72,7 @@ export default function ClubLeaderOrdersPage() {
   } = useQuery<RedeemOrder[], Error>({
     queryKey: queryKeys.clubOrders(clubId!),
     queryFn: () => getClubRedeemOrders(clubId!),
-    enabled: !!clubId,
+    enabled: !!clubId && !!user, // Only enable when both user and clubId exist
     staleTime: 3 * 60 * 1000, // 3 minutes
   });
 
@@ -253,64 +255,80 @@ export default function ClubLeaderOrdersPage() {
         <StatusBar style="light" />
 
         {/* Header */}
-        <LinearGradient
-          colors={['#8B5CF6', '#3B82F6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="px-6 pt-12 pb-4"
-        >
-          <View className="flex-row items-center justify-between mb-4">
-            <View className="flex-1">
-              <Text className="text-2xl font-bold text-white">              Redeem Orders</Text>
-              <Text className="text-sm text-white opacity-90 mt-1">       Manage product redemptions</Text>
+        <View className="px-4 pt-12 pb-4">
+          <View className="bg-white rounded-3xl p-6" style={{
+            shadowColor: '#14B8A6',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 8
+          }}>
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 rounded-2xl items-center justify-center mr-3" style={{ backgroundColor: '#14B8A6' }}>
+                  <Ionicons name="receipt-outline" size={24} color="white" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-2xl font-bold text-gray-900">Redeem Orders</Text>
+                  <Text className="text-sm text-gray-600 mt-1">Manage product redemptions</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push('/club-leader/orders/scan-qr')}
+                className="rounded-2xl p-3" style={{ backgroundColor: '#14B8A6', shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }}
+              >
+                <Ionicons name="qr-code-outline" size={24} color="white" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => router.push('/club-leader/orders/scan-qr')}
-              className="bg-white/20 backdrop-blur-sm rounded-xl p-3"
-            >
-              <Ionicons name="qr-code-outline" size={28} color="white" />
-            </TouchableOpacity>
+
+            {/* Stats Cards */}
+            <View className="flex-row gap-2 mt-4">
+              <View className="flex-1 bg-amber-50 rounded-2xl p-3 border-2 border-amber-100">
+                <View className="w-8 h-8 rounded-xl items-center justify-center mb-2" style={{ backgroundColor: '#F59E0B' }}>
+                  <Ionicons name="time-outline" size={16} color="white" />
+                </View>
+                <Text className="text-xs text-amber-700 font-medium mb-1">Pending</Text>
+                <Text className="text-2xl font-bold text-amber-900">
+                  {isLoading ? '-' : pendingOrders.length}
+                </Text>
+              </View>
+
+              <View className="flex-1 bg-green-50 rounded-2xl p-3 border-2 border-green-100">
+                <View className="w-8 h-8 rounded-xl items-center justify-center mb-2" style={{ backgroundColor: '#10B981' }}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color="white" />
+                </View>
+                <Text className="text-xs text-green-700 font-medium mb-1">Completed</Text>
+                <Text className="text-2xl font-bold text-green-900">
+                  {isLoading ? '-' : completedOrders.length}
+                </Text>
+              </View>
+
+              <View className="flex-1 bg-teal-50 rounded-2xl p-3 border-2 border-teal-100">
+                <View className="w-8 h-8 rounded-xl items-center justify-center mb-2" style={{ backgroundColor: '#14B8A6' }}>
+                  <Ionicons name="wallet-outline" size={16} color="white" />
+                </View>
+                <Text className="text-xs text-teal-700 font-medium mb-1">Points</Text>
+                <Text className="text-xl font-bold text-teal-900">
+                  {isLoading ? '-' : totalPointsCompleted.toLocaleString()}
+                </Text>
+              </View>
+            </View>
           </View>
-
-          {/* Stats Cards */}
-          <View className="flex-row gap-2 mt-4">
-            <View className="flex-1 bg-white/20 backdrop-blur-sm rounded-xl p-3">
-              <View className="flex-row items-center mb-1">
-                <Ionicons name="time-outline" size={16} color="white" />
-                <Text className="text-white text-xs font-medium ml-1">Pending</Text>
-              </View>
-              <Text className="text-white text-2xl font-bold">
-                {isLoading ? '-' : pendingOrders.length}
-              </Text>
-            </View>
-
-            <View className="flex-1 bg-white/20 backdrop-blur-sm rounded-xl p-3">
-              <View className="flex-row items-center mb-1">
-                <Ionicons name="checkmark-circle-outline" size={16} color="white" />
-                <Text className="text-white text-xs font-medium ml-1">Completed</Text>
-              </View>
-              <Text className="text-white text-2xl font-bold">
-                {isLoading ? '-' : completedOrders.length}
-              </Text>
-            </View>
-
-            <View className="flex-1 bg-white/20 backdrop-blur-sm rounded-xl p-3">
-              <View className="flex-row items-center mb-1">
-                <Ionicons name="wallet-outline" size={16} color="white" />
-                <Text className="text-white text-xs font-medium ml-1">Points</Text>
-              </View>
-              <Text className="text-white text-xl font-bold">
-                {isLoading ? '-' : totalPointsCompleted.toLocaleString()}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
+        </View>
 
         {/* Search Bar */}
-        <View className="px-4 py-3 bg-white border-b border-gray-100">
+        <View className="px-4 py-3 bg-white">
           <View className="flex-row items-center gap-2">
-            <View className="flex-1 flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
-              <Ionicons name="search" size={20} color="#9CA3AF" />
+            <View className="flex-1 flex-row items-center bg-white rounded-2xl px-3 py-3 border-2 border-gray-100" style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+              elevation: 2
+            }}>
+              <View className="w-8 h-8 rounded-xl items-center justify-center" style={{ backgroundColor: '#14B8A6' }}>
+                <Ionicons name="search" size={18} color="white" />
+              </View>
               <AppTextInput
                 placeholder="Search orders..."
                 value={searchTerm}
@@ -320,9 +338,9 @@ export default function ClubLeaderOrdersPage() {
             </View>
             <TouchableOpacity
               onPress={() => setShowDateFilter(!showDateFilter)}
-              className="bg-gray-100 p-3 rounded-lg"
+              className="rounded-2xl p-3" style={{ backgroundColor: '#14B8A6', shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }}
             >
-              <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+              <Ionicons name="calendar-outline" size={20} color="white" />
             </TouchableOpacity>
           </View>
 
@@ -371,45 +389,57 @@ export default function ClubLeaderOrdersPage() {
           >
             <TouchableOpacity
               onPress={() => setActiveTab('pending')}
-              className={`mr-2 px-4 py-2 rounded-full ${
-                activeTab === 'pending' ? 'bg-yellow-500' : 'bg-gray-200'
-              }`}
+              className="mr-2 px-5 py-3 rounded-2xl"
+              style={activeTab === 'pending' ? {
+                backgroundColor: '#F59E0B',
+                shadowColor: '#F59E0B',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4
+              } : { backgroundColor: '#F3F4F6' }}
             >
-              <Text
-                className={`font-medium ${
-                  activeTab === 'pending' ? 'text-white' : 'text-gray-700'
-                }`}
-              >
+              <Text className={`font-bold ${
+                activeTab === 'pending' ? 'text-white' : 'text-gray-700'
+              }`}>
                 Pending ({pendingOrders.length})
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setActiveTab('completed')}
-              className={`mr-2 px-4 py-2 rounded-full ${
-                activeTab === 'completed' ? 'bg-green-500' : 'bg-gray-200'
-              }`}
+              className="mr-2 px-5 py-3 rounded-2xl"
+              style={activeTab === 'completed' ? {
+                backgroundColor: '#10B981',
+                shadowColor: '#10B981',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4
+              } : { backgroundColor: '#F3F4F6' }}
             >
-              <Text
-                className={`font-medium ${
-                  activeTab === 'completed' ? 'text-white' : 'text-gray-700'
-                }`}
-              >
+              <Text className={`font-bold ${
+                activeTab === 'completed' ? 'text-white' : 'text-gray-700'
+              }`}>
                 Completed ({completedOrders.length})
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setActiveTab('cancelled')}
-              className={`px-4 py-2 rounded-full ${
-                activeTab === 'cancelled' ? 'bg-red-500' : 'bg-gray-200'
-              }`}
+              className="px-5 py-3 rounded-2xl"
+              style={activeTab === 'cancelled' ? {
+                backgroundColor: '#EF4444',
+                shadowColor: '#EF4444',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4
+              } : { backgroundColor: '#F3F4F6' }}
             >
-              <Text
-                className={`font-medium ${
-                  activeTab === 'cancelled' ? 'text-white' : 'text-gray-700'
-                }`}
-              >
+              <Text className={`font-bold ${
+                activeTab === 'cancelled' ? 'text-white' : 'text-gray-700'
+              }`}>
                 Cancelled ({cancelledOrders.length})
               </Text>
             </TouchableOpacity>
@@ -453,13 +483,13 @@ export default function ClubLeaderOrdersPage() {
                     <TouchableOpacity
                       key={order.orderId}
                       onPress={() => router.push(`/club-leader/orders/${order.orderId}` as any)}
-                      className="mb-4 bg-white rounded-xl overflow-hidden border-2"
+                      className="mb-4 bg-white rounded-3xl overflow-hidden"
                       style={{
-                        borderColor: gradientColor,
-                        elevation: 2,
-                        shadowColor: '#000',
+                        shadowColor: '#14B8A6',
+                        shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.1,
-                        shadowRadius: 4,
+                        shadowRadius: 8,
+                        elevation: 4,
                       }}
                     >
                       {/* Top colored bar */}
@@ -469,9 +499,11 @@ export default function ClubLeaderOrdersPage() {
                         {/* Header */}
                         <View className="flex-row justify-between items-start mb-3">
                           <View className="flex-1">
-                            <View className="flex-row items-center mb-1">
-                              <Ionicons name="cube-outline" size={16} color="#8B5CF6" />
-                              <Text className="text-xs text-gray-500 ml-1">
+                            <View className="flex-row items-center mb-2">
+                              <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: '#14B8A6' }}>
+                                <Ionicons name="cube-outline" size={14} color="white" />
+                              </View>
+                              <Text className="text-xs text-gray-600 ml-2 font-medium">
                                 #{order.orderCode}
                               </Text>
                             </View>

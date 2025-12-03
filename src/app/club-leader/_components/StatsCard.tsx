@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
@@ -33,56 +32,48 @@ export function StatsCard({
 }: StatsCardProps) {
   if (isLoading) {
     return (
-      <Card className={`border-4 ${borderColor} ${bgColor}`}>
-        <CardContent className="p-6">
-          <View className="h-32 bg-gray-200 rounded-lg animate-pulse" />
-        </CardContent>
-      </Card>
+      <View className="bg-white rounded-3xl p-6 shadow-lg" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+        <View className="h-32 bg-gray-200 rounded-2xl" />
+      </View>
     );
   }
 
   return (
-    <Card className={`border-4 ${borderColor} ${bgColor} shadow-lg`}>
-      <CardHeader className="pb-3">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <CardTitle>
-              <Text className="text-2xl font-bold" style={{ color: iconColor }}>
-                {mainValue}
-              </Text>
-            </CardTitle>
-            <CardDescription>
-              <Text className="text-sm font-medium mt-1 text-gray-600">
-                {description}
-              </Text>
-            </CardDescription>
-          </View>
-          <View
-            className="h-14 w-14 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: `${iconColor}20` }}
-          >
-            <Ionicons name={icon} size={32} color={iconColor} />
-          </View>
+    <View className="bg-white rounded-3xl p-6 shadow-lg" style={{ shadowColor: iconColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 }}>
+      {/* Header with colorful bar */}
+      <View className="h-2 rounded-full mb-4" style={{ backgroundColor: iconColor }} />
+      
+      <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-1 mr-3">
+          <Text className="text-sm font-semibold text-gray-500 uppercase mb-1">{title}</Text>
+          <Text className="text-3xl font-bold text-gray-900">{mainValue}</Text>
+          <Text className="text-sm text-gray-600 mt-1">{description}</Text>
         </View>
-      </CardHeader>
-      <CardContent>
-        <View className="space-y-2">
-          {stats.map((stat, index) => (
-            <View key={index} className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-600">{stat.label}:</Text>
-              <View
-                className="px-3 py-1 rounded-full"
-                style={{ backgroundColor: `${stat.color}20` }}
-              >
-                <Text className="text-sm font-semibold" style={{ color: stat.color }}>
-                  {stat.value}
-                </Text>
-              </View>
+        <View
+          className="h-16 w-16 rounded-2xl items-center justify-center shadow-md"
+          style={{ backgroundColor: `${iconColor}15`, shadowColor: iconColor, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }}
+        >
+          <Ionicons name={icon} size={36} color={iconColor} />
+        </View>
+      </View>
+      
+      {/* Stats Grid */}
+      <View className="space-y-3 mt-2">
+        {stats.map((stat, index) => (
+          <View key={index} className="flex-row items-center justify-between bg-gray-50 px-4 py-3 rounded-2xl">
+            <Text className="text-sm font-semibold text-gray-700 flex-1">{stat.label}</Text>
+            <View
+              className="px-3 py-1.5 rounded-xl"
+              style={{ backgroundColor: stat.color }}
+            >
+              <Text className="text-sm font-bold text-white">
+                {stat.value}
+              </Text>
             </View>
-          ))}
-        </View>
-      </CardContent>
-    </Card>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 

@@ -430,11 +430,16 @@ export default function ClubLeaderGiftPage() {
         <Sidebar role={user?.role} />
 
         {/* Header */}
-        <View className="px-6 pt-12 pb-4 bg-blue-600">
+        <View className="mx-4 mt-4 mb-3 bg-white rounded-3xl p-6 shadow-lg" style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 }}>
         <View className="flex-row items-center justify-between">
-          <View className="flex-1">
-            <Text className="text-2xl font-bold text-white">       Gift Products</Text>
-            <Text className="text-sm text-white opacity-90 mt-1">Manage club items and events</Text>
+          <View className="flex-row items-center flex-1">
+            <View className="bg-teal-100 p-3 rounded-2xl mr-3">
+              <Ionicons name="gift" size={32} color="#14B8A6" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-2xl font-bold text-gray-900">Gift Products</Text>
+              <Text className="text-sm text-gray-600 mt-0.5">Manage club items and events</Text>
+            </View>
           </View>
           <TouchableOpacity
             onPress={() => {
@@ -447,31 +452,36 @@ export default function ClubLeaderGiftPage() {
               });
             }}
             disabled={!clubId}
-            className="bg-purple-600 px-4 py-3 rounded-lg flex-row items-center"
+            className="bg-teal-500 px-4 py-3 rounded-2xl flex-row items-center shadow-lg"
+            style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }}
           >
             <Ionicons name="add" size={20} color="white" />
-            <Text className="text-white font-semibold ml-1">Add</Text>
+            <Text className="text-white font-bold ml-1">Add</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Search and Filter Bar */}
-      <View className="px-4 py-3 bg-white border-b border-gray-100">
-        <View className="flex-row items-center gap-2">
-          <View className="flex-1 flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
-            <Ionicons name="search" size={20} color="#9CA3AF" />
+      <View className="px-4 py-3">
+        <View className="flex-row items-center gap-3">
+          <View className="flex-1 flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-md" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 }}>
+            <View className="bg-teal-50 p-2 rounded-xl mr-3">
+              <Ionicons name="search" size={20} color="#14B8A6" />
+            </View>
             <AppTextInput
               placeholder="Search products..."
               value={searchTerm}
               onChangeText={setSearchTerm}
-              className="flex-1 ml-2 text-base"
+              className="flex-1 text-base text-gray-900"
+              placeholderTextColor="#9CA3AF"
             />
           </View>
           <TouchableOpacity
             onPress={() => setFilterModalVisible(true)}
-            className="bg-gray-100 p-3 rounded-lg"
+            className="bg-teal-500 p-4 rounded-2xl shadow-lg"
+            style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }}
           >
-            <Ionicons name="filter" size={20} color="#6B7280" />
+            <Ionicons name="options" size={22} color="white" />
           </TouchableOpacity>
         </View>
 
@@ -485,14 +495,15 @@ export default function ClubLeaderGiftPage() {
             <TouchableOpacity
               key={status}
               onPress={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-full mr-2 ${
+              className={`px-5 py-2.5 rounded-2xl mr-2 shadow-sm ${
                 statusFilter === status
-                  ? 'bg-purple-600'
-                  : 'bg-gray-200'
+                  ? 'bg-teal-500'
+                  : 'bg-white'
               }`}
+              style={statusFilter === status ? { shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 } : {}}
             >
               <Text
-                className={`font-medium capitalize ${
+                className={`font-bold capitalize ${
                   statusFilter === status ? 'text-white' : 'text-gray-700'
                 }`}
               >
@@ -513,10 +524,12 @@ export default function ClubLeaderGiftPage() {
       >
         <View className="px-4 py-4">
           {filteredAndSortedProducts.length === 0 ? (
-            <View className="items-center justify-center py-20">
-              <Ionicons name="gift-outline" size={64} color="#D1D5DB" />
-              <Text className="text-lg font-semibold text-gray-700 mt-4">No products found</Text>
-              <Text className="text-sm text-gray-500 mt-2 text-center px-8">
+            <View className="bg-white rounded-3xl p-10 shadow-lg items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}>
+              <View className="bg-teal-50 p-8 rounded-full mb-6">
+                <Ionicons name="gift-outline" size={56} color="#14B8A6" />
+              </View>
+              <Text className="text-2xl font-bold text-gray-900 mb-3">No products found</Text>
+              <Text className="text-base text-gray-600 text-center px-4 leading-6">
                 {statusFilter === 'archived'
                   ? 'Your archive is empty'
                   : 'Try adjusting filters or create a new product'}
@@ -532,8 +545,8 @@ export default function ClubLeaderGiftPage() {
                   <TouchableOpacity
                     key={product.id}
                     onPress={() => router.push(`/club-leader/gift/${product.id}`)}
-                    className="w-[48%] mb-4 bg-white rounded-xl overflow-hidden border border-gray-200"
-                    style={{ elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 }}
+                    className="w-[48%] mb-4 bg-white rounded-3xl overflow-hidden"
+                    style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 }}
                   >
                     {/* Image */}
                     <View className="relative">
@@ -565,13 +578,13 @@ export default function ClubLeaderGiftPage() {
                       {product.tags && product.tags.length > 0 && (
                         <View className="flex-row flex-wrap gap-1 mt-2">
                           {product.tags.slice(0, 2).map((tag) => (
-                            <View key={tag} className="bg-blue-50 px-2 py-0.5 rounded">
-                              <Text className="text-[10px] text-blue-600">{tag}</Text>
+                            <View key={tag} className="bg-teal-50 px-2 py-1 rounded-lg">
+                              <Text className="text-[10px] text-teal-700 font-bold">{tag}</Text>
                             </View>
                           ))}
                           {product.tags.length > 2 && (
-                            <View className="bg-gray-100 px-2 py-0.5 rounded">
-                              <Text className="text-[10px] text-gray-600">
+                            <View className="bg-gray-100 px-2 py-1 rounded-lg">
+                              <Text className="text-[10px] text-gray-700 font-bold">
                                 +{product.tags.length - 2}
                               </Text>
                             </View>
@@ -580,22 +593,22 @@ export default function ClubLeaderGiftPage() {
                       )}
 
                       {/* Price and Stock */}
-                      <View className="flex-row justify-between items-center mt-3 pt-2 border-t border-gray-100">
+                      <View className="flex-row justify-between items-center mt-3 pt-3 border-t border-gray-100">
                         <View className="flex-row items-center">
-                          <Ionicons name="wallet" size={16} color="#8B5CF6" />
-                          <Text className="text-purple-600 font-bold text-sm ml-1">
+                          <Ionicons name="trophy" size={18} color="#F59E0B" />
+                          <Text className="text-amber-600 font-bold text-base ml-1">
                             {product.pointCost.toLocaleString()}
                           </Text>
                         </View>
                         <View className="flex-row items-center">
                           <Ionicons
                             name="cube"
-                            size={16}
-                            color={product.stockQuantity === 0 ? '#EF4444' : '#6B7280'}
+                            size={18}
+                            color={product.stockQuantity === 0 ? '#EF4444' : '#14B8A6'}
                           />
                           <Text
-                            className={`font-bold text-sm ml-1 ${
-                              product.stockQuantity === 0 ? 'text-red-600' : 'text-gray-700'
+                            className={`font-bold text-base ml-1 ${
+                              product.stockQuantity === 0 ? 'text-red-600' : 'text-teal-600'
                             }`}
                           >
                             {product.stockQuantity}

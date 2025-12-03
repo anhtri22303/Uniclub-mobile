@@ -1,24 +1,25 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import {
-  MemberApplication,
-  MemberApplicationService,
+    MemberApplication,
+    MemberApplicationService,
 } from '@services/memberApplication.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View} from 'react-native';
+    ActivityIndicator,
+    Alert,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type TabType = 'pending' | 'reviewed';
@@ -46,6 +47,12 @@ export default function ClubLeaderApplicationPage() {
   // Get club ID from user's token/auth
   useEffect(() => {
     const loadClubInfo = async () => {
+      // Don't load if no user
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       // Club leaders have clubIds array, use the first one
       const clubId = user?.clubIds?.[0];
       
@@ -68,11 +75,11 @@ export default function ClubLeaderApplicationPage() {
     };
 
     loadClubInfo();
-  }, [user?.clubIds]);
+  }, [user?.clubIds, user]);
 
   // Load applications
   const loadApplications = async () => {
-    if (!managedClubId) return;
+    if (!managedClubId || !user) return;
 
     try {
       setLoading(true);
@@ -90,7 +97,7 @@ export default function ClubLeaderApplicationPage() {
   };
 
   useEffect(() => {
-    if (managedClubId) {
+    if (managedClubId && user) {
       loadApplications();
     }
   }, [managedClubId]);

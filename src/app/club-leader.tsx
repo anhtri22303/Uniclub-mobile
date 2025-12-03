@@ -16,11 +16,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    ClubInfoCard,
-    CoHostEventsList,
-    MembersByMajorChart,
-    RecentApplicationsList,
-    StatsCard,
+  ClubInfoCard,
+  CoHostEventsList,
+  MembersByMajorChart,
+  RecentApplicationsList,
+  StatsCard,
 } from './club-leader/_components';
 
 // Helper function to check if event has expired
@@ -71,12 +71,18 @@ export default function ClubLeaderPage() {
   useEffect(() => {
     if (user?.clubIds && user.clubIds.length > 0) {
       setClubId(user.clubIds[0]);
+    } else {
+      setClubId(null);
     }
   }, [user]);
 
   // Load all data
   const loadData = async () => {
-    if (!clubId) return;
+    // Don't load if no user or no clubId
+    if (!user || !clubId) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -140,8 +146,12 @@ export default function ClubLeaderPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [clubId]);
+    if (user && clubId) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, [clubId, user]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -282,8 +292,16 @@ export default function ClubLeaderPage() {
       <Sidebar role={user?.role} />
       
       {/* Header */}
-      <View className="px-6 py-4 bg-white border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800">        Club Leader Dashboard</Text>
+      <View className="mx-4 mt-4 mb-3 bg-white rounded-3xl p-6 shadow-lg" style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 }}>
+        <View className="flex-row items-center">
+          <View className="bg-teal-100 p-4 rounded-2xl mr-4">
+            <Text className="text-3xl">👨‍💼</Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-2xl font-bold text-gray-900">Club Leader</Text>
+            <Text className="text-sm text-gray-600 mt-1">Dashboard Overview</Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView

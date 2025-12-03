@@ -17,11 +17,11 @@ export class GoogleAuthService {
    */
   static configure() {
     GoogleSignin.configure({
-      webClientId: ENV.GOOGLE_WEB_CLIENT_ID,
+      webClientId: ENV.GOOGLE_WEB_CLIENT_ID, // Web Client ID from Google Cloud Console
       offlineAccess: true,
       forceCodeForRefreshToken: true,
     });
-    console.log('✅ Google Sign-In configured');
+    console.log('✅ Google Sign-In configured with webClientId:', ENV.GOOGLE_WEB_CLIENT_ID?.substring(0, 30) + '...');
   }
 
   /**
