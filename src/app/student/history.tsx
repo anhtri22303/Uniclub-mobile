@@ -729,20 +729,6 @@ export default function StudentHistoryPage() {
                       </View>
                     </View>
 
-                    {myWallet.walletId && (
-                      <View className="bg-gray-50 p-3 rounded-lg flex-row justify-between items-center">
-                        <Text className="text-xs text-gray-600">Wallet ID:</Text>
-                        <Text className="text-xs font-semibold text-gray-900">#{myWallet.walletId}</Text>
-                      </View>
-                    )}
-
-                    {myWallet.userId && (
-                      <View className="bg-gray-50 p-3 rounded-lg flex-row justify-between items-center">
-                        <Text className="text-xs text-gray-600">User ID:</Text>
-                        <Text className="text-xs font-semibold text-gray-900">#{myWallet.userId}</Text>
-                      </View>
-                    )}
-
                     {myWallet.clubId && (
                       <View className="bg-gray-50 p-3 rounded-lg flex-row justify-between items-center">
                         <Text className="text-xs text-gray-600">Club ID:</Text>

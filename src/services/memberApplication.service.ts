@@ -84,7 +84,7 @@ export class MemberApplicationService {
         data: MemberApplication[];
       }>('/api/member-applications/my');
 
-      console.log('✅ My member applications:', response.data);
+      // console.log('✅ My member applications:', response.data);
 
       // Response structure: { success, message, data }
       if (response.data?.success && response.data?.data) {

@@ -31,7 +31,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setError(null);
       const profileData = await UserService.fetchProfile();
       setProfile(profileData);
-      console.log('✅ Profile refreshed:', profileData);
+      // console.log('✅ Profile refreshed:', profileData);
     } catch (err) {
       console.error('❌ Failed to refresh profile:', err);
       setError(err as Error);

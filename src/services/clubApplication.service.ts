@@ -58,6 +58,23 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
 }
 
 /**
+ * Fetch a single club application by ID
+ * GET /api/club-applications/{id}
+ */
+export async function getClubApplicationById(applicationId: number): Promise<ClubApplication> {
+  try {
+    const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApplication }>(
+      `/api/club-applications/${applicationId}`
+    );
+    console.log('✅ Club application detail:', response.data);
+    return response.data.data;
+  } catch (error) {
+    console.error("❌ Error fetching club application:", error);
+    throw error;
+  }
+}
+
+/**
  * Create a new club application.
  * The backend expects a JSON body with clubName, description, majorId, vision, proposerReason
  * @param body - Club application data
@@ -266,6 +283,7 @@ export async function sendOtp(studentEmail: string): Promise<string> {
 
 export default {
   getClubApplications,
+  getClubApplicationById,
   postClubApplication,
   putClubApplicationStatus,
   getMyClubApplications,

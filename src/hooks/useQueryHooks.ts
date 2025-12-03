@@ -667,6 +667,23 @@ export function useClubApplications() {
 }
 
 /**
+ * Hook to fetch single club application by ID
+ */
+export function useClubApplicationById(applicationId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.clubApplicationDetail(applicationId),
+    queryFn: async () => {
+      const { getClubApplicationById } = await import('@services/clubApplication.service');
+      const application = await getClubApplicationById(applicationId);
+      return application;
+    },
+    enabled: !!applicationId && enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
  * Hook to fetch current user's club applications
  * GET /api/club-applications/my
  */

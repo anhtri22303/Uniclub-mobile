@@ -4,15 +4,15 @@ import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -234,12 +234,12 @@ export default function Sidebar({ role }: SidebarProps) {
       const isStaff = user?.staff === true;
       
       // Debug logging
-      console.log('=== SIDEBAR MENU DEBUG ===');
-      console.log('User clubs from ProfileContext:', JSON.stringify(userClubs, null, 2));
-      console.log('staff:', user?.staff);
-      console.log('hasClub:', hasClub);
-      console.log('isStaff:', isStaff);
-      console.log('====================');
+      // console.log('=== SIDEBAR MENU DEBUG ===');
+      // console.log('User clubs from ProfileContext:', JSON.stringify(userClubs, null, 2));
+      // console.log('staff:', user?.staff);
+      // console.log('hasClub:', hasClub);
+      // console.log('isStaff:', isStaff);
+      // console.log('====================');
       
       // Base menu items that are always shown
       const baseItems: MenuItem[] = [
@@ -329,11 +329,11 @@ export default function Sidebar({ role }: SidebarProps) {
         }
       ] : [];
       
-      console.log('Base items count:', baseItems.length);
-      console.log('Public events items count:', publicEventsItems.length);
-      console.log('Club member items count:', clubMemberItems.length);
-      console.log('Staff items count:', staffItems.length);
-      console.log('Total menu items:', [...baseItems, ...publicEventsItems, ...clubMemberItems, ...staffItems].length);
+      // console.log('Base items count:', baseItems.length);
+      // console.log('Public events items count:', publicEventsItems.length);
+      // console.log('Club member items count:', clubMemberItems.length);
+      // console.log('Staff items count:', staffItems.length);
+      // console.log('Total menu items:', [...baseItems, ...publicEventsItems, ...clubMemberItems, ...staffItems].length);
       
       return [...baseItems, ...publicEventsItems, ...clubMemberItems, ...staffItems];
     }

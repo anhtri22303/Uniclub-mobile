@@ -283,9 +283,7 @@ export default function PublicEventDetailPage() {
               <Text className="text-2xl font-bold text-gray-900 flex-1 mr-4">
                 {event.name}
               </Text>
-              <View className="bg-gray-100 px-3 py-1 rounded-lg">
-                <Text className="text-gray-600 text-xs font-mono">#{event.id}</Text>
-              </View>
+
             </View>
 
             {/* Badges */}

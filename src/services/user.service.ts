@@ -85,7 +85,7 @@ export class UserService {
       const response = await axiosClient.get<ProfileResponse>('/api/users/profile');
       const body = response.data;
       
-      console.log('Fetched profile response:', body);
+      // console.log('Fetched profile response:', body);
 
       if (body && body.success && body.data) {
         return body.data;

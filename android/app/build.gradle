@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anhtri.uniclub'
+    namespace 'com.uniclub'
     defaultConfig {
-        applicationId 'com.anhtri.uniclub'
+        applicationId 'com.uniclub'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

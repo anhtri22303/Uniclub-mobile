@@ -1,11 +1,11 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import {
-    useClubApplications,
-    useCreateClubApplication,
-    useUpdateClubApplicationStatus,
+  useClubApplications,
+  useCreateClubApplication,
+  useUpdateClubApplicationStatus,
 } from '@hooks/useQueryHooks';
 import { ClubApplication } from '@services/clubApplication.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -13,15 +13,16 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useMemo, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    RefreshControl,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Modal,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 interface UiClubRequest {
   id: string;
@@ -84,8 +85,8 @@ export default function UniStaffClubRequestsPage() {
         clubName: d.clubName,
         majorName: d.majorName || null,
         description: d.description,
-        vision: d.vision,
-        proposerReason: d.proposerReason,
+        vision: d.vision || null,
+        proposerReason: d.proposerReason || null,
         requestedBy: proposer,
         requestDate: d.submittedAt,
         status: d.status,
@@ -98,7 +99,13 @@ export default function UniStaffClubRequestsPage() {
 
   async function handleSendNewApplication() {
     if (!newClubName.trim() || !newDescription.trim() || !newProposerReason.trim()) {
-      Alert.alert('Missing Information', 'Please fill in all required fields.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Information',
+        text2: 'Please fill in all required fields.',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
       return;
     }
     
@@ -108,18 +115,31 @@ export default function UniStaffClubRequestsPage() {
         description: newDescription,
         vision: newVision || undefined,
         proposerReason: newProposerReason,
+        otp: '000000', // TODO: Implement OTP flow later
       });
       
-      Alert.alert('Success', `${created.clubName} application submitted`);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: `${created.clubName} application submitted`,
+        visibilityTime: 4000,
+        autoHide: true,
+      });
       
       setIsModalOpen(false);
       setNewClubName("");
       setNewDescription("");
       setNewVision("");
       setNewProposerReason("");
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Error creating application:', err);
-      Alert.alert('Error', 'Failed to send application');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: err.message || 'Failed to send application',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
     }
   }
 
@@ -132,10 +152,22 @@ export default function UniStaffClubRequestsPage() {
         approve: true,
         rejectReason: '',
       });
-      Alert.alert('Success', `Application approved successfully`);
-    } catch (err) {
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Application approved successfully',
+        visibilityTime: 4000,
+        autoHide: true,
+      });
+    } catch (err: any) {
       console.error(err);
-      Alert.alert('Error', 'Failed to update status');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: err.message || 'Failed to update status',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
     }
   }
 
@@ -160,10 +192,22 @@ export default function UniStaffClubRequestsPage() {
                 approve: false,
                 rejectReason: reason || 'Rejected by staff',
               });
-              Alert.alert('Success', `Application rejected`);
-            } catch (err) {
+              Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: 'Application rejected',
+                visibilityTime: 4000,
+                autoHide: true,
+              });
+            } catch (err: any) {
               console.error(err);
-              Alert.alert('Error', 'Failed to update status');
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: err.message || 'Failed to update status',
+                visibilityTime: 3000,
+                autoHide: true,
+              });
             }
           }
         }
@@ -185,7 +229,7 @@ export default function UniStaffClubRequestsPage() {
       if (tabType === "pending") {
         matchStatus = req.status === "PENDING";
       } else {
-        matchStatus = req.status === "SUBMITTED" || req.status === "REJECTED";
+        matchStatus = req.status === "APPROVED" || req.status === "COMPLETED" || req.status === "REJECTED";
       }
 
       return matchSearch && matchStatus && matchCategory;
@@ -199,115 +243,135 @@ export default function UniStaffClubRequestsPage() {
     switch (status) {
       case "PENDING":
         return (
-          <View className="bg-yellow-100 px-2 py-1 rounded-full">
-            <Text className="text-yellow-700 text-xs font-medium">Pending</Text>
+          <View className="px-3 py-1 rounded-full" style={{ backgroundColor: '#FEF3C7' }}>
+            <Text className="text-xs font-bold" style={{ color: '#F59E0B' }}>● Pending</Text>
           </View>
         );
-      case "SUBMITTED":
+      case "APPROVED":
         return (
-          <View className="bg-green-100 px-2 py-1 rounded-full">
-            <Text className="text-green-700 text-xs font-medium">Submitted</Text>
+          <View className="px-3 py-1 rounded-full" style={{ backgroundColor: '#D1FAE5' }}>
+            <Text className="text-xs font-bold" style={{ color: '#14B8A6' }}>● Approved</Text>
+          </View>
+        );
+      case "COMPLETED":
+        return (
+          <View className="px-3 py-1 rounded-full bg-blue-100">
+            <Text className="text-xs font-bold text-blue-700">● Complete</Text>
           </View>
         );
       case "REJECTED":
         return (
-          <View className="bg-red-100 px-2 py-1 rounded-full">
-            <Text className="text-red-700 text-xs font-medium">Rejected</Text>
+          <View className="px-3 py-1 rounded-full bg-red-100">
+            <Text className="text-xs font-bold text-red-700">● Rejected</Text>
           </View>
         );
       default:
         return (
-          <View className="bg-gray-100 px-2 py-1 rounded-full">
-            <Text className="text-gray-700 text-xs font-medium">{status}</Text>
+          <View className="px-3 py-1 rounded-full bg-gray-100">
+            <Text className="text-xs font-bold text-gray-700">● {status}</Text>
           </View>
         );
     }
   };
 
   const pendingCount = requests.filter((req) => req.status === "PENDING").length;
-  const approvedCount = requests.filter((req) => req.status === "SUBMITTED").length;
+  const approvedCount = requests.filter((req) => req.status === "APPROVED" || req.status === "COMPLETED").length;
   const rejectedCount = requests.filter((req) => req.status === "REJECTED").length;
 
   const renderRequestItem = ({ item: request }: { item: UiClubRequest }) => (
-    <View className="bg-white rounded-2xl p-6 shadow-lg mb-4">
-      <View className="flex-row items-start justify-between mb-4">
-        <View className="flex-1">
-          <View className="flex-row items-center mb-2 flex-wrap gap-2">
-            <Ionicons name="business" size={20} color="#6B7280" />
-            <Text className="text-lg font-semibold text-gray-800 flex-1">
+    <TouchableOpacity
+      onPress={() => router.push(`/uni-staff/club-requests/req-${request.id}` as any)}
+      className="bg-white rounded-3xl p-5 shadow-lg mb-4 border border-gray-100"
+    >
+      <View className="mb-3">
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center flex-1">
+            <View className="p-2 rounded-xl mr-2" style={{ backgroundColor: '#D1FAE5' }}>
+              <Ionicons name="business" size={20} color="#14B8A6" />
+            </View>
+            <Text className="text-lg font-bold text-gray-800 flex-1" numberOfLines={1}>
               {request.clubName}
             </Text>
-            {getStatusBadge(request.status)}
           </View>
-          
-          {request.majorName && (
-            <View className="bg-indigo-100 px-3 py-1 rounded-full self-start mb-2">
-              <Text className="text-indigo-700 text-xs font-medium">
-                Major: {request.majorName}
-              </Text>
-            </View>
-          )}
-          
-          <Text className="text-gray-600 mb-2" numberOfLines={2}>
-            {request.description}
-          </Text>
-          
-          {request.vision && (
-            <View className="bg-blue-50 p-2 rounded-lg mb-2">
-              <Text className="text-xs text-blue-700 font-medium mb-1">Vision:</Text>
-              <Text className="text-sm text-blue-600" numberOfLines={2}>
-                {request.vision}
-              </Text>
-            </View>
-          )}
-          
-          {request.proposerReason && (
-            <View className="bg-amber-50 p-2 rounded-lg mb-2">
-              <Text className="text-xs text-amber-700 font-medium mb-1">Proposer Reason:</Text>
-              <Text className="text-sm text-amber-600" numberOfLines={2}>
-                {request.proposerReason}
-              </Text>
-            </View>
-          )}
-          
-          <View className="space-y-2">
-            {request.requestDate && (
-              <View className="flex-row items-center">
-                <Ionicons name="calendar" size={16} color="#6B7280" />
-                <Text className="ml-2 text-sm text-gray-500">
-                  {new Date(request.requestDate).toLocaleDateString()}
-                </Text>
-              </View>
-            )}
-            
-            {request.requestedBy && (
-              <View className="flex-row items-center">
-                <Ionicons name="person" size={16} color="#6B7280" />
-                <Text className="ml-2 text-sm text-gray-500">
-                  by {String(request.requestedBy)}
-                </Text>
-              </View>
-            )}
-
-            {request.reviewedBy && request.reviewedAt && (
-              <View className="flex-row items-center">
-                <Ionicons name="checkmark-done" size={16} color="#6B7280" />
-                <Text className="ml-2 text-sm text-gray-500">
-                  Reviewed by {String(request.reviewedBy)} on {new Date(request.reviewedAt).toLocaleDateString()}
-                </Text>
-              </View>
-            )}
-
-            {request.rejectReason && (
-              <View className="flex-row items-start mt-2 bg-red-50 p-2 rounded-lg">
-                <Ionicons name="warning" size={16} color="#DC2626" />
-                <Text className="ml-2 text-sm text-red-700 flex-1">
-                  Reason: {request.rejectReason}
-                </Text>
-              </View>
-            )}
-          </View>
+          {getStatusBadge(request.status)}
         </View>
+        
+        {request.majorName && (
+          <View className="px-3 py-1 rounded-full self-start mb-2" style={{ backgroundColor: '#E0E7FF' }}>
+            <Text className="text-xs font-medium" style={{ color: '#6366F1' }}>
+              {request.majorName}
+            </Text>
+          </View>
+        )}
+        
+        <Text className="text-gray-700 mb-2 leading-5" numberOfLines={2}>
+          {request.description}
+        </Text>
+          
+        {request.vision && (
+          <View className="bg-blue-50 p-3 rounded-2xl mb-2">
+            <View className="flex-row items-center mb-1">
+              <Ionicons name="eye" size={14} color="#3B82F6" />
+              <Text className="text-xs font-bold ml-1" style={{ color: '#3B82F6' }}>Vision:</Text>
+            </View>
+            <Text className="text-sm text-blue-700" numberOfLines={2}>
+              {request.vision}
+            </Text>
+          </View>
+        )}
+        
+        {request.proposerReason && (
+          <View className="p-3 rounded-2xl mb-2" style={{ backgroundColor: '#FEF3C7' }}>
+            <View className="flex-row items-center mb-1">
+              <Ionicons name="bulb" size={14} color="#F59E0B" />
+              <Text className="text-xs font-bold ml-1" style={{ color: '#F59E0B' }}>Reason:</Text>
+            </View>
+            <Text className="text-sm" style={{ color: '#D97706' }} numberOfLines={2}>
+              {request.proposerReason}
+            </Text>
+          </View>
+        )}
+          
+        <View className="flex-row items-center gap-4 mb-2">
+          {request.requestDate && (
+            <View className="flex-row items-center">
+              <Ionicons name="calendar" size={14} color="#14B8A6" />
+              <Text className="ml-1 text-xs text-gray-600">
+                {new Date(request.requestDate).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
+          
+          {request.requestedBy && (
+            <View className="flex-row items-center">
+              <Ionicons name="person" size={14} color="#14B8A6" />
+              <Text className="ml-1 text-xs text-gray-600">
+                by {String(request.requestedBy)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {request.reviewedBy && request.reviewedAt && (
+          <View className="flex-row items-center bg-gray-50 p-2 rounded-xl mb-2">
+            <Ionicons name="checkmark-done" size={14} color="#14B8A6" />
+            <Text className="ml-1 text-xs text-gray-600">
+              Reviewed by {String(request.reviewedBy)} on {new Date(request.reviewedAt).toLocaleDateString()}
+            </Text>
+          </View>
+        )}
+
+        {request.rejectReason && (
+          <View className="bg-red-50 p-3 rounded-2xl mb-2">
+            <View className="flex-row items-center mb-1">
+              <Ionicons name="warning" size={14} color="#EF4444" />
+              <Text className="text-xs font-bold ml-1 text-red-700">Rejection Reason:</Text>
+            </View>
+            <Text className="text-sm text-red-600" numberOfLines={2}>
+              {request.rejectReason}
+            </Text>
+          </View>
+        )}
       </View>
 
       {activeTab === "pending" && (
@@ -330,7 +394,7 @@ export default function UniStaffClubRequestsPage() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -339,85 +403,87 @@ export default function UniStaffClubRequestsPage() {
       <Sidebar role={user?.role} />
       
       {/* Header */}
-      <View className="px-6 py-4 bg-white shadow-sm">
-        <Text className="text-2xl font-bold text-gray-800">Club Requests</Text>
-        <Text className="text-sm text-gray-500">Review and manage applications</Text>
+      <View className="bg-white rounded-3xl mx-6 mt-6 p-6 shadow-lg">
+        <View className="flex-row items-center">
+          <View className="p-3 rounded-2xl" style={{ backgroundColor: '#D1FAE5' }}>
+            <Ionicons name="document-text" size={28} color="#14B8A6" />
+          </View>
+          <View className="ml-4 flex-1">
+            <Text className="text-2xl font-bold text-gray-800">Club Requests</Text>
+            <Text className="text-sm text-gray-600 mt-1">Review and manage club applications</Text>
+          </View>
+        </View>
       </View>
 
       <View className="flex-1 px-6 pt-4">
         {/* Stats Cards */}
-        <View className="flex-row gap-2 mb-4">
-          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
-            <View className="flex-row items-center">
-              <View className="bg-yellow-500 p-2 rounded-lg mr-2">
-                <Ionicons name="time" size={18} color="white" />
+        <View className="flex-row gap-3 mt-4 mb-4">
+          <View className="flex-1 bg-white rounded-3xl p-4 shadow-lg border-2 border-yellow-400">
+            <View className="items-center">
+              <View className="bg-yellow-100 p-3 rounded-2xl mb-2">
+                <Ionicons name="time" size={24} color="#F59E0B" />
               </View>
-              <View>
-                <Text className="text-lg font-bold text-yellow-900">{pendingCount}</Text>
-                <Text className="text-xs text-yellow-600">Pending</Text>
-              </View>
+              <Text className="text-2xl font-bold text-gray-800">{pendingCount}</Text>
+              <Text className="text-xs text-gray-600 mt-1">Pending</Text>
             </View>
           </View>
 
-          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
-            <View className="flex-row items-center">
-              <View className="bg-green-500 p-2 rounded-lg mr-2">
-                <Ionicons name="checkmark-circle" size={18} color="white" />
+          <View className="flex-1 bg-white rounded-3xl p-4 shadow-lg border-2" style={{ borderColor: '#14B8A6' }}>
+            <View className="items-center">
+              <View className="p-3 rounded-2xl mb-2" style={{ backgroundColor: '#D1FAE5' }}>
+                <Ionicons name="checkmark-circle" size={24} color="#14B8A6" />
               </View>
-              <View>
-                <Text className="text-lg font-bold text-green-900">{approvedCount}</Text>
-                <Text className="text-xs text-green-600">Submitted</Text>
-              </View>
+              <Text className="text-2xl font-bold text-gray-800">{approvedCount}</Text>
+              <Text className="text-xs text-gray-600 mt-1">Approved</Text>
             </View>
           </View>
 
-          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
-            <View className="flex-row items-center">
-              <View className="bg-red-500 p-2 rounded-lg mr-2">
-                <Ionicons name="close-circle" size={18} color="white" />
+          <View className="flex-1 bg-white rounded-3xl p-4 shadow-lg border-2 border-red-400">
+            <View className="items-center">
+              <View className="bg-red-100 p-3 rounded-2xl mb-2">
+                <Ionicons name="close-circle" size={24} color="#EF4444" />
               </View>
-              <View>
-                <Text className="text-lg font-bold text-red-900">{rejectedCount}</Text>
-                <Text className="text-xs text-red-600">Rejected</Text>
-              </View>
+              <Text className="text-2xl font-bold text-gray-800">{rejectedCount}</Text>
+              <Text className="text-xs text-gray-600 mt-1">Rejected</Text>
             </View>
           </View>
         </View>
 
         {/* Search */}
-        <View className="bg-white rounded-xl p-3 shadow-sm mb-4">
+        <View className="bg-white rounded-3xl p-4 shadow-lg mb-4">
           <View className="flex-row items-center">
-            <Ionicons name="search" size={18} color="#6B7280" />
+            <View className="p-2 rounded-xl" style={{ backgroundColor: '#14B8A6' }}>
+              <Ionicons name="search" size={20} color="white" />
+            </View>
             <AppTextInput
               placeholder="Search by club name or requester..."
               value={searchTerm}
               onChangeText={setSearchTerm}
-              className="flex-1 ml-3 text-gray-700"
+              className="flex-1 ml-3 text-base text-gray-800"
             />
             {searchTerm.length > 0 && (
               <TouchableOpacity onPress={() => setSearchTerm("")}>
-                <Ionicons name="close-circle" size={20} color="#6B7280" />
+                <Ionicons name="close-circle" size={22} color="#9CA3AF" />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         {/* Tabs */}
-        <View className="bg-white rounded-xl p-2 shadow-sm mb-4">
-          <View className="flex-row">
+        <View className="bg-white rounded-3xl p-2 shadow-lg mb-4">
+          <View className="flex-row gap-2">
             <TouchableOpacity
               onPress={() => setActiveTab("pending")}
-              className={`flex-1 py-2 px-4 rounded-lg ${
-                activeTab === "pending" ? "bg-emerald-500" : "bg-transparent"
-              }`}
+              className="flex-1 py-3 px-3 rounded-2xl"
+              style={{ backgroundColor: activeTab === "pending" ? '#14B8A6' : 'transparent' }}
             >
               <View className="flex-row items-center justify-center">
                 <Ionicons 
                   name="time" 
-                  size={16} 
+                  size={18} 
                   color={activeTab === "pending" ? "white" : "#6B7280"} 
                 />
-                <Text className={`ml-2 font-medium text-sm ${
+                <Text className={`ml-2 font-bold text-sm ${
                   activeTab === "pending" ? "text-white" : "text-gray-600"
                 }`}>
                   Pending ({pendingRequests.length})
@@ -427,17 +493,16 @@ export default function UniStaffClubRequestsPage() {
 
             <TouchableOpacity
               onPress={() => setActiveTab("processed")}
-              className={`flex-1 py-2 px-4 rounded-lg ${
-                activeTab === "processed" ? "bg-emerald-500" : "bg-transparent"
-              }`}
+              className="flex-1 py-3 px-3 rounded-2xl"
+              style={{ backgroundColor: activeTab === "processed" ? '#14B8A6' : 'transparent' }}
             >
               <View className="flex-row items-center justify-center">
                 <Ionicons 
-                  name="checkmark-circle" 
-                  size={16} 
+                  name="checkmark-done" 
+                  size={18} 
                   color={activeTab === "processed" ? "white" : "#6B7280"} 
                 />
-                <Text className={`ml-2 font-medium text-sm ${
+                <Text className={`ml-2 font-bold text-sm ${
                   activeTab === "processed" ? "text-white" : "text-gray-600"
                 }`}>
                   Processed ({processedRequests.length})

@@ -1,6 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchEvent, getMyEventRegistrations, registerForEvent, timeObjectToString, type Event, type EventRegistration } from '@services/event.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -60,7 +60,20 @@ export default function PublicEventsPage() {
         return isPublicEvent;
       });
       
-      console.log('✅ PUBLIC registrations filter applied:', publicRegistrations.length, 'of', registrations.length);
+      // console.log('✅ PUBLIC registrations filter applied:', publicRegistrations.length, 'of', registrations.length);
+      
+      // Log event details to debug
+      // publicEvents.forEach((event, index) => {
+      //   // console.log(`Public Event ${index + 1}:`, {
+      //   //   id: event.id,
+      //   //   name: event.name,
+      //   //   status: event.status,
+      //   //   type: event.type,
+      //   //   date: event.date || event.startDate,
+      //   //   endTime: event.endTime,
+      //   //   hasEndTime: !!event.endTime
+      //   // });
+      // });
       
       setEvents(publicEvents);
       setMyRegistrations(publicRegistrations);
@@ -110,18 +123,6 @@ export default function PublicEventsPage() {
     }
     
     // Single-day event check
-    
-    // Check if event is multi-day
-    if (event.days && event.days.length > 0) {
-      const lastDay = event.days[event.days.length - 1];
-      const [endHour, endMinute] = lastDay.endTime.split(':').map(Number);
-      const [year, month, dayNum] = lastDay.date.split('-').map(Number);
-      const eventEnd = new Date(year, month - 1, dayNum, endHour, endMinute);
-      
-      return now > eventEnd;
-    }
-    
-    // Single-day event check
     if (!event.date || !event.endTime) return false;
 
     try {
@@ -141,9 +142,11 @@ export default function PublicEventsPage() {
   // Apply all filters
   useEffect(() => {
     let filtered = events;
+    // console.log('📊 Starting filter - Total events:', events.length);
 
     // CRITICAL: Extra safety check - ensure all events are PUBLIC type
     filtered = filtered.filter((event) => event.type === 'PUBLIC');
+    // console.log('📊 After PUBLIC filter:', filtered.length);
 
     // Filter by search term
     if (searchTerm.trim() !== '') {
@@ -164,11 +167,14 @@ export default function PublicEventsPage() {
 
     // Filter by expired status
     const isFutureEvent = (event: Event) => {
-      if (!event.date) return false;
-      const eventDate = new Date(event.date);
+      // Check for multi-day events first
+      const eventDate = event.startDate || event.date;
+      if (!eventDate) return false;
+      
+      const date = new Date(eventDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      return eventDate >= today;
+      return date >= today;
     };
 
     filtered = filtered.filter((event) => {
@@ -176,14 +182,25 @@ export default function PublicEventsPage() {
       const isFuture = isFutureEvent(event);
       
       if (showExpiredFilter === 'hide') {
+        // Always reject REJECTED events
         if (event.status === 'REJECTED') return false;
-        if (!['APPROVED', 'PENDING_UNISTAFF', 'ONGOING'].includes(event.status)) return false;
+        
+        // Always show ONGOING events
         if (event.status === 'ONGOING') return true;
+        
+        // Only show APPROVED and PENDING_UNISTAFF statuses
+        if (!['APPROVED', 'PENDING_UNISTAFF'].includes(event.status)) return false;
+        
+        // Hide expired events
         if (isExpired) return false;
+        
+        // Only show future or today's events
         if (!isFuture) return false;
       } else if (showExpiredFilter === 'only') {
+        // Only show expired events
         if (!isExpired) return false;
       } else if (showExpiredFilter === 'show') {
+        // Show all events except rejected
         if (!['APPROVED', 'PENDING_UNISTAFF', 'COMPLETED', 'ONGOING'].includes(event.status)) {
           return false;
         }
@@ -192,23 +209,36 @@ export default function PublicEventsPage() {
       return true;
     });
 
+    console.log('📊 Final filtered events:', filtered.length);
+    console.log('📊 Filter settings - showExpiredFilter:', showExpiredFilter, 'showRegisteredOnly:', showRegisteredOnly);
+    
+    // Log details of filtered events
+    filtered.forEach((event, index) => {
+      console.log(`Event ${index + 1}:`, {
+        name: event.name,
+        status: event.status,
+        date: event.date || event.startDate,
+        isExpired: isEventExpired(event)
+      });
+    });
+
     setFilteredEvents(filtered);
   }, [searchTerm, events, showExpiredFilter, showRegisteredOnly, myRegistrations]);
 
-  // Get status badge color
+  // Get status badge style and border color
   const getStatusBadgeStyle = (event: Event) => {
     if (event.status === 'COMPLETED') {
-      return 'bg-blue-900';
+      return { border: 'border-l-4 border-l-blue-900', badge: 'bg-blue-900' };
     } else if (event.status === 'ONGOING') {
-      return 'bg-cyan-600';
+      return { border: 'border-l-4 border-l-purple-500', badge: 'bg-purple-500' };
     } else if (event.status === 'APPROVED') {
-      return 'bg-green-500';
+      return { border: 'border-l-4 border-l-green-500', badge: 'bg-green-500' };
     } else if (event.status === 'PENDING_UNISTAFF') {
-      return 'bg-yellow-500';
+      return { border: 'border-l-4 border-l-yellow-500', badge: 'bg-yellow-500' };
     } else if (event.status === 'REJECTED') {
-      return 'bg-red-500';
+      return { border: 'border-l-4 border-l-red-500', badge: 'bg-red-500' };
     }
-    return 'bg-gray-400';
+    return { border: '', badge: 'bg-gray-400' };
   };
 
   // Get status text
@@ -371,6 +401,12 @@ export default function PublicEventsPage() {
                 const isRegistered = isEventRegistered(event.id);
                 const isExpired = isEventExpired(event);
                 const statusText = getStatusText(event);
+                const statusStyle = getStatusBadgeStyle(event);
+
+                // Calculate receive points (from web logic)
+                const budgetPoints = event.budgetPoints ?? 0;
+                const maxCheckInCount = event.maxCheckInCount ?? 1;
+                const receivePoints = maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0;
 
                 return (
                   <View
@@ -378,7 +414,7 @@ export default function PublicEventsPage() {
                     className="bg-white rounded-xl shadow-sm mb-3 overflow-hidden"
                   >
                     {/* Event Header */}
-                    <View className={`p-4 border-l-4 ${getStatusBadgeStyle(event)}`}>
+                    <View className={`p-4 ${statusStyle.border}`}>
                       <View className="flex-row items-start justify-between mb-2">
                         <View className="flex-1 mr-3">
                           <Text className="text-lg font-bold text-gray-900" numberOfLines={2}>

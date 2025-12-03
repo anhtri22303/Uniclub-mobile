@@ -1,4 +1,4 @@
-package com.anhtri.uniclub
+package com.uniclub
 
 import android.app.Application
 import android.content.res.Configuration

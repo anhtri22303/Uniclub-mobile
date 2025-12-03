@@ -1,6 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import PolicyService, { Policy } from '@services/policy.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -38,7 +38,6 @@ export default function UniStaffPoliciesPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editMajorId, setEditMajorId] = useState('');
   const [editMaxClubJoin, setEditMaxClubJoin] = useState('');
-  const [editRewardMultiplier, setEditRewardMultiplier] = useState('');
   const [editActive, setEditActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -47,7 +46,6 @@ export default function UniStaffPoliciesPage() {
   const [createDescription, setCreateDescription] = useState('');
   const [createMajorId, setCreateMajorId] = useState('');
   const [createMaxClubJoin, setCreateMaxClubJoin] = useState('');
-  const [createRewardMultiplier, setCreateRewardMultiplier] = useState('');
   const [creating, setCreating] = useState(false);
 
   // Load policies
@@ -82,7 +80,7 @@ export default function UniStaffPoliciesPage() {
     const query = searchQuery.toLowerCase();
     return policies.filter(
       (p) =>
-        (p.policyName || p.name || '').toLowerCase().includes(query) ||
+        (p.policyName || '').toLowerCase().includes(query) ||
         (p.description || '').toLowerCase().includes(query) ||
         (p.majorName || '').toLowerCase().includes(query)
     );
@@ -107,11 +105,10 @@ export default function UniStaffPoliciesPage() {
   // Open detail modal
   const openDetail = (policy: Policy) => {
     setSelectedPolicy(policy);
-    setEditPolicyName(policy.policyName || policy.name || '');
+    setEditPolicyName(policy.policyName || '');
     setEditDescription(policy.description || '');
     setEditMajorId(policy.majorId?.toString() || '');
     setEditMaxClubJoin(policy.maxClubJoin?.toString() || '');
-    setEditRewardMultiplier(policy.rewardMultiplier?.toString() || '');
     setEditActive(policy.active);
     setDetailModalVisible(true);
   };
@@ -127,24 +124,19 @@ export default function UniStaffPoliciesPage() {
         description: editDescription,
         majorId: editMajorId ? parseInt(editMajorId) : selectedPolicy.majorId,
         maxClubJoin: editMaxClubJoin ? parseInt(editMaxClubJoin) : undefined,
-        rewardMultiplier: editRewardMultiplier ? parseFloat(editRewardMultiplier) : undefined,
       };
 
-      const result = await PolicyService.updatePolicyById(selectedPolicy.id, payload);
+      await PolicyService.updatePolicyById(selectedPolicy.id, payload);
 
-      if (result.success) {
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: result.message || 'Policy updated successfully',
-          visibilityTime: 3000,
-          autoHide: true,
-        });
-        setDetailModalVisible(false);
-        loadPolicies();
-      } else {
-        throw new Error(result.message || 'Update failed');
-      }
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Policy updated successfully',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      setDetailModalVisible(false);
+      loadPolicies();
     } catch (error: any) {
       Toast.show({
         type: 'error',
@@ -178,25 +170,20 @@ export default function UniStaffPoliciesPage() {
         description: createDescription,
         majorId: createMajorId ? parseInt(createMajorId) : undefined,
         maxClubJoin: createMaxClubJoin ? parseInt(createMaxClubJoin) : undefined,
-        rewardMultiplier: createRewardMultiplier ? parseFloat(createRewardMultiplier) : undefined,
       };
 
-      const result = await PolicyService.createPolicy(payload);
+      await PolicyService.createPolicy(payload);
 
-      if (result.success) {
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: result.message || 'Policy created successfully',
-          visibilityTime: 3000,
-          autoHide: true,
-        });
-        setCreateModalVisible(false);
-        resetCreateForm();
-        loadPolicies();
-      } else {
-        throw new Error(result.message || 'Create failed');
-      }
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Policy created successfully',
+        visibilityTime: 3000,
+        autoHide: true,
+      });
+      setCreateModalVisible(false);
+      resetCreateForm();
+      loadPolicies();
     } catch (error: any) {
       Toast.show({
         type: 'error',
@@ -214,7 +201,7 @@ export default function UniStaffPoliciesPage() {
   const handleDelete = async (policy: Policy) => {
     Alert.alert(
       'Confirm Delete',
-      `Are you sure you want to delete "${policy.policyName || policy.name}"?`,
+      `Are you sure you want to delete "${policy.policyName}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -222,23 +209,19 @@ export default function UniStaffPoliciesPage() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const result = await PolicyService.deletePolicyById(policy.id);
+              await PolicyService.deletePolicyById(policy.id);
 
-              if (result.success) {
-                Toast.show({
-                  type: 'success',
-                  text1: 'Success',
-                  text2: result.message || 'Policy deleted successfully',
-                  visibilityTime: 3000,
-                  autoHide: true,
-                });
-                if (selectedPolicy?.id === policy.id) {
-                  setDetailModalVisible(false);
-                }
-                loadPolicies();
-              } else {
-                throw new Error(result.message || 'Delete failed');
+              Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: 'Policy deleted successfully',
+                visibilityTime: 3000,
+                autoHide: true,
+              });
+              if (selectedPolicy?.id === policy.id) {
+                setDetailModalVisible(false);
               }
+              loadPolicies();
             } catch (error: any) {
               Toast.show({
                 type: 'error',
@@ -259,7 +242,6 @@ export default function UniStaffPoliciesPage() {
     setCreateDescription('');
     setCreateMajorId('');
     setCreateMaxClubJoin('');
-    setCreateRewardMultiplier('');
   };
 
   if (loading) {
@@ -282,33 +264,50 @@ export default function UniStaffPoliciesPage() {
       <Sidebar role={user?.role} />
 
       {/* Header */}
-      <View className="px-6 py-4 bg-white border-b border-gray-200">
-        <View className="flex-row items-center mb-2">
-          <Ionicons name="document-text" size={28} color="#3B82F6" />
-          <Text className="text-2xl font-bold text-gray-800 ml-2">Policies</Text>
-        </View>
-        <Text className="text-gray-600">Manage university policies</Text>
-      </View>
-
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-        {/* Stats Card */}
-        <View className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-6 shadow-lg mt-6 mb-4">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-sm text-blue-700 font-medium">Total Policies</Text>
-              <Text className="text-3xl font-bold text-blue-900 mt-1">{policies.length}</Text>
-              <Text className="text-xs text-blue-600 mt-1">Active: {policies.filter(p => p.active).length}</Text>
+      <View className="bg-white rounded-3xl mx-6 mt-6 p-6 shadow-lg">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1">
+            <View className="bg-teal-100 p-3 rounded-2xl" style={{ backgroundColor: '#D1FAE5' }}>
+              <Ionicons name="document-text" size={28} color="#14B8A6" />
             </View>
-            <View className="bg-blue-500 p-4 rounded-2xl">
-              <Ionicons name="file-tray-full" size={32} color="white" />
+            <View className="ml-4 flex-1">
+              <Text className="text-2xl font-bold text-gray-800">Policies</Text>
+              <Text className="text-gray-600 text-sm mt-1">Manage university policies</Text>
             </View>
           </View>
         </View>
+      </View>
 
-        {/* Search and Create */}
-        <View className="bg-white rounded-3xl p-6 shadow-lg mb-4">
-          <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 mb-3">
-            <Ionicons name="search" size={20} color="#6B7280" />
+      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+        {/* Stats Cards */}
+        <View className="flex-row gap-3 mt-4 mb-4">
+          <View className="flex-1 bg-white rounded-3xl p-5 shadow-lg border-2" style={{ borderColor: '#14B8A6' }}>
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="p-2 rounded-xl" style={{ backgroundColor: '#D1FAE5' }}>
+                <Ionicons name="document-text" size={24} color="#14B8A6" />
+              </View>
+            </View>
+            <Text className="text-2xl font-bold text-gray-800">{policies.length}</Text>
+            <Text className="text-xs text-gray-600 mt-1">Total Policies</Text>
+          </View>
+
+          <View className="flex-1 bg-white rounded-3xl p-5 shadow-lg border-2 border-green-500">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="bg-green-100 p-2 rounded-xl">
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+              </View>
+            </View>
+            <Text className="text-2xl font-bold text-gray-800">{policies.filter(p => p.active).length}</Text>
+            <Text className="text-xs text-gray-600 mt-1">Active</Text>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View className="bg-white rounded-3xl p-4 shadow-lg mb-4">
+          <View className="flex-row items-center">
+            <View className="p-2 rounded-xl" style={{ backgroundColor: '#14B8A6' }}>
+              <Ionicons name="search" size={20} color="white" />
+            </View>
             <AppTextInput
               className="flex-1 ml-3 text-base text-gray-800"
               placeholder="Search policies..."
@@ -321,15 +320,17 @@ export default function UniStaffPoliciesPage() {
               </TouchableOpacity>
             )}
           </View>
-
-          <TouchableOpacity
-            onPress={() => setCreateModalVisible(true)}
-            className="bg-blue-600 rounded-xl py-3 items-center flex-row justify-center"
-          >
-            <Ionicons name="add-circle" size={20} color="white" />
-            <Text className="text-white font-bold ml-2">Create New Policy</Text>
-          </TouchableOpacity>
         </View>
+
+        {/* Create Button */}
+        <TouchableOpacity
+          onPress={() => setCreateModalVisible(true)}
+          className="rounded-3xl py-4 items-center flex-row justify-center shadow-lg mb-4"
+          style={{ backgroundColor: '#14B8A6' }}
+        >
+          <Ionicons name="add-circle" size={22} color="white" />
+          <Text className="text-white font-bold text-base ml-2">Create New Policy</Text>
+        </TouchableOpacity>
 
         {/* Policies List */}
         <View className="bg-white rounded-3xl p-6 shadow-lg mb-6">
@@ -347,81 +348,70 @@ export default function UniStaffPoliciesPage() {
               {paginatedPolicies.map((policy, index) => (
                 <View
                   key={policy.id}
-                  className={`p-4 rounded-2xl mb-3 ${
-                    index % 2 === 0 ? 'bg-gray-50' : 'bg-white border border-gray-100'
-                  }`}
+                  className="bg-gray-50 rounded-3xl p-5 mb-4 border-2 border-gray-100"
                 >
-                  <View className="flex-row items-start justify-between mb-2">
+                  <View className="flex-row items-start justify-between mb-3">
                     <View className="flex-1">
-                      <Text className="text-lg font-bold text-gray-800 mb-1">
-                        {policy.policyName || policy.name}
-                      </Text>
-                      <View
-                        className={`self-start px-3 py-1 rounded-full ${
-                          policy.active ? 'bg-green-100' : 'bg-red-100'
-                        }`}
-                      >
-                        <Text
-                          className={`text-xs font-medium ${
-                            policy.active ? 'text-green-700' : 'text-red-700'
-                          }`}
+                      <View className="flex-row items-center mb-2">
+                        <View
+                          className="px-3 py-1 rounded-full mr-2"
+                          style={{ backgroundColor: policy.active ? '#D1FAE5' : '#FEE2E2' }}
                         >
-                          {policy.active ? 'Active' : 'Inactive'}
-                        </Text>
+                          <Text
+                            className="text-xs font-bold"
+                            style={{ color: policy.active ? '#14B8A6' : '#EF4444' }}
+                          >
+                            {policy.active ? '● Active' : '● Inactive'}
+                          </Text>
+                        </View>
+                        <Text className="text-xs text-gray-500">ID: {policy.id}</Text>
                       </View>
+                      <Text className="text-lg font-bold text-gray-800">
+                        {policy.policyName}
+                      </Text>
                     </View>
-                    <Text className="text-sm text-gray-500">ID: {policy.id}</Text>
                   </View>
 
                   {policy.majorName && (
-                    <View className="flex-row items-center mb-2">
-                      <Ionicons name="school" size={14} color="#6B7280" />
-                      <Text className="text-sm text-gray-600 ml-1">{policy.majorName}</Text>
+                    <View className="flex-row items-center mb-3 bg-white rounded-xl px-3 py-2">
+                      <Ionicons name="school" size={16} color="#14B8A6" />
+                      <Text className="text-sm text-gray-700 ml-2 font-medium">{policy.majorName}</Text>
                     </View>
                   )}
 
                   {policy.description && (
-                    <Text className="text-sm text-gray-600 mb-3" numberOfLines={2}>
+                    <Text className="text-sm text-gray-600 mb-3 leading-5" numberOfLines={2}>
                       {policy.description}
                     </Text>
                   )}
 
-                  <View className="flex-row items-center gap-4 mb-3">
-                    {policy.maxClubJoin !== undefined && (
-                      <View className="flex-row items-center">
-                        <Ionicons name="people" size={14} color="#6B7280" />
-                        <Text className="text-xs text-gray-600 ml-1">
-                          Max Join: {policy.maxClubJoin}
-                        </Text>
-                      </View>
-                    )}
-                    {policy.rewardMultiplier !== undefined && (
-                      <View className="flex-row items-center">
-                        <Ionicons name="star" size={14} color="#6B7280" />
-                        <Text className="text-xs text-gray-600 ml-1">
-                          Reward: {policy.rewardMultiplier}x
-                        </Text>
-                      </View>
-                    )}
-                  </View>
+                  {policy.maxClubJoin !== undefined && (
+                    <View className="flex-row items-center bg-white rounded-xl px-3 py-2 mb-4">
+                      <Ionicons name="people" size={16} color="#14B8A6" />
+                      <Text className="text-xs text-gray-700 ml-1 font-medium">
+                        Max Club Join: {policy.maxClubJoin}
+                      </Text>
+                    </View>
+                  )}
 
-                  <View className="flex-row gap-2">
+                  <View className="flex-row gap-3">
                     <TouchableOpacity
                       onPress={() => openDetail(policy)}
-                      className="flex-1 bg-blue-600 rounded-xl py-2 items-center"
+                      className="flex-1 rounded-2xl py-3 items-center"
+                      style={{ backgroundColor: '#14B8A6' }}
                     >
                       <View className="flex-row items-center">
-                        <Ionicons name="eye" size={16} color="white" />
-                        <Text className="text-white font-medium ml-1">View</Text>
+                        <Ionicons name="create" size={18} color="white" />
+                        <Text className="text-white font-bold ml-1">Edit</Text>
                       </View>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDelete(policy)}
-                      className="flex-1 bg-red-600 rounded-xl py-2 items-center"
+                      className="flex-1 bg-red-500 rounded-2xl py-3 items-center"
                     >
                       <View className="flex-row items-center">
-                        <Ionicons name="trash" size={16} color="white" />
-                        <Text className="text-white font-medium ml-1">Delete</Text>
+                        <Ionicons name="trash" size={18} color="white" />
+                        <Text className="text-white font-bold ml-1">Delete</Text>
                       </View>
                     </TouchableOpacity>
                   </View>
@@ -430,13 +420,12 @@ export default function UniStaffPoliciesPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <View className="flex-row items-center justify-center gap-3 mt-4">
+                <View className="flex-row items-center justify-center gap-3 mt-2">
                   <TouchableOpacity
                     onPress={handlePreviousPage}
                     disabled={currentPage === 1}
-                    className={`p-2 rounded-lg ${
-                      currentPage === 1 ? 'bg-gray-200' : 'bg-blue-600'
-                    }`}
+                    className="p-3 rounded-2xl"
+                    style={{ backgroundColor: currentPage === 1 ? '#E5E7EB' : '#14B8A6' }}
                   >
                     <Ionicons
                       name="chevron-back"
@@ -445,16 +434,17 @@ export default function UniStaffPoliciesPage() {
                     />
                   </TouchableOpacity>
 
-                  <Text className="text-sm font-medium text-gray-700">
-                    Page {currentPage} / {totalPages}
-                  </Text>
+                  <View className="bg-gray-100 px-4 py-2 rounded-2xl">
+                    <Text className="text-sm font-bold text-gray-700">
+                      {currentPage} / {totalPages}
+                    </Text>
+                  </View>
 
                   <TouchableOpacity
                     onPress={handleNextPage}
                     disabled={currentPage === totalPages}
-                    className={`p-2 rounded-lg ${
-                      currentPage === totalPages ? 'bg-gray-200' : 'bg-blue-600'
-                    }`}
+                    className="p-3 rounded-2xl"
+                    style={{ backgroundColor: currentPage === totalPages ? '#E5E7EB' : '#14B8A6' }}
                   >
                     <Ionicons
                       name="chevron-forward"
@@ -521,29 +511,15 @@ export default function UniStaffPoliciesPage() {
                   />
                 </View>
 
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Max Club Join</Text>
-                    <AppTextInput
-                      className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
-                      value={editMaxClubJoin}
-                      onChangeText={setEditMaxClubJoin}
-                      placeholder="Max"
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-700 mb-2">
-                      Reward Multiplier
-                    </Text>
-                    <AppTextInput
-                      className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
-                      value={editRewardMultiplier}
-                      onChangeText={setEditRewardMultiplier}
-                      placeholder="1.0"
-                      keyboardType="decimal-pad"
-                    />
-                  </View>
+                <View>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Max Club Join</Text>
+                  <AppTextInput
+                    className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
+                    value={editMaxClubJoin}
+                    onChangeText={setEditMaxClubJoin}
+                    placeholder="Max clubs a student can join"
+                    keyboardType="numeric"
+                  />
                 </View>
 
                 <View className="flex-row items-center py-2">
@@ -565,16 +541,15 @@ export default function UniStaffPoliciesPage() {
                 <View className="flex-row gap-3 mt-4">
                   <TouchableOpacity
                     onPress={() => setDetailModalVisible(false)}
-                    className="flex-1 bg-gray-200 rounded-xl py-3 items-center"
+                    className="flex-1 bg-gray-200 rounded-2xl py-3 items-center"
                   >
                     <Text className="text-gray-700 font-bold">Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleSave}
                     disabled={saving}
-                    className={`flex-1 rounded-xl py-3 items-center ${
-                      saving ? 'bg-gray-400' : 'bg-blue-600'
-                    }`}
+                    className="flex-1 rounded-2xl py-3 items-center"
+                    style={{ backgroundColor: saving ? '#9CA3AF' : '#14B8A6' }}
                   >
                     {saving ? (
                       <ActivityIndicator color="white" />
@@ -643,29 +618,15 @@ export default function UniStaffPoliciesPage() {
                   />
                 </View>
 
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Max Club Join</Text>
-                    <AppTextInput
-                      className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
-                      value={createMaxClubJoin}
-                      onChangeText={setCreateMaxClubJoin}
-                      placeholder="Max"
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-700 mb-2">
-                      Reward Multiplier
-                    </Text>
-                    <AppTextInput
-                      className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
-                      value={createRewardMultiplier}
-                      onChangeText={setCreateRewardMultiplier}
-                      placeholder="1.0"
-                      keyboardType="decimal-pad"
-                    />
-                  </View>
+                <View>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Max Club Join</Text>
+                  <AppTextInput
+                    className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 text-gray-800"
+                    value={createMaxClubJoin}
+                    onChangeText={setCreateMaxClubJoin}
+                    placeholder="Max clubs a student can join"
+                    keyboardType="numeric"
+                  />
                 </View>
 
                 <View className="flex-row gap-3 mt-4">
@@ -674,16 +635,15 @@ export default function UniStaffPoliciesPage() {
                       setCreateModalVisible(false);
                       resetCreateForm();
                     }}
-                    className="flex-1 bg-gray-200 rounded-xl py-3 items-center"
+                    className="flex-1 bg-gray-200 rounded-2xl py-3 items-center"
                   >
                     <Text className="text-gray-700 font-bold">Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleCreate}
                     disabled={creating}
-                    className={`flex-1 rounded-xl py-3 items-center ${
-                      creating ? 'bg-gray-400' : 'bg-blue-600'
-                    }`}
+                    className="flex-1 rounded-2xl py-3 items-center"
+                    style={{ backgroundColor: creating ? '#9CA3AF' : '#14B8A6' }}
                   >
                     {creating ? (
                       <ActivityIndicator color="white" />

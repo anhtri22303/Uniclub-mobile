@@ -1,4 +1,4 @@
-package com.anhtri.uniclub
+package com.uniclub
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

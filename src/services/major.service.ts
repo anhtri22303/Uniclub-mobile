@@ -59,7 +59,7 @@ export class MajorService {
     try {
       console.log('fetchMajors: GET /api/university/majors');
       const response = await axiosClient.get<Major[]>('/api/university/majors');
-      console.log('fetchMajors response:', response.data);
+      // console.log('fetchMajors response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching majors:', error);
