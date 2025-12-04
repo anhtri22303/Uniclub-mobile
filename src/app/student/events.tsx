@@ -12,13 +12,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -142,18 +142,15 @@ export default function StudentEventsPage() {
     setRefreshing(false);
   };
 
-  // Initial load
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  // Reload events when selected club changes
+  // Initial load and reload when selected club changes
   useEffect(() => {
     if (selectedClubId) {
       console.log('Selected club changed to:', selectedClubId);
       loadEvents(selectedClubId);
+    } else {
+      loadEvents();
     }
-  }, [selectedClubId]);
+  }, [selectedClubId, userClubIds.length]);
 
   // Helper function to check if event is registered
   const isEventRegistered = (eventId: number) => {
