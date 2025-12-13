@@ -6,13 +6,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -141,7 +141,7 @@ export default function StudentCheckInPage() {
         setTotalPoints((prev) => prev + 50); // Example points
 
         Alert.alert(
-          'Check-in Successful! ✅',
+          'Check-in Successful!  ',
           `You've checked in to "${event.name}"\n+50 points earned!`,
           [{ text: 'OK', onPress: () => setCheckInCode('') }]
         );
@@ -170,7 +170,7 @@ export default function StudentCheckInPage() {
     setTotalPoints((prev) => prev + 50);
 
     Alert.alert(
-      'Check-in Successful! ✅',
+      'Check-in Successful!  ',
       `You've checked in to "${event.name}"\n+50 points earned!`
     );
   };
@@ -229,7 +229,7 @@ export default function StudentCheckInPage() {
                       <View className="flex-1 mr-3">
                         <View className="flex-row items-center mb-2">
                           {isCheckedIn && (
-                            <Text className="text-green-600 text-lg mr-2">✅</Text>
+                            <Text className="text-green-600 text-lg mr-2"> </Text>
                           )}
                           <Text
                             className="text-lg font-bold text-gray-900 flex-1"
@@ -278,7 +278,7 @@ export default function StudentCheckInPage() {
                       )}
                       {event.venue && (
                         <View className="flex-row items-center mb-1">
-                          <Text className="text-gray-400 mr-1">📍</Text>
+                          <Text className="text-gray-400 mr-1"></Text>
                           <Text className="text-xs text-gray-600">
                             {event.venue}
                           </Text>
@@ -296,7 +296,7 @@ export default function StudentCheckInPage() {
                     >
                       <View className="flex-row items-center">
                         <Text className="text-white text-base font-semibold">
-                          {isCheckedIn ? '✅ Checked In' : '✅ Quick Check In'}
+                          {isCheckedIn ? '  Checked In' : '  Quick Check In'}
                         </Text>
                       </View>
                     </TouchableOpacity>

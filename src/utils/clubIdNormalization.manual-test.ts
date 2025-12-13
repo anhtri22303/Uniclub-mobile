@@ -63,7 +63,7 @@ export function runClubIdTests() {
   console.log('  Input:', mockResponseWithClubId.clubId);
   console.log('  Output:', test1);
   console.log('  Expected: [2]');
-  console.log('  ✅ Pass:', JSON.stringify(test1) === JSON.stringify([2]));
+  console.log('    Pass:', JSON.stringify(test1) === JSON.stringify([2]));
   console.log('');
 
   // Test 2: Multiple clubIds
@@ -72,7 +72,7 @@ export function runClubIdTests() {
   console.log('  Input:', mockResponseWithClubIds.clubIds);
   console.log('  Output:', test2);
   console.log('  Expected: [1, 2, 3]');
-  console.log('  ✅ Pass:', JSON.stringify(test2) === JSON.stringify([1, 2, 3]));
+  console.log('    Pass:', JSON.stringify(test2) === JSON.stringify([1, 2, 3]));
   console.log('');
 
   // Test 3: No club data
@@ -81,7 +81,7 @@ export function runClubIdTests() {
   console.log('  Input: undefined');
   console.log('  Output:', test3);
   console.log('  Expected: undefined');
-  console.log('  ✅ Pass:', test3 === undefined);
+  console.log('    Pass:', test3 === undefined);
   console.log('');
 
   console.log('=== All Tests Completed ===');

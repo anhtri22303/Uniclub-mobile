@@ -84,8 +84,6 @@ export class UserService {
     try {
       const response = await axiosClient.get<ProfileResponse>('/api/users/profile');
       const body = response.data;
-      
-      // console.log('Fetched profile response:', body);
 
       if (body && body.success && body.data) {
         return body.data;
@@ -103,10 +101,8 @@ export class UserService {
    */
   static async editProfile(data: EditProfileRequest): Promise<any> {
     try {
-      console.log('Editing profile with data:', data);
       const response = await axiosClient.put('/api/users/profile', data);
       const body = response.data;
-      console.log('Edit profile response:', body);
       
       return body;
     } catch (error) {
@@ -121,8 +117,6 @@ export class UserService {
    */
   static async uploadAvatar(fileUri: { uri: string; type: string; name: string }): Promise<any> {
     try {
-      console.log('Uploading avatar file:', fileUri.name);
-      
       const formData = new FormData();
       // For React Native, append file with proper structure
       formData.append('file', fileUri as any);
@@ -134,7 +128,6 @@ export class UserService {
       });
       
       const body = response.data;
-      console.log('Upload avatar response:', body);
       
       return body;
     } catch (error) {
@@ -149,8 +142,6 @@ export class UserService {
    */
   static async uploadBackground(fileUri: { uri: string; type: string; name: string }): Promise<any> {
     try {
-      console.log('Uploading background file:', fileUri.name);
-      
       const formData = new FormData();
       // For React Native, append file with proper structure
       formData.append('file', fileUri as any);
@@ -162,7 +153,6 @@ export class UserService {
       });
       
       const body = response.data;
-      console.log('Upload background response:', body);
       
       return body;
     } catch (error) {
@@ -179,12 +169,9 @@ export class UserService {
     try {
       const response = await axiosClient.get<{ content: UserApiResponse[] }>('/api/users');
       const body = response.data;
-      console.log('Fetched users response:', body);
 
       // If backend returns a paginated wrapper, return the `content` array.
       if (body && typeof body === 'object' && 'content' in body && Array.isArray(body.content)) {
-        console.log('fetchUsers returning body.content (array)');
-        
         // Transform API response to UserProfile format
         return body.content.map((user) => ({
           userId: user.id,
@@ -226,15 +213,12 @@ export class UserService {
     try {
       const response = await axiosClient.get(`/api/users/${id}`);
       const body: any = response.data;
-      console.log('fetchUserById:', body);
       
       // If backend wraps payload in { success, message, data }, unwrap it
       if (body && typeof body === 'object' && 'data' in body) {
-        console.log('fetchUserById unwrapped data:', body.data);
         return body.data;
       }
       
-      console.log('fetchUserById returned raw body:', body);
       return body;
     } catch (error) {
       console.error(`Error fetching user ${id}:`, error);
@@ -275,7 +259,6 @@ export class UserService {
     try {
       const response = await axiosClient.get<any>('/api/users/stats');
       const body = response.data;
-      console.log('Fetched user stats response:', body);
 
       // If backend uses { success, message, data }
       if (body && typeof body === 'object' && 'data' in body && 'success' in body && body.success) {
@@ -301,7 +284,6 @@ export class UserService {
     try {
       const response = await axiosClient.get<any>('/api/users/profile/stats');
       const body = response.data;
-      console.log('Fetched profile stats response:', body);
 
       // If backend uses { success, message, data }
       if (body && typeof body === 'object' && 'data' in body && 'success' in body && body.success) {

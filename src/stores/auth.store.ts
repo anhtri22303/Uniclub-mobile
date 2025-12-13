@@ -43,8 +43,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   login: async (loginResponse: LoginResponse, password?: string) => {
     try {
-      console.log('=== LOGIN RESPONSE ===');
-      console.log('Raw login response:', JSON.stringify(loginResponse, null, 2));
       
       // Save token and user data to secure storage
       await SecureStore.setItemAsync('token', loginResponse.token);
@@ -99,7 +97,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const needsChange = password === '123' && normalizedRole === 'club_leader';
       if (needsChange) {
         await SecureStore.setItemAsync('needsPasswordChange', 'true');
-        console.log('⚠️ Password change required for club leader with password "123"');
+        console.log(' Password change required for club leader with password "123"');
       } else {
         // Clear the flag if it was set before
         try {

@@ -47,7 +47,7 @@ export default function PublicEventsPage() {
 
       // CRITICAL: Filter ONLY PUBLIC events - First line of defense
       const publicEvents = allEvents.filter((event) => event.type === 'PUBLIC');
-      console.log('✅ PUBLIC events filter applied:', publicEvents.length, 'of', allEvents.length);
+      console.log('  PUBLIC events filter applied:', publicEvents.length, 'of', allEvents.length);
       
       // CRITICAL: Filter registrations to ONLY include PUBLIC events
       const publicEventIds = new Set(publicEvents.map(e => e.id));
@@ -55,12 +55,12 @@ export default function PublicEventsPage() {
         // Find the event in our public events list
         const isPublicEvent = publicEventIds.has(reg.eventId);
         if (!isPublicEvent) {
-          console.log('⚠️ Filtered out non-public registration for event:', reg.eventId);
+          console.log(' Filtered out non-public registration for event:', reg.eventId);
         }
         return isPublicEvent;
       });
       
-      // console.log('✅ PUBLIC registrations filter applied:', publicRegistrations.length, 'of', registrations.length);
+      // console.log('  PUBLIC registrations filter applied:', publicRegistrations.length, 'of', registrations.length);
       
       // Log event details to debug
       // publicEvents.forEach((event, index) => {
@@ -142,11 +142,11 @@ export default function PublicEventsPage() {
   // Apply all filters
   useEffect(() => {
     let filtered = events;
-    // console.log('📊 Starting filter - Total events:', events.length);
+    // console.log(' Starting filter - Total events:', events.length);
 
     // CRITICAL: Extra safety check - ensure all events are PUBLIC type
     filtered = filtered.filter((event) => event.type === 'PUBLIC');
-    // console.log('📊 After PUBLIC filter:', filtered.length);
+    // console.log(' After PUBLIC filter:', filtered.length);
 
     // Filter by search term
     if (searchTerm.trim() !== '') {
@@ -185,8 +185,25 @@ export default function PublicEventsPage() {
         // Always reject REJECTED events
         if (event.status === 'REJECTED') return false;
         
-        // Always show ONGOING events
-        if (event.status === 'ONGOING') return true;
+        // ONGOING events: check if current date matches one of the event days
+        if (event.status === 'ONGOING') {
+          // For multi-day events, verify current date matches one of the event days
+          if (event.days && event.days.length > 0) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            const isToday = event.days.some(day => {
+              const [year, month, dayNum] = day.date.split('-').map(Number);
+              const dayDate = new Date(year, month - 1, dayNum);
+              return dayDate.getTime() === today.getTime();
+            });
+            
+            // Only show if today matches one of the event days
+            return isToday;
+          }
+          // For single-day ONGOING events, always show
+          return true;
+        }
         
         // Only show APPROVED and PENDING_UNISTAFF statuses
         if (!['APPROVED', 'PENDING_UNISTAFF'].includes(event.status)) return false;
@@ -209,8 +226,8 @@ export default function PublicEventsPage() {
       return true;
     });
 
-    console.log('📊 Final filtered events:', filtered.length);
-    console.log('📊 Filter settings - showExpiredFilter:', showExpiredFilter, 'showRegisteredOnly:', showRegisteredOnly);
+    console.log(' Final filtered events:', filtered.length);
+    console.log(' Filter settings - showExpiredFilter:', showExpiredFilter, 'showRegisteredOnly:', showRegisteredOnly);
     
     // Log details of filtered events
     filtered.forEach((event, index) => {

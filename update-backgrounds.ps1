@@ -58,4 +58,4 @@ foreach ($file in $files) {
     }
 }
 
-Write-Host "`n✅ Background update complete!" -ForegroundColor Green
+Write-Host "`n  Background update complete!" -ForegroundColor Green

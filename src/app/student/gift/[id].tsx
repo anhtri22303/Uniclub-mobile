@@ -53,13 +53,8 @@ export default function StudentProductDetailPage() {
   // Get user's membership for this club (using profile data)
   const currentMembership = useMemo(() => {
     if (!product || !profile) {
-      console.log('Waiting for product or profile data...');
       return null;
     }
-
-    console.log('CHECKING MEMBERSHIP:');
-    console.log('Product belongs to clubId:', product.clubId);
-    console.log('All memberships from profile:', profile);
 
     // Find membership directly in profile array
     const foundMembership = profile.find((membership: any) => membership.clubId === product.clubId);
@@ -72,7 +67,6 @@ export default function StudentProductDetailPage() {
     if (!foundMembership.membershipId) {
       console.error(`[API ERROR] Profile data is MISSING 'membershipId' for club ${product.clubId}!`);
     } else {
-      console.log(`[SUCCESS] Found membership:`, foundMembership);
     }
 
     return foundMembership;

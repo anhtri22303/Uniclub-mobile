@@ -109,16 +109,14 @@ export default function ClubLeaderAttendancesPage() {
       try {
         // Fetch club details
         const clubResponse = await ClubService.getClubByIdFull(clubId);
-        console.log('🏢 Club response:', clubResponse);
         
         if (!clubResponse?.success) {
           throw new Error('Unable to load club information. The club may not exist or you may not have access.');
         }
         
         setManagedClub(clubResponse.data as any);
-        console.log('✅ Club loaded successfully:', clubResponse.data.name);
       } catch (err: any) {
-        console.error('❌ Error in loadBaseData:', err);
+        console.error(' Error in loadBaseData:', err);
         const errorMessage = err?.message || 'Error loading initial data';
         setMembersError(errorMessage);
         Alert.alert('Error', errorMessage);

@@ -5,12 +5,12 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -48,11 +48,8 @@ export default function ScanOrderQRPage() {
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     // Prevent multiple scans
     if (isProcessingRef.current) {
-      console.log('⏸️ Already processing, skipping scan');
       return;
     }
-
-    console.log('🔍 Scanned QR data:', data);
     
     // Find pattern UC-number (case insensitive)
     const trimmedText = data.trim();
@@ -60,22 +57,15 @@ export default function ScanOrderQRPage() {
     
     if (orderCodeMatch) {
       const orderCode = orderCodeMatch[1].toUpperCase(); // e.g., "UC-5"
-      console.log('✅ Valid order code found:', orderCode);
       
       // Check first 2 characters are "UC"
       if (orderCode.substring(0, 2).toUpperCase() === 'UC') {
-        console.log('📦 Order Code:', orderCode);
-        
         // Set processing flag
         isProcessingRef.current = true;
         
         setScannedCode(orderCode);
         setIsValidOrder(true);
         setScanning(false);
-        
-        // Navigate directly to orderCode route
-        console.log('✅ Valid order code, navigating to details...');
-        console.log('🚀 Navigating to: /club-leader/orders/qr/' + orderCode);
         
         // Cleanup state trước khi navigate
         setLoading(false);
@@ -84,16 +74,13 @@ export default function ScanOrderQRPage() {
         // Navigate to new qr/[orderCode].tsx route
         setTimeout(() => {
           const targetRoute = `/club-leader/orders/qr/${orderCode}`;
-          console.log('🎯 Final route:', targetRoute);
           router.replace(targetRoute as any);
         }, 100);
       } else {
-        console.log('❌ Invalid prefix:', orderCode.substring(0, 2));
         // Invalid prefix, tiếp tục scan
         isProcessingRef.current = false;
       }
     } else {
-      console.log('❌ No UC pattern found in:', trimmedText);
       // Không tìm thấy pattern UC, tiếp tục scan
       isProcessingRef.current = false;
     }
@@ -111,7 +98,7 @@ export default function ScanOrderQRPage() {
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) {
-        console.log('⚠️ Camera permission denied');
+        console.log(' Camera permission denied');
         return;
       }
     }
@@ -270,7 +257,7 @@ export default function ScanOrderQRPage() {
                     isValidOrder ? 'text-green-700' : 'text-red-700'
                   }`}
                 >
-                  {isValidOrder ? '✅ Valid Order Code!' : '❌ Invalid QR Code'}
+                  {isValidOrder ? '  Valid Order Code!' : '  Invalid QR Code'}
                 </Text>
                 
                 <Text className="font-mono text-2xl font-bold text-gray-900 mb-4">
@@ -318,7 +305,6 @@ export default function ScanOrderQRPage() {
                   {isValidOrder && scannedCode && (
                     <TouchableOpacity
                       onPress={() => {
-                        console.log('🔗 Navigating to order details with code:', scannedCode);
                         router.push(`/club-leader/orders/qr/${scannedCode}` as any);
                       }}
                       className="bg-green-600 rounded-xl py-4 items-center"

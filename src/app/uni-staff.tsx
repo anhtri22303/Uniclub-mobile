@@ -1,7 +1,7 @@
 /**
  * University Staff Dashboard (Mobile)
  * 
- * ✅ Refactored with modular components:
+ *   Refactored with modular components:
  * - StatisticsCards: Overview statistics display
  * - ClubApplicationsList: Club application management
  * - EventRequestsList: Event request management
@@ -15,12 +15,12 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import {
-    AttendanceSummaryCard,
-    ClubApplicationsList,
-    DataSummaryTables,
-    EventRequestsList,
-    StatisticsCards,
-    TopClubsRanking
+  AttendanceSummaryCard,
+  ClubApplicationsList,
+  DataSummaryTables,
+  EventRequestsList,
+  StatisticsCards,
+  TopClubsRanking
 } from '@components/uni-staff';
 import { Ionicons } from '@expo/vector-icons';
 import { useClubApplications, useClubs, useEvents, usePolicies } from '@hooks/useQueryHooks';
@@ -35,12 +35,12 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -48,7 +48,7 @@ export default function UniStaffPage() {
   const { user } = useAuthStore();
   const router = useRouter();
 
-  // ✅ USE REACT QUERY for events, clubs, policies, and club applications
+  //   USE REACT QUERY for events, clubs, policies, and club applications
   const { data: events = [], isLoading: eventsLoading, refetch: refetchEvents } = useEvents();
   const { data: clubs = [], isLoading: clubsLoading, refetch: refetchClubs } = useClubs();
   const { data: policies = [] } = usePolicies();
@@ -80,7 +80,7 @@ export default function UniStaffPage() {
   // Debug: Log club applications data
   useEffect(() => {
     if (clubApplications.length > 0) {
-      console.log('📊 Club Applications Data:', {
+      console.log(' Club Applications Data:', {
         total: clubApplications.length,
         approved: approvedClubApplications,
         pending: pendingClubApplications,
@@ -149,13 +149,6 @@ export default function UniStaffPage() {
       setMajors(majorsData);
       setMultiplierPolicies(policiesData);
 
-      // Debug: Log System Data
-      console.log('🔍 System Data Loaded:', {
-        locations: locationsResponse.content?.length || 0,
-        tags: tagsData?.length || 0,
-        majors: majorsData?.length || 0,
-        policies: policiesData?.length || 0
-      });
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -335,7 +328,7 @@ export default function UniStaffPage() {
             {top3ClubApplications.length > 0 && (
               <View>
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-lg font-bold text-gray-800">⏳ Pending Applications</Text>
+                  <Text className="text-lg font-bold text-gray-800"> Pending Applications</Text>
                   <TouchableOpacity onPress={() => router.push('/uni-staff/clubs-req' as any)}>
                     <Text className="text-amber-500 text-sm font-medium">View All →</Text>
                   </TouchableOpacity>
@@ -495,7 +488,7 @@ export default function UniStaffPage() {
                 {/* Approved */}
                 <View>
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">✅ Approved</Text>
+                    <Text className="text-sm font-medium text-gray-700">  Approved</Text>
                     <Text className="text-sm font-bold text-green-600">{approvedEvents}</Text>
                   </View>
                   <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -567,7 +560,7 @@ export default function UniStaffPage() {
                 {/* Pending CoClub */}
                 <View>
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">⏳ Pending (CoClub)</Text>
+                    <Text className="text-sm font-medium text-gray-700"> Pending (CoClub)</Text>
                     <Text className="text-sm font-bold text-orange-600">{pendingCoclubEvents}</Text>
                   </View>
                   <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -585,7 +578,7 @@ export default function UniStaffPage() {
                 {/* Rejected */}
                 <View>
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">❌ Rejected</Text>
+                    <Text className="text-sm font-medium text-gray-700">  Rejected</Text>
                     <Text className="text-sm font-bold text-red-600">{rejectedEvents}</Text>
                   </View>
                   <View className="h-2 bg-gray-200 rounded-full overflow-hidden">

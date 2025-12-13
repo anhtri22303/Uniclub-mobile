@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "module": "ESNext",
+    "types": ["jest", "@testing-library/jest-native"],
     "paths": {
       "@*": [
         "./src/*"

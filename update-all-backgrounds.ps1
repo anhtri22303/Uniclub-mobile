@@ -1,6 +1,6 @@
 # Script to update ALL bg-gray-50 backgrounds to #E2E2EF recursively
 
-Write-Host "🔍 Finding all .tsx files with bg-gray-50..." -ForegroundColor Cyan
+Write-Host " Finding all .tsx files with bg-gray-50..." -ForegroundColor Cyan
 
 # Find all tsx files in src directory
 $allFiles = Get-ChildItem -Path "src" -Filter "*.tsx" -Recurse -File
@@ -41,7 +41,7 @@ foreach ($file in $allFiles) {
     }
 }
 
-Write-Host "`n📊 Summary:" -ForegroundColor Cyan
-Write-Host "  ✅ Updated: $updatedCount files" -ForegroundColor Green
+Write-Host "`n Summary:" -ForegroundColor Cyan
+Write-Host "    Updated: $updatedCount files" -ForegroundColor Green
 Write-Host "  ⏭️  Skipped: $skippedCount files (no changes needed)" -ForegroundColor Yellow
 Write-Host "`n🎉 Background update complete!" -ForegroundColor Green

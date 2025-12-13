@@ -1,16 +1,17 @@
 import { axiosPrivate, axiosPublic } from '@configs/axios';
 import {
-    ChangePasswordRequest,
-    ChangePasswordResponse,
-    ForgotPasswordRequest,
-    ForgotPasswordResponse,
-    GoogleLoginRequest,
-    GoogleLoginResponse,
-    LoginCredentials,
-    LoginResponse,
-    SignUpCredentials,
-    SignUpResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  GoogleLoginRequest,
+  GoogleLoginResponse,
+  LoginCredentials,
+  LoginResponse,
+  SignUpCredentials,
+  SignUpResponse,
 } from '@models/auth/auth.types';
+import * as SecureStore from 'expo-secure-store';
 
 export class AuthService {
   /**
@@ -122,14 +123,14 @@ export class AuthService {
    */
   static async loginWithGoogleToken(credentials: GoogleLoginRequest): Promise<GoogleLoginResponse> {
     try {
-      console.log('🚀 Sending Google token to backend:', {
+      console.log(' Sending Google token to backend:', {
         url: `${axiosPublic.defaults.baseURL}/auth/google`,
         tokenLength: credentials.token?.length || 0,
         tokenStart: credentials.token?.substring(0, 20) + '...',
       });
 
       const response = await axiosPublic.post<GoogleLoginResponse>('/auth/google', credentials);
-      console.log('✅ Google token login success:', response.data);
+      console.log('  Google token login success:', response.data);
       
       // Check response format
       if (!response.data.success || !response.data.data) {
@@ -138,7 +139,7 @@ export class AuthService {
       
       return response.data;
     } catch (error: any) {
-      console.error('❌ Error during Google token login:', {
+      console.error('  Error during Google token login:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
@@ -199,10 +200,9 @@ export class AuthService {
    */
   static async logout(): Promise<void> {
     // Clear token from secure storage
-    const { deleteItemAsync } = await import('expo-secure-store');
-    await deleteItemAsync('token');
-    await deleteItemAsync('user');
-    await deleteItemAsync('needsPasswordChange');
+    await SecureStore.deleteItemAsync('token');
+    await SecureStore.deleteItemAsync('user');
+    await SecureStore.deleteItemAsync('needsPasswordChange');
   }
 }
 

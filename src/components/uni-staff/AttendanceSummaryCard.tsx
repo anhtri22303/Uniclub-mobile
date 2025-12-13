@@ -77,7 +77,7 @@ export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
       <View className="bg-gradient-to-r from-purple-500 to-blue-500 p-4">
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-lg font-bold text-white">
-            📊 Attendance Summary
+             Attendance Summary
           </Text>
         </View>
         <View className="bg-white/20 rounded-lg border border-white/30 overflow-hidden">

@@ -18,7 +18,6 @@ export const useClubMembershipGuard = () => {
 
     // Check if user has club membership
     if (!hasClub) {
-      console.log('⚠️ Access denied: User is not a member of any club');
       Toast.show({
         type: 'error',
         text1: 'Access Denied',

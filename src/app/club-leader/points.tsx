@@ -12,15 +12,15 @@ import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -106,9 +106,6 @@ export default function ClubLeaderPointsPage() {
   useEffect(() => {
     // Only load if user exists
     if (user) {
-      console.log('=== POINTS PAGE MOUNTED ===');
-      console.log('User data:', JSON.stringify(user, null, 2));
-      console.log('User clubIds:', user?.clubIds);
       loadData();
     } else {
       setLoading(false);
@@ -134,15 +131,10 @@ export default function ClubLeaderPointsPage() {
         throw new Error(errorMsg);
       }
 
-      console.log('=== POINTS PAGE: Loading data for clubId:', clubId, '===');
-
       // Load club details
       const clubResponse = await ClubService.getClubByIdFull(clubId);
       if (clubResponse.success && clubResponse.data) {
         setManagedClub(clubResponse.data);
-        console.log('Loaded club:', clubResponse.data.name);
-      } else {
-        console.warn('Failed to load club details');
       }
 
       // Load club wallet
@@ -150,7 +142,6 @@ export default function ClubLeaderPointsPage() {
       try {
         const walletData = await WalletService.getClubWallet(clubId);
         setClubWallet(walletData);
-        console.log('Loaded club wallet:', walletData);
       } catch (walletErr) {
         console.error('Failed to load club wallet:', walletErr);
       } finally {
@@ -161,7 +152,6 @@ export default function ClubLeaderPointsPage() {
       setPenaltyRulesLoading(true);
       try {
         const rules = await DisciplineService.getClubPenaltyRules(clubId);
-        console.log('Loaded penalty rules:', rules);
         setPenaltyRules(rules);
       } catch (ruleErr) {
         console.error('Failed to load penalty rules:', ruleErr);
@@ -171,8 +161,6 @@ export default function ClubLeaderPointsPage() {
 
       // Load members using getMembersByClubId
       const members = await MembershipsService.getMembersByClubId(clubId);
-      console.log('=== POINTS PAGE: Loaded members ===');
-      console.log('Total members:', members.length);
       
       // Transform to ClubMember format and filter active members only
       const transformedMembers: ClubMember[] = members

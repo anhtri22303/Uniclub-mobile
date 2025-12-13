@@ -77,7 +77,7 @@ keytool -list -v -keystore /path/to/your-release-key.keystore -alias your-alias
 
 ---
 
-## ⚠️ Lưu Ý Quan Trọng
+##  Lưu Ý Quan Trọng
 
 ### Debug vs Release Keystore
 
@@ -120,14 +120,14 @@ Xác nhận package name trong `app.json`:
 
 ---
 
-## 🎯 Next Steps
+##  Next Steps
 
 Sau khi có SHA-1 fingerprint và thêm vào Google Cloud Console:
 
-1. ✅ Download `google-services.json` từ Firebase Console
-2. ✅ Đặt `google-services.json` vào thư mục gốc project
-3. ✅ Rebuild app: `npx expo prebuild --clean && npx expo run:android`
-4. ✅ Test Google Sign-In
+1.   Download `google-services.json` từ Firebase Console
+2.   Đặt `google-services.json` vào thư mục gốc project
+3.   Rebuild app: `npx expo prebuild --clean && npx expo run:android`
+4.   Test Google Sign-In
 
 ---
 

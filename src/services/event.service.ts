@@ -288,7 +288,6 @@ export const createEvent = async (payload: CreateEventPayload): Promise<Event> =
   try {
     const response = await axiosClient.post("api/events", payload);
     const data: any = response.data;
-    console.log("Create event response:", data);
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data?.data) return data.data;
     return data;
@@ -325,7 +324,6 @@ export const putEventStatus = async (id: string | number, approvedBudgetPoints: 
       { approvedBudgetPoints }
     );
     const data: any = response.data;
-    console.log(`Approved budget for event ${id} with points: ${approvedBudgetPoints}:`, data);
     
     if (data && data.data) return data.data;
     return data;
@@ -343,7 +341,6 @@ export const getEventSettle = async () => {
   try {
     const response = await axiosClient.get(`/api/events/settled`);
     const data: any = response.data;
-    console.log(`Fetched settled events:`, data);
     // Response structure: { success: true, message: "success", data: [...] }
     if (data?.data) return data.data;
     return data;
@@ -430,7 +427,6 @@ export const updateEvent = async (id: string | number, payload: Partial<CreateEv
   try {
     const response = await axiosClient.put(`api/events/${id}`, payload);
     const data: any = response.data;
-    console.log(`Updated event ${id}:`, data);
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data?.data) return data.data;
     return data;
@@ -446,7 +442,6 @@ export const updateEvent = async (id: string | number, payload: Partial<CreateEv
 export const deleteEvent = async (id: string | number): Promise<void> => {
   try {
     await axiosClient.delete(`api/events/${id}`);
-    console.log(`Deleted event ${id}`);
   } catch (error) {
     console.error(`Error deleting event ${id}:`, error);
     throw error;
@@ -460,7 +455,6 @@ export const getEventCoHostByClubId = async (clubId: string | number): Promise<E
   try {
     const response = await axiosClient.get(`/api/events/club/${clubId}/cohost`);
     const resData: any = response.data;
-    console.log(`Fetched co-host events for club ${clubId}:`, resData);
     
     // If response is direct array of events
     if (Array.isArray(resData)) return resData;
@@ -485,7 +479,6 @@ export const getEventCoHostByClubId = async (clubId: string | number): Promise<E
 export const submitForUniversityApproval = async (eventId: string | number): Promise<void> => {
   try {
     await axiosClient.post(`/api/events/${eventId}/submit-university`);
-    console.log(`Event ${eventId} submitted to university for approval`);
   } catch (error) {
     console.error(`Error submitting event ${eventId} to university:`, error);
     throw error;
@@ -567,7 +560,6 @@ export const registerForEvent = async (eventId: string | number): Promise<{ succ
   try {
     const response = await axiosClient.post(`/api/events/register`, { eventId });
     const data: any = response.data;
-    console.log(`Registered for event ${eventId}:`, data);
     return data;
   } catch (error) {
     console.error(`Error registering for event ${eventId}:`, error);
@@ -596,7 +588,6 @@ export const getMyEventRegistrations = async (): Promise<EventRegistration[]> =>
   try {
     const response = await axiosClient.get(`/api/events/my-registrations`);
     const data: any = response.data;
-    console.log(`Fetched my event registrations:`, data);
     if (data?.data && Array.isArray(data.data)) return data.data;
     if (Array.isArray(data)) return data;
     return [];
@@ -612,12 +603,10 @@ export const getMyEventRegistrations = async (): Promise<EventRegistration[]> =>
  */
 export const eventQR = async (eventId: string | number, phase: string): Promise<{ phase: string; token: string; expiresIn: number }> => {
   try {
-    console.log(`[eventQR] Calling API with eventId: ${eventId}, phase: ${phase}`);
     const response = await axiosClient.get(`/api/events/${eventId}/attendance/qr`, {
       params: { phase }
     });
     const data: any = response.data;
-    console.log(`[eventQR] API Response for event ${eventId} phase ${phase}:`, JSON.stringify(data, null, 2));
     // Response structure: { success: true, message: "success", data: { phase: "CHECK_IN", token: "string", expiresIn: 120 } }
     if (data?.data) {
       return data.data as { phase: string; token: string; expiresIn: number };
@@ -655,7 +644,6 @@ export const getFeedbacksByMembership = async (membershipId: string | number): P
   try {
     const response = await axiosClient.get(`/api/events/memberships/${membershipId}/feedbacks`);
     const data: any = response.data;
-    console.log(`Fetched feedbacks for membership ${membershipId}:`, data);
     
     // Handle response structure
     if (data?.data && Array.isArray(data.data)) return data.data;
@@ -675,7 +663,6 @@ export const getEventFeedbacks = async (eventId: string | number): Promise<Event
   try {
     const response = await axiosClient.get(`/api/events/${eventId}/feedback`);
     const data: any = response.data;
-    console.log(`Fetched feedbacks for event ${eventId}:`, data);
     
     // Handle response structure
     if (data?.data && Array.isArray(data.data)) return data.data;
@@ -695,7 +682,6 @@ export const getMyEvents = async (): Promise<Event[]> => {
   try {
     const response = await axiosClient.get('/api/events/my');
     const data: any = response.data;
-    console.log('Fetched my events:', data);
     
     // Handle response structure
     if (data?.data && Array.isArray(data.data)) return data.data;
@@ -716,7 +702,6 @@ export const cancelEventRegistration = async (eventId: string | number): Promise
   try {
     const response = await axiosClient.put(`/api/events/${eventId}/cancel`);
     const data: any = response.data;
-    console.log(`Cancelled registration for event ${eventId}:`, data);
     return data;
   } catch (error) {
     console.error(`Error cancelling registration for event ${eventId}:`, error);
@@ -739,7 +724,6 @@ export const eventTimeExtend = async (eventId: string | number, payload: EventTi
   try {
     const response = await axiosClient.put(`/api/events/${eventId}/extend`, payload);
     const data: any = response.data;
-    console.log(`Extended time for event ${eventId}:`, data);
     if (data?.data) return data.data;
     return data;
   } catch (error) {
@@ -758,7 +742,6 @@ export const rejectEvent = async (eventId: string | number, reason: string) => {
       params: { reason }
     });
     const data: any = response.data;
-    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
     return data;
   } catch (error) {
     console.error(`Error rejecting event ${eventId}:`, error);
@@ -774,7 +757,6 @@ export const eventSettle = async (eventId: string | number) => {
   try {
     const response = await axiosClient.post(`/api/events/${eventId}/settle`);
     const data: any = response.data;
-    console.log(`Settled event ${eventId}:`, data);
     return data;
   } catch (error) {
     console.error(`Error settling event ${eventId}:`, error);
@@ -798,7 +780,6 @@ export const refundEventProduct = async (
       { params: { userId } }
     );
     const data: any = response.data;
-    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
     return data;
   } catch (error) {
     console.error(`Error refunding product for event ${eventId}:`, error);
@@ -816,10 +797,91 @@ export const eventCheckinPublic = async (code: string): Promise<{ success: boole
       params: { code }
     });
     const data: any = response.data;
-    console.log(`Public event check-in response:`, data);
     return data;
   } catch (error) {
     console.error(`Error checking in to public event:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Event attendee check-in information
+ */
+export interface EventAttendee {
+  userId: number;
+  fullName: string;
+  email: string;
+  attendanceLevel: string;
+  checkinAt: string | null;
+  checkMidAt: string | null;
+  checkoutAt: string | null;
+}
+
+/**
+ * GET /api/events/{eventId}/attendees
+ * Lấy danh sách sinh viên đã check-in vào sự kiện
+ */
+export const getEventCheckin = async (eventId: string | number): Promise<EventAttendee[]> => {
+  try {
+    const response = await axiosClient.get(`/api/events/${eventId}/attendees`);
+    const resData: any = response.data;
+    
+    if (Array.isArray(resData)) return resData;
+    if (resData?.data && Array.isArray(resData.data)) return resData.data;
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching attendees for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Event registration information
+ */
+export interface EventRegistrationDetail {
+  userId: number;
+  fullName: string;
+  email: string;
+  status: string;
+  registeredAt: string | null;
+  committedPoints: number;
+}
+
+/**
+ * GET /api/events/{eventId}/registrations
+ * Lấy danh sách sinh viên đã đăng ký sự kiện
+ */
+export const getEventRegistrations = async (eventId: string | number): Promise<EventRegistrationDetail[]> => {
+  try {
+    const response = await axiosClient.get(`/api/events/${eventId}/registrations`);
+    const resData: any = response.data;
+    
+    if (Array.isArray(resData)) return resData;
+    if (resData?.data && Array.isArray(resData.data)) return resData.data;
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching registrations for event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * GET /api/events/by-date
+ * Lấy tất cả sự kiện theo ngày cụ thể
+ */
+export const getEventByDate = async (date: string): Promise<Event[]> => {
+  try {
+    const response = await axiosClient.get(`/api/events/by-date`, { params: { date } });
+    const resData: any = response.data;
+    
+    if (resData?.success && Array.isArray(resData.data)) return resData.data;
+    if (Array.isArray(resData)) return resData;
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching events for date ${date}:`, error);
     throw error;
   }
 };
@@ -856,6 +918,9 @@ export default {
   getEventSettle,
   refundEventProduct,
   eventCheckinPublic,
+  getEventCheckin,
+  getEventRegistrations,
+  getEventByDate,
   // New helper functions
   isMultiDayEvent,
   getEventDateRange,

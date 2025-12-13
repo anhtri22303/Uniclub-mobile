@@ -84,7 +84,7 @@ testCases.forEach((testCase, index) => {
   console.log(`Expected count: ${testCase.expectedCount}`);
   console.log(`Actual count: ${result.length}`);
   console.log(`Items: ${result.join(", ")}`);
-  console.log(`Status: ${passed ? "✅ PASSED" : "❌ FAILED"}`);
+  console.log(`Status: ${passed ? " PASSED" : " FAILED"}`);
   
   if (!passed) {
     console.log(`Expected items: ${testCase.expected.join(", ")}`);

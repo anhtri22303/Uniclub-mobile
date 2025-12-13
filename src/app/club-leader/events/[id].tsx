@@ -1,6 +1,8 @@
 import AddStaffModal from '@components/AddStaffModal';
+import AttendeeListModal from '@components/AttendeeListModal';
 import EvaluateStaffModal from '@components/EvaluateStaffModal';
 import EvaluationDetailModal from '@components/EvaluationDetailModal';
+import RegistrationListModal from '@components/RegistrationListModal';
 import TimeExtensionModal from '@components/TimeExtensionModal';
 import WalletHistoryModal from '@components/WalletHistoryModal';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,6 +66,10 @@ export default function EventDetailPage() {
   const [clubMembers, setClubMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
+  // Attendee and Registration List modal states
+  const [showAttendeeListModal, setShowAttendeeListModal] = useState(false);
+  const [showRegistrationListModal, setShowRegistrationListModal] = useState(false);
+
   // Fetch staff data
   const {
     data: staffList = [],
@@ -103,12 +109,10 @@ export default function EventDetailPage() {
       if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
         try {
           setSummaryLoading(true);
-          console.log("📊 Fetching event summary for event:", id);
           const summaryData = await getEventSummary(id);
-          console.log("📊 Event summary received:", summaryData);
           setEventSummary(summaryData);
         } catch (summaryError) {
-          console.error("❌ Failed to load event summary:", summaryError);
+          console.error("  Failed to load event summary:", summaryError);
           // Reset summary on error to avoid showing stale data
           setEventSummary(null);
         } finally {
@@ -226,43 +230,23 @@ export default function EventDetailPage() {
 
   // Check if the event is currently active (supports multi-day events)
   const isEventActive = () => {
-    console.log('[EVENT ACTIVE CHECK - START]', {
-      hasEvent: !!event,
-      eventName: event?.name,
-      eventStatus: event?.status,
-      eventType: event?.type,
-      isMultiDay: event ? isMultiDayEvent(event) : false,
-      eventDate: event?.date,
-      eventStartDate: event?.startDate,
-      eventEndDate: event?.endDate,
-    });
-
     if (!event) {
-      console.log('[EVENT ACTIVE CHECK] No event - returning false');
       return false;
     }
 
     // COMPLETED status means event has ended
     if (event.status === 'COMPLETED') {
-      console.log('[EVENT ACTIVE CHECK] Status is COMPLETED - returning false');
       return false;
     }
 
     // Must be ONGOING
     if (event.status !== 'ONGOING') {
-      console.log('[EVENT ACTIVE CHECK] Status is not ONGOING - returning false', event.status);
       return false;
     }
 
     // Use helper function to check if event has expired
     const expired = checkEventExpired(event);
     const isActive = !expired;
-
-    console.log('[EVENT ACTIVE CHECK - RESULT]', event.name, {
-      expired,
-      isActive,
-      isMultiDay: isMultiDayEvent(event)
-    });
 
     return isActive;
   };
@@ -931,7 +915,27 @@ export default function EventDetailPage() {
             {(event.status === 'APPROVED' || event.status === 'ONGOING' || event.status === 'COMPLETED') && eventSummary && (
               <View className="flex-row gap-2 mb-4">
                 <View className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <Text className="text-blue-700 text-xs font-medium mb-1">Total Registrations</Text>
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-blue-700 text-xs font-medium">
+                      {event.type === 'PUBLIC' ? 'Total Check-ins' : 'Total Registrations'}
+                    </Text>
+                    <View className="flex-row gap-1">
+                      <TouchableOpacity
+                        onPress={() => setShowAttendeeListModal(true)}
+                        className="bg-blue-600 px-2 py-1 rounded"
+                      >
+                        <Text className="text-white text-xs font-medium">Lists</Text>
+                      </TouchableOpacity>
+                      {event.type !== 'PUBLIC' && (
+                        <TouchableOpacity
+                          onPress={() => setShowRegistrationListModal(true)}
+                          className="bg-purple-600 px-2 py-1 rounded"
+                        >
+                          <Text className="text-white text-xs font-medium">Register</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
                   <Text className="text-blue-900 text-xl font-bold">
                     {summaryLoading ? '...' : eventSummary.registrationsCount || 0}
                   </Text>
@@ -1058,22 +1062,10 @@ export default function EventDetailPage() {
                     </View>
                   </View>
                   <View
-                    className={`px-3 py-1 rounded-full ${
-                      club.coHostStatus === 'APPROVED'
-                        ? 'bg-green-100'
-                        : club.coHostStatus === 'REJECTED'
-                        ? 'bg-red-100'
-                        : 'bg-yellow-100'
-                    }`}
+                    className={`px-3 py-1 rounded ${club.coHostStatus === 'APPROVED' ? 'bg-green-100' : club.coHostStatus === 'REJECTED' ? 'bg-red-100' : 'bg-yellow-100'}`}
                   >
                     <Text
-                      className={`text-xs font-semibold ${
-                        club.coHostStatus === 'APPROVED'
-                          ? 'text-green-800'
-                          : club.coHostStatus === 'REJECTED'
-                          ? 'text-red-800'
-                          : 'text-yellow-800'
-                      }`}
+                      className={`text-xs font-semibold ${club.coHostStatus === 'APPROVED' ? 'text-green-800' : club.coHostStatus === 'REJECTED' ? 'text-red-800' : 'text-yellow-800'}`}
                     >
                       {club.coHostStatus === 'APPROVED' ? 'Approved' : 
                        club.coHostStatus === 'REJECTED' ? 'Rejected' : 
@@ -1376,6 +1368,26 @@ export default function EventDetailPage() {
           currentDate={event.date || ''}
           currentStartTime={timeObjectToString(event.startTime)}
           currentEndTime={timeObjectToString(event.endTime)}
+          eventName={event.name}
+        />
+      )}
+
+      {/* Attendee List Modal */}
+      {event && (
+        <AttendeeListModal
+          visible={showAttendeeListModal}
+          onClose={() => setShowAttendeeListModal(false)}
+          eventId={event.id}
+          eventName={event.name}
+        />
+      )}
+
+      {/* Registration List Modal */}
+      {event && (
+        <RegistrationListModal
+          visible={showRegistrationListModal}
+          onClose={() => setShowRegistrationListModal(false)}
+          eventId={event.id}
           eventName={event.name}
         />
       )}

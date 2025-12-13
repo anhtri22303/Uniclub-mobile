@@ -12,13 +12,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -59,7 +59,6 @@ export default function StudentEventsPage() {
         // First, try to get from user object if available
         if (user?.clubIds && Array.isArray(user.clubIds)) {
           const clubIdNumbers = user.clubIds.map((id) => Number(id)).filter((id) => !isNaN(id));
-          console.log('Events page - Setting userClubIds from user object:', clubIdNumbers);
           setUserClubIds(clubIdNumbers);
           if (clubIdNumbers.length > 0 && !selectedClubId) {
             setSelectedClubId(String(clubIdNumbers[0]));
@@ -74,7 +73,6 @@ export default function StudentEventsPage() {
           .map((m: any) => Number(m.clubId))
           .filter((id: number, index: number, self: number[]) => !isNaN(id) && self.indexOf(id) === index); // Unique IDs
         
-        console.log('Events page - Setting userClubIds from API:', clubIds);
         setUserClubIds(clubIds);
         if (clubIds.length > 0 && !selectedClubId) {
           setSelectedClubId(String(clubIds[0]));
@@ -99,11 +97,9 @@ export default function StudentEventsPage() {
       // Load events and clubs in parallel
       let eventsPromise;
       if (clubId && clubId !== 'all') {
-        console.log('Loading events for specific club:', clubId);
         eventsPromise = getEventByClubId(clubId);
       } else if (clubId === 'all' && userClubIds.length > 0) {
         // Load events from all user's clubs
-        console.log('Loading events for all user clubs:', userClubIds);
         eventsPromise = Promise.all(
           userClubIds.map(id => getEventByClubId(id))
         ).then(results => results.flat());
@@ -116,10 +112,6 @@ export default function StudentEventsPage() {
         eventsPromise,
         ClubService.fetchClubs(0, 100),
       ]);
-
-      console.log('Events page - Loaded events:', eventsData.length);
-      console.log('Events page - User club IDs:', userClubIds);
-      console.log('Events page - Selected club ID:', clubId);
 
       setEvents(eventsData);
       setClubs(clubsData);
@@ -145,7 +137,6 @@ export default function StudentEventsPage() {
   // Initial load and reload when selected club changes
   useEffect(() => {
     if (selectedClubId) {
-      console.log('Selected club changed to:', selectedClubId);
       loadEvents(selectedClubId);
     } else {
       loadEvents();
@@ -161,10 +152,27 @@ export default function StudentEventsPage() {
   const isEventExpired = (event: Event) => {
     if (event.status === 'COMPLETED') return true;
     
+    const now = new Date();
+    
+    // Multi-day event: check last day's end time
+    if (event.days && event.days.length > 0) {
+      try {
+        const lastDay = event.days[event.days.length - 1];
+        const [endHour, endMinute] = lastDay.endTime.split(':').map(Number);
+        const [year, month, dayNum] = lastDay.date.split('-').map(Number);
+        const eventEnd = new Date(year, month - 1, dayNum, endHour, endMinute);
+        
+        return now > eventEnd;
+      } catch (error) {
+        console.error('Error checking multi-day event expiration:', error);
+        return false;
+      }
+    }
+    
+    // Legacy single-day event
     if (!event.date || !event.endTime) return false;
 
     try {
-      const now = new Date();
       const eventDate = new Date(event.date);
       const endTimeStr = timeObjectToString(event.endTime);
       const [hours, minutes] = endTimeStr.split(':').map(Number);
@@ -220,8 +228,25 @@ export default function StudentEventsPage() {
         if (event.status === 'REJECTED') return false;
         if (!['APPROVED', 'PENDING_UNISTAFF', 'ONGOING'].includes(event.status)) return false;
         
-        // ONGOING events should always be shown (they're happening now!)
-        if (event.status === 'ONGOING') return true;
+        // ONGOING events: check if current date matches one of the event days
+        if (event.status === 'ONGOING') {
+          // For multi-day events, verify current date matches one of the event days
+          if (event.days && event.days.length > 0) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            const isToday = event.days.some(day => {
+              const [year, month, dayNum] = day.date.split('-').map(Number);
+              const dayDate = new Date(year, month - 1, dayNum);
+              return dayDate.getTime() === today.getTime();
+            });
+            
+            // Only show if today matches one of the event days
+            return isToday;
+          }
+          // For single-day ONGOING events, always show
+          return true;
+        }
         
         // For other statuses, check if expired or not future
         if (isExpired) return false;
@@ -300,8 +325,6 @@ export default function StudentEventsPage() {
 
   // Handle event registration button click - show confirmation modal
   const handleRegisterClick = (event: Event) => {
-    console.log('Selected event for registration:', event);
-    console.log('commitPointCost:', event.commitPointCost);
     setSelectedEventForRegistration(event);
     setShowConfirmModal(true);
   };
@@ -384,7 +407,7 @@ export default function StudentEventsPage() {
             <View className="mt-3 bg-teal-50 rounded-2xl p-3">
               <Text className="text-xs text-teal-700 font-semibold">
                 {selectedClubId && selectedClubId !== 'all' 
-                  ? `📍 ${clubs.find(c => String(c.id) === selectedClubId)?.name || 'Selected club'}`
+                  ? ` ${clubs.find(c => String(c.id) === selectedClubId)?.name || 'Selected club'}`
                   : `📚 Showing from ${userClubIds.length} club${userClubIds.length > 1 ? 's' : ''}`
                 }
               </Text>

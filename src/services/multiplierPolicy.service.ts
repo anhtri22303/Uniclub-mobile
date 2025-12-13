@@ -49,7 +49,6 @@ export class MultiplierPolicyService {
       const response = await axiosClient.get<MultiplierPolicy[]>(
         '/api/university/multiplier-policies'
       );
-      console.log('Fetched multiplier policies:', response.data);
 
       if (Array.isArray(response.data)) {
         return response.data;
@@ -71,7 +70,6 @@ export class MultiplierPolicyService {
       const response = await axiosClient.get<MultiplierPolicy>(
         `/api/university/multiplier-policies/${id}`
       );
-      console.log('Fetched multiplier policy by ID:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching multiplier policy by ID:', error);
@@ -90,7 +88,6 @@ export class MultiplierPolicyService {
       const response = await axiosClient.get<MultiplierPolicy[]>(
         `/api/university/multiplier-policies/target/${type}`
       );
-      console.log('Fetched multiplier policies by type:', response.data);
 
       if (Array.isArray(response.data)) {
         return response.data;
@@ -114,7 +111,6 @@ export class MultiplierPolicyService {
         '/api/university/multiplier-policies',
         payload
       );
-      console.log('Created multiplier policy:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error creating multiplier policy:', error);
@@ -135,7 +131,6 @@ export class MultiplierPolicyService {
         `/api/university/multiplier-policies/${id}`,
         payload
       );
-      console.log('Updated multiplier policy:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error updating multiplier policy:', error);
@@ -152,7 +147,6 @@ export class MultiplierPolicyService {
       const response = await axiosClient.delete<DeleteMultiplierPolicyApiResponse>(
         `/api/university/multiplier-policies/${id}`
       );
-      console.log('Deleted multiplier policy:', response.data);
 
       if (response.data.success) {
         return response.data.data;

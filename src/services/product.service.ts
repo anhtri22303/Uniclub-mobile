@@ -406,7 +406,6 @@ export class ProductService {
         formData.append('file', fileOrFormData as any, fileName);
       }
 
-      console.log('📤 Uploading media to:', `/api/clubs/${clubId}/products/${productId}/media`);
 
       const response = await axiosClient.post<ApiResponse<ProductMedia>>(
         `/api/clubs/${clubId}/products/${productId}/media`,
@@ -419,12 +418,12 @@ export class ProductService {
         }
       );
       
-      console.log('✅ Media uploaded successfully:', response.data);
+      console.log('  Media uploaded successfully:', response.data);
       return response.data.data;
     } catch (error: any) {
-      console.error('❌ Error adding media:', error);
-      console.error('❌ Error response:', error.response?.data);
-      console.error('❌ Error message:', error.message);
+      console.error('  Error adding media:', error);
+      console.error('  Error response:', error.response?.data);
+      console.error('  Error message:', error.message);
       
       if (error.code === 'ECONNABORTED') {
         throw new Error('Upload timeout - please try again with a smaller image');

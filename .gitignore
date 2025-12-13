@@ -40,4 +40,10 @@ GoogleService-Info.plist
 # typescript
 *.tsbuildinfo
 
+# Testing
+coverage/
+*.lcov
+jest-results.json
+test-report.html
+
 app-example

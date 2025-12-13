@@ -71,7 +71,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
 
   // Debug: Log props
   React.useEffect(() => {
-    console.log('📋 DataSummaryTables Props:', {
+    console.log(' DataSummaryTables Props:', {
       locations: locations?.length || 0,
       tags: tags?.length || 0,
       majors: majors?.length || 0,
@@ -80,7 +80,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
   }, [locations, tags, majors, multiplierPolicies]);
 
   const tabs = [
-    { key: 'locations' as TabType, label: 'Locations', count: locations.length, icon: '📍' },
+    { key: 'locations' as TabType, label: 'Locations', count: locations.length, icon: '' },
     { key: 'tags' as TabType, label: 'Tags', count: tags.length, icon: '🏷️' },
     { key: 'majors' as TabType, label: 'Majors', count: majors.length, icon: '🎓' },
     { key: 'policies' as TabType, label: 'Policies', count: multiplierPolicies.length, icon: '⚙️' },
@@ -93,7 +93,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
       <View className="flex-row items-start justify-between mb-2">
         <View className="flex-1 mr-2">
           <Text className="text-base font-bold text-gray-900 mb-1">
-            📍 {location.name}
+             {location.name}
           </Text>
           <Text className="text-sm text-gray-600 mb-1">{location.address}</Text>
           <Text className="text-xs text-gray-500">
@@ -348,7 +348,7 @@ export const DataSummaryTables: React.FC<DataSummaryTablesProps> = ({
             ))
           ) : (
             <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
-              <Text className="text-4xl mb-2">📍</Text>
+              <Text className="text-4xl mb-2"></Text>
               <Text className="text-base font-semibold text-gray-900 mb-1">
                 No Locations
               </Text>

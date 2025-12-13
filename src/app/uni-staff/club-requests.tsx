@@ -52,7 +52,7 @@ export default function UniStaffClubRequestsPage() {
   const [newProposerReason, setNewProposerReason] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("pending");
 
-  // ✅ USE TANSTACK QUERY for data fetching
+  //   USE TANSTACK QUERY for data fetching
   const {
     data: clubApplicationsData = [],
     isLoading,
@@ -67,7 +67,6 @@ export default function UniStaffClubRequestsPage() {
 
   // Transform API data to UI format
   const requests: UiClubRequest[] = useMemo(() => {
-    console.log('📋 Fetched club applications:', JSON.stringify(clubApplicationsData, null, 2));
     
     return clubApplicationsData.map((d: ClubApplication) => {
       // Handle both old format (nested objects) and new format (simple strings)
@@ -132,7 +131,7 @@ export default function UniStaffClubRequestsPage() {
       setNewVision("");
       setNewProposerReason("");
     } catch (err: any) {
-      console.error('❌ Error creating application:', err);
+      console.error('  Error creating application:', err);
       Toast.show({
         type: 'error',
         text1: 'Error',

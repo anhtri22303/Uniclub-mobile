@@ -46,7 +46,6 @@ export default function Sidebar({ role }: SidebarProps) {
   // Refresh profile when sidebar opens
   useEffect(() => {
     if (isOpen && user) {
-      console.log('🔄 Sidebar opened, refreshing profile...');
       refreshProfile();
     }
   }, [isOpen, user, refreshProfile]);

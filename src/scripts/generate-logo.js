@@ -45,6 +45,3 @@ fs.writeFileSync(
   path.join(__dirname, '../../assets/images/LOGO_GENERATION.md'),
   generateLogoDescription()
 );
-
-console.log('Logo generation guide created at assets/images/LOGO_GENERATION.md');
-console.log('Using existing icon.png as temporary placeholder for UniClub logo.');

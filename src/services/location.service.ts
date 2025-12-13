@@ -105,7 +105,6 @@ export class LocationService {
       const response = await axiosClient.get<LocationsApiResponse>('/api/locations', {
         params: requestParams,
       });
-      console.log('Fetched locations:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching locations:', error);
@@ -120,7 +119,6 @@ export class LocationService {
   static async getLocationById(id: string | number): Promise<Location> {
     try {
       const response = await axiosClient.get<Location>(`/api/locations/${id}`);
-      console.log('Fetched location by id:', response.data);
       return response.data;
     } catch (error) {
       console.error(`Error fetching location ${id}:`, error);
@@ -135,7 +133,6 @@ export class LocationService {
   static async createLocation(data: CreateLocationRequest): Promise<Location> {
     try {
       const response = await axiosClient.post<Location>('/api/locations', data);
-      console.log('Created location:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error creating location:', error);
@@ -156,7 +153,6 @@ export class LocationService {
         `/api/locations/${id}`,
         data
       );
-      console.log('Updated location:', response.data);
       return response.data;
     } catch (error) {
       console.error(`Error updating location ${id}:`, error);
@@ -171,7 +167,6 @@ export class LocationService {
   static async deleteLocation(locationId: number): Promise<void> {
     try {
       await axiosClient.delete(`/api/locations/${locationId}`);
-      console.log('Deleted location:', locationId);
     } catch (error) {
       console.error('Error deleting location:', error);
       throw error;

@@ -1,23 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEventStaff } from '@hooks/useQueryHooks';
 import {
-    deleteEventStaff,
-    EventStaff,
-    getEvaluateEventStaff,
-    getTopEvaluatedStaff,
-    postEventStaff,
-    StaffEvaluation
+  deleteEventStaff,
+  EventStaff,
+  getEvaluateEventStaff,
+  getTopEvaluatedStaff,
+  postEventStaff,
+  StaffEvaluation
 } from '@services/eventStaff.service';
 import { MembershipsService } from '@services/memberships.service';
 import { useAuthStore } from '@stores/auth.store';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import EvaluateStaffModal from './EvaluateStaffModal';
@@ -91,8 +91,8 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
     setLoadingMembers(true);
     try {
       const members = await MembershipsService.getMembersByClubId(userClubId);
-      console.log('📋 All club members:', members);
-      console.log('👥 Current staff list:', staffList);
+      console.log(' All club members:', members);
+      console.log(' Current staff list:', staffList);
       
       // Filter only members with "MEMBER" role and ACTIVE state
       const filteredMembers = members.filter(
@@ -103,12 +103,12 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       const activeStaffMemberIds = staffList
         .filter(s => s.state === 'ACTIVE')
         .map(s => s.membershipId);
-      console.log('🔍 Active staff membershipIds to filter:', activeStaffMemberIds);
+      console.log(' Active staff membershipIds to filter:', activeStaffMemberIds);
       
       const availableMembers = filteredMembers.filter(
         (m: any) => !activeStaffMemberIds.includes(m.membershipId)
       );
-      console.log('✅ Available members after filter:', availableMembers);
+      console.log('  Available members after filter:', availableMembers);
       
       setClubMembers(availableMembers || []);
     } catch (error) {
@@ -318,11 +318,11 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
       : filteredStaff;
 
   // Debug log
-  console.log('🎯 Club members count:', clubMembers.length);
-  console.log('🔍 Filtered members count:', filteredMembers.length);
-  console.log('🔎 Search term:', searchTerm);
-  console.log('📍 Current view:', view);
-  console.log('⏳ Loading members:', loadingMembers);
+  console.log(' Club members count:', clubMembers.length);
+  console.log(' Filtered members count:', filteredMembers.length);
+  console.log(' Search term:', searchTerm);
+  console.log(' Current view:', view);
+  console.log(' Loading members:', loadingMembers);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>

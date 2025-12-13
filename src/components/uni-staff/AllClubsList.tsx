@@ -86,7 +86,7 @@ export const AllClubsList: React.FC<AllClubsListProps> = ({
 
       {displayedClubs.length === 0 ? (
         <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
-          <Text className="text-4xl mb-2">🔍</Text>
+          <Text className="text-4xl mb-2"></Text>
           <Text className="text-base font-semibold text-gray-900 mb-1">
             No Results
           </Text>

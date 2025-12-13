@@ -99,14 +99,12 @@ export class WalletService {
   static async getWallet(): Promise<Wallet> {
     try {
       const response = await axiosClient.get<Wallet>('/api/wallets/me');
-      console.log('🔍 Raw wallet API response:', response.data);
       
       let walletData = response.data;
       
       // Handle nested data structure (e.g., { success: true, data: {...} })
       if (walletData && typeof walletData === 'object' && 'data' in walletData) {
         walletData = (walletData as any).data;
-        console.log('📦 Extracted wallet data:', walletData);
       }
       
       // Normalize different response formats to consistent "points" field
@@ -118,7 +116,6 @@ export class WalletService {
         0
       );
       
-      console.log('✅ Final wallet with points:', { ...walletData, points });
       return { ...walletData, points };
     } catch (error) {
       console.error('Error fetching wallet:', error);
@@ -132,7 +129,6 @@ export class WalletService {
   static async getWalletTransactions(): Promise<ClubToMemberTransaction[]> {
     try {
       const response = await axiosClient.get('/api/wallets/me/transactions');
-      console.log('getWalletTransactions:', response.data);
       
       // Handle nested data structure
       if (response.data && typeof response.data === 'object' && 'data' in response.data) {
@@ -220,7 +216,6 @@ export class WalletService {
           reason: reason || '',
         }
       );
-      console.log(`pointsToClubs (targetIds: ${targetIds.length} clubs):`, response.data);
       return response.data;
     } catch (error: any) {
       console.error('Failed to reward points to clubs', error);
@@ -247,7 +242,6 @@ export class WalletService {
           },
         }
       );
-      console.log('topupClubWallet:', response.data);
       return response.data;
     } catch (error: any) {
       console.error(`Failed to topup club wallet for clubId ${clubId}:`, error);
@@ -263,12 +257,10 @@ export class WalletService {
       const response = await axiosClient.get<ClubWallet>(
         `/api/wallets/club/${clubId}`
       );
-      console.log('getClubWallet raw response:', response.data);
       
       // Handle nested data structure (e.g., { success: true, data: {...} })
       if (response.data && typeof response.data === 'object' && 'data' in response.data) {
         const nestedData = (response.data as any).data;
-        console.log('getClubWallet extracted data:', nestedData);
         return nestedData;
       }
       
@@ -296,7 +288,6 @@ export class WalletService {
           reason: reason || '',
         }
       );
-      console.log(`rewardPointsToMembers (targetIds: ${targetIds.length} members):`, response.data);
       return response.data;
     } catch (error: any) {
       console.error(`Failed to reward points to members`, error);
@@ -310,7 +301,6 @@ export class WalletService {
   static async getClubToMemberTransactions(): Promise<ClubToMemberTransaction[]> {
     try {
       const response = await axiosClient.get('/api/wallets/transactions/club-to-member');
-      console.log('getClubToMemberTransactions:', response.data);
       
       // Handle nested data structure
       if (response.data && typeof response.data === 'object' && 'data' in response.data) {
@@ -344,7 +334,6 @@ export class WalletService {
   static async getUniToClubTransactions(): Promise<UniToClubTransaction[]> {
     try {
       const response = await axiosClient.get('/api/wallets/transactions/uni-to-club');
-      console.log('getUniToClubTransactions:', response.data);
       
       // Handle nested data structure
       if (response.data && typeof response.data === 'object' && 'data' in response.data) {
@@ -365,7 +354,6 @@ export class WalletService {
   static async getUniToEventTransactions(): Promise<UniToEventTransaction[]> {
     try {
       const response = await axiosClient.get('/api/wallets/transactions/uni-to-event');
-      console.log('getUniToEventTransactions:', response.data);
       
       // Handle nested data structure
       if (response.data && typeof response.data === 'object' && 'data' in response.data) {

@@ -173,7 +173,6 @@ export default function ProfileScreen() {
           }
         }
         
-        console.log('Wallets from profile:', walletsList);
         setMemberships(walletsList);
       }
 
@@ -319,7 +318,6 @@ export default function ProfileScreen() {
         studentCode: formData.studentCode || undefined,
       };
 
-      console.log('Sending profile update with payload:', updateData);
 
       const response = await UserService.editProfile(updateData);
       

@@ -37,9 +37,7 @@ const axiosPrivate = axios.create({
 // Request interceptor for axiosPublic (NO JWT token for auth endpoints)
 axiosPublic.interceptors.request.use(
     (config) => {
-        console.log('🌐 Making PUBLIC API request to:', `${config.baseURL || ''}${config.url || ''}`);
-        console.log('📋 Request method:', config.method?.toUpperCase());
-        console.log('📦 Request headers:', config.headers);
+
         // NO TOKEN - this is for login, register, forgot password
         return config;
     },
@@ -54,7 +52,7 @@ axiosClient.interceptors.request.use(
     async (config) => {
         // Only log in development mode
         if (__DEV__) {
-            console.log('🔐 API:', config.method?.toUpperCase(), config.url);
+            console.log(' API:', config.method?.toUpperCase(), config.url);
         }
         
         const token = await SecureStore.getItemAsync('token');
@@ -72,7 +70,7 @@ axiosClient.interceptors.request.use(
 // Response interceptor for axiosPublic
 axiosPublic.interceptors.response.use(
     (response) => {
-        console.log('✅ Public API Response success:', response.status);
+        console.log(' Public API Response success:', response.status);
         return response;
     },
     (error) => {
@@ -85,12 +83,12 @@ axiosPublic.interceptors.response.use(
 // Response interceptor for axiosClient  
 axiosClient.interceptors.response.use(
     (response) => {
-        if (__DEV__) console.log('✅', response.config.url, response.status);
+        if (__DEV__) console.log(' ', response.config.url, response.status);
         return response;
     },
     (error) => {
         // Không dùng console.error để tránh hiển thị error overlay màu đỏ
-        if (__DEV__) console.log('❌', error.config?.url, error.response?.status, error.response?.data);
+        if (__DEV__) console.log(' ', error.config?.url, error.response?.status, error.response?.data);
         return Promise.reject(error);
     }
 );

@@ -49,10 +49,9 @@ export interface CreateClubAccountBody {
 export async function getClubApplications(): Promise<ClubApplication[]> {
   try {
     const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApplication[] }>("/api/club-applications/all");
-    console.log('✅ Club applications response:', JSON.stringify(response.data, null, 2));
     return response.data.data;
   } catch (error) {
-    console.error("❌ Error fetching club applications:", error);
+    console.error("  Error fetching club applications:", error);
     throw error;
   }
 }
@@ -66,10 +65,9 @@ export async function getClubApplicationById(applicationId: number): Promise<Clu
     const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApplication }>(
       `/api/club-applications/${applicationId}`
     );
-    console.log('✅ Club application detail:', response.data);
     return response.data.data;
   } catch (error) {
-    console.error("❌ Error fetching club application:", error);
+    console.error("  Error fetching club application:", error);
     throw error;
   }
 }
@@ -110,8 +108,6 @@ export async function postClubApplication(
       }
     );
     
-    console.log('✅ Club application created:', response.data);
-    
     // Backend returns: { success, message, data }
     const result = response.data;
     if (!result.success) {
@@ -120,7 +116,7 @@ export async function postClubApplication(
     
     return result.data; // Return only the data part
   } catch (error: any) {
-    console.error("❌ Error creating club application:", error.response?.data || error.message);
+    console.error("  Error creating club application:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -141,7 +137,6 @@ export async function putClubApplicationStatus(
       { approve, rejectReason },
       { headers: { 'Content-Type': 'application/json' } }
     );
-    console.log("ClubApplication response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error updating club application status:", error);
@@ -161,8 +156,6 @@ export async function getMyClubApplications(): Promise<ClubApplication[]> {
       data: ClubApplication[];
     }>('/api/club-applications/my');
     
-    console.log('✅ My club applications:', response.data);
-    
     // Response structure: { success, message, data }
     if (response.data?.success && response.data?.data) {
       return response.data.data;
@@ -175,7 +168,7 @@ export async function getMyClubApplications(): Promise<ClubApplication[]> {
     
     return [];
   } catch (error: any) {
-    console.error('❌ Error fetching my club applications:', error.response?.data || error.message);
+    console.error('  Error fetching my club applications:', error.response?.data || error.message);
     // Return empty array instead of throwing to handle gracefully
     return [];
   }
@@ -207,10 +200,9 @@ export async function processClubApplication(
       throw new Error(result.message || 'Failed to process application');
     }
 
-    console.log('✅ Application processed successfully:', result.data);
     return result.data;
   } catch (error: any) {
-    console.error('❌ Error processing club application:', error.response?.data || error.message);
+    console.error('  Error processing club application:', error.response?.data || error.message);
     throw error;
   }
 }
@@ -238,10 +230,9 @@ export async function createClubAccount(body: CreateClubAccountBody): Promise<st
       throw new Error(result.message || 'Failed to create club account');
     }
 
-    console.log('✅ Club account created successfully:', result.data);
     return result.data;
   } catch (error: any) {
-    console.error('❌ Error creating club account:', error.response?.data || error.message);
+    console.error('  Error creating club account:', error.response?.data || error.message);
     throw error;
   }
 }
@@ -273,10 +264,9 @@ export async function sendOtp(studentEmail: string): Promise<string> {
       throw new Error(result.message || 'Failed to send OTP');
     }
 
-    console.log('✅ OTP sent successfully to:', studentEmail);
     return result.message || result.data || 'OTP sent successfully';
   } catch (error: any) {
-    console.error('❌ Error sending OTP:', error.response?.data || error.message);
+    console.error('  Error sending OTP:', error.response?.data || error.message);
     throw error;
   }
 }

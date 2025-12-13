@@ -887,7 +887,7 @@ export function useClubMemberCount(clubId: number, enabled = true) {
 /**
  * Hook to prefetch multiple club member counts
  * Useful for lists where we need counts for many clubs
- * ✅ OPTIMIZED: Returns both activeMemberCount and approvedEvents
+ *   OPTIMIZED: Returns both activeMemberCount and approvedEvents
  */
 export function useClubMemberCounts(clubIds: number[]) {
   return useQuery({

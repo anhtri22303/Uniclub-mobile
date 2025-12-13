@@ -1,46 +1,46 @@
 # 🔐 Google OAuth Login Setup Guide
 
-## ✅ Đã Hoàn Thành
+##   Đã Hoàn Thành
 
 Tôi đã triển khai thành công Google OAuth login cho UniClub mobile app theo hướng dẫn từ `GOOGLE_OAUTH_MOBILE_GUIDE.md`. Dưới đây là tổng kết những gì đã được thực hiện:
 
-### 1. ✅ Cài Đặt Package
+### 1.   Cài Đặt Package
 ```bash
 npx expo install @react-native-google-signin/google-signin
 ```
 
-### 2. ✅ Cấu Hình Environment (`src/configs/environment.ts`)
+### 2.   Cấu Hình Environment (`src/configs/environment.ts`)
 - Đã thêm `GOOGLE_WEB_CLIENT_ID`: `772231604776-mrl2ick1aess5a4f2npfm7qctvksprd7.apps.googleusercontent.com`
 
-### 3. ✅ Types (`src/models/auth/auth.types.ts`)
+### 3.   Types (`src/models/auth/auth.types.ts`)
 - Đã thêm `GoogleLoginResponse` interface với đầy đủ fields từ backend
 
-### 4. ✅ Auth Service (`src/services/auth.service.ts`)
+### 4.   Auth Service (`src/services/auth.service.ts`)
 - Đã cập nhật method `loginWithGoogleToken` để gọi API `POST /auth/google`
 - Response format đúng theo tài liệu: `{ success, message, data }`
 
-### 5. ✅ Google Auth Service (`src/services/googleAuth.service.ts`)
+### 5.   Google Auth Service (`src/services/googleAuth.service.ts`)
 File mới tạo để quản lý Google Sign-In flow:
 - `configure()`: Khởi tạo Google Sign-In
 - `signInWithGoogle()`: Xử lý toàn bộ flow từ Google Sign-In → Backend verification → Lưu JWT token
 - `signOut()`: Đăng xuất
 - `isSignedIn()`: Kiểm tra trạng thái đăng nhập
 
-### 6. ✅ Login Screen (`src/components/auth/LoginScreen.tsx`)
+### 6.   Login Screen (`src/components/auth/LoginScreen.tsx`)
 - Import `GoogleAuthService`
 - Thêm state `isGoogleLoading`
 - Khởi tạo Google Sign-In trong `useEffect`
 - Thêm handler `handleGoogleSignIn`
 - Cập nhật Google Sign-In button với handler và loading state
 
-### 7. ✅ App Configuration (`app.json`)
+### 7.   App Configuration (`app.json`)
 - Thêm plugin `@react-native-google-signin/google-signin`
 - Cấu hình `bundleIdentifier` (iOS): `com.anhtri.uniclub`
 - Cấu hình `package` (Android): `com.anhtri.uniclub`
 
 ---
 
-## 📋 Các Bước Tiếp Theo (Cần Thực Hiện)
+##  Các Bước Tiếp Theo (Cần Thực Hiện)
 
 ### Bước 1: Tạo Google OAuth Credentials
 
@@ -182,13 +182,13 @@ Sau khi setup xong, test các tình huống sau:
 
 ## 📝 Files Đã Chỉnh Sửa
 
-1. ✅ `package.json` - Thêm `@react-native-google-signin/google-signin`
-2. ✅ `src/configs/environment.ts` - Thêm `GOOGLE_WEB_CLIENT_ID`
-3. ✅ `src/models/auth/auth.types.ts` - Thêm `GoogleLoginResponse`
-4. ✅ `src/services/auth.service.ts` - Cập nhật `loginWithGoogleToken`
-5. ✅ `src/services/googleAuth.service.ts` - **File mới tạo**
-6. ✅ `src/components/auth/LoginScreen.tsx` - Thêm Google Sign-In logic
-7. ✅ `app.json` - Thêm plugin và config
+1.   `package.json` - Thêm `@react-native-google-signin/google-signin`
+2.   `src/configs/environment.ts` - Thêm `GOOGLE_WEB_CLIENT_ID`
+3.   `src/models/auth/auth.types.ts` - Thêm `GoogleLoginResponse`
+4.   `src/services/auth.service.ts` - Cập nhật `loginWithGoogleToken`
+5.   `src/services/googleAuth.service.ts` - **File mới tạo**
+6.   `src/components/auth/LoginScreen.tsx` - Thêm Google Sign-In logic
+7.   `app.json` - Thêm plugin và config
 
 ---
 
@@ -201,7 +201,7 @@ Sau khi setup xong, test các tình huống sau:
 
 ---
 
-## 🎯 Backend API
+##  Backend API
 
 **Endpoint:** `POST https://uniclub-qyn9a.ondigitalocean.app/auth/google`
 

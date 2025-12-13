@@ -1,7 +1,7 @@
 import CalendarModal from '@components/CalendarModal';
-import { AppTextInput } from '@components/ui';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { useClub, useEventCoHostByClub, useEventsByClub } from '@hooks/useQueryHooks';
 import { useAuthStore } from '@stores/auth.store';
@@ -127,19 +127,81 @@ function isEventActive(event: ClubLeaderEvent): boolean {
   // Must not be expired
   if (isEventExpired(event)) return false;
 
-  // For multi-day events, check if any day exists
+  // For multi-day events, check if current date is within any of the event days
+  if (event.days && event.days.length > 0) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Check if today matches any event day
+    const isToday = event.days.some(day => {
+      const [year, month, dayNum] = day.date.split('-').map(Number);
+      const dayDate = new Date(year, month - 1, dayNum);
+      return dayDate.getTime() === today.getTime();
+    });
+    
+    if (!isToday) return false;
+  }
   // For single-day events, check date/endTime
-  const hasValidDate = (event.days && event.days.length > 0) || ((event.date || event.startDate) && event.endTime);
-  if (!hasValidDate) return false;
+  else if ((event.date || event.startDate) && event.endTime) {
+    // Single-day event logic is fine as-is
+  } else {
+    return false;
+  }
 
   return true;
 }
 
 // Helper function to get event status based on date and time
 function getEventStatus(event: ClubLeaderEvent): string {
-  // ONGOING status from API takes priority (matching web implementation)
-  if (event.status === "ONGOING") return "Now";
+  // ONGOING status from API - but check if current date is within event days
+  if (event.status === "ONGOING") {
+    // For multi-day events, verify current date matches one of the event days
+    if (event.days && event.days.length > 0) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const isToday = event.days.some(day => {
+        const [year, month, dayNum] = day.date.split('-').map(Number);
+        const dayDate = new Date(year, month - 1, dayNum);
+        return dayDate.getTime() === today.getTime();
+      });
+      
+      // Only show "Now" if today matches one of the event days
+      if (isToday) return "Now";
+      // If ONGOING but not today, check if it's in the future or past
+      const firstDay = event.days[0];
+      const [firstYear, firstMonth, firstDayNum] = firstDay.date.split('-').map(Number);
+      const firstDate = new Date(firstYear, firstMonth - 1, firstDayNum);
+      
+      if (today < firstDate) return "Soon";
+      return "Finished";
+    }
+    // For single-day ONGOING events, show "Now"
+    return "Now";
+  }
   
+  // Multi-day event status calculation
+  if (event.days && event.days.length > 0) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const firstDay = event.days[0];
+    const lastDay = event.days[event.days.length - 1];
+    
+    const [firstYear, firstMonth, firstDayNum] = firstDay.date.split('-').map(Number);
+    const firstDate = new Date(firstYear, firstMonth - 1, firstDayNum);
+    
+    const [lastYear, lastMonth, lastDayNum] = lastDay.date.split('-').map(Number);
+    const lastDate = new Date(lastYear, lastMonth - 1, lastDayNum);
+    
+    if (today < firstDate) {
+      if (firstDate.getTime() - today.getTime() < 7 * 24 * 60 * 60 * 1000) return 'Soon';
+      return 'Future';
+    }
+    if (today >= firstDate && today <= lastDate) return 'Now';
+    return 'Finished';
+  }
+  
+  // Legacy single-day event logic
   if (!event.date) return 'Finished';
   
   // Get current time in Vietnam timezone (UTC+7)
@@ -438,7 +500,6 @@ export default function Events() {
                 : 'bg-gray-100 border-gray-300'
             }`}
             onPress={() => {
-              console.log('[TOGGLE] Current showExpiredEvents:', showExpiredEvents, '-> will become:', !showExpiredEvents);
               setShowExpiredEvents(!showExpiredEvents);
             }}
           >

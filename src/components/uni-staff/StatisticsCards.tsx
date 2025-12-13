@@ -55,7 +55,7 @@ export const StatisticsCards: React.FC<StatisticsCardsProps> = ({
 }) => {
   // Debug: Log received props
   React.useEffect(() => {
-    console.log('📊 StatisticsCards Props:', {
+    console.log(' StatisticsCards Props:', {
       totalClubApplications,
       pendingClubApplications,
       completedClubApplications,
@@ -65,7 +65,7 @@ export const StatisticsCards: React.FC<StatisticsCardsProps> = ({
 
   return (
     <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <Text className="text-lg font-bold text-gray-800 mb-4">📊 Overview Statistics</Text>
+      <Text className="text-lg font-bold text-gray-800 mb-4"> Overview Statistics</Text>
       
       {/* Main Overview Stats */}
       <View className="flex-row gap-3 mb-4">

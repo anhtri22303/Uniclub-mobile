@@ -16,11 +16,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ClubInfoCard,
-  CoHostEventsList,
-  MembersByMajorChart,
-  RecentApplicationsList,
-  StatsCard,
+    ClubInfoCard,
+    CoHostEventsList,
+    MembersByMajorChart,
+    RecentApplicationsList,
+    StatsCard,
 } from './club-leader/_components';
 
 // Helper function to check if event has expired
@@ -389,7 +389,7 @@ export default function ClubLeaderPage() {
             stats={[
               { label: '🟢 Ongoing Now', value: stats.ongoingEvents, color: '#22c55e' },
               { label: '🏁 Completed', value: stats.completedEvents, color: '#10b981' },
-              { label: '❌ Rejected', value: stats.rejectedEvents, color: '#ef4444' },
+              { label: '  Rejected', value: stats.rejectedEvents, color: '#ef4444' },
               { label: '🚫 Cancelled', value: stats.cancelledEvents, color: '#6b7280' },
             ]}
           />

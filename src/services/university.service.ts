@@ -56,10 +56,8 @@ export class UniversityService {
    */
   static async fetchUniversityPoints(): Promise<UniversityPointsResponse> {
     try {
-      console.log('fetchUniversityPoints: GET /api/university/points');
       const response = await axiosClient.get('/api/university/points');
       const body = response.data;
-      console.log('fetchUniversityPoints response:', body);
 
       // If backend wraps the response with { success, message, data }
       if (body && typeof body === 'object' && 'data' in body) {
@@ -80,12 +78,10 @@ export class UniversityService {
    */
   static async fetchAttendanceSummary(year: number): Promise<AttendanceSummaryResponse> {
     try {
-      console.log(`fetchAttendanceSummary: GET /api/university/attendance-summary?year=${year}`);
       const response = await axiosClient.get('/api/university/attendance-summary', {
         params: { year },
       });
       const body = response.data;
-      console.log('fetchAttendanceSummary response:', body);
 
       // If backend wraps the response with { success, message, data }
       if (body && typeof body === 'object' && 'data' in body) {
@@ -106,10 +102,8 @@ export class UniversityService {
    */
   static async fetchAttendanceRanking(): Promise<AttendanceRankingResponse> {
     try {
-      console.log('fetchAttendanceRanking: GET /api/university/attendance-ranking');
       const response = await axiosClient.get('/api/university/attendance-ranking');
       const body = response.data;
-      console.log('fetchAttendanceRanking response:', body);
 
       // If backend wraps the response with { success, message, data }
       if (body && typeof body === 'object' && 'data' in body) {

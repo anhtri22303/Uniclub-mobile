@@ -160,16 +160,16 @@ export default function ProductDetailPage() {
       ]);
 
       // Log and filter out null/invalid media items
-      console.log('📦 Raw product media:', productData.media);
+      console.log(' Raw product media:', productData.media);
       if (productData.media && Array.isArray(productData.media)) {
         const validMedia = productData.media.filter(m => {
           const isValid = m !== null && m !== undefined && m.url;
           if (!isValid) {
-            console.log('❌ Invalid media item found:', m);
+            console.log('  Invalid media item found:', m);
           }
           return isValid;
         });
-        console.log('✅ Valid media after filtering:', validMedia);
+        console.log('  Valid media after filtering:', validMedia);
         productData.media = validMedia;
       }
 
@@ -364,7 +364,7 @@ export default function ProductDetailPage() {
     
     Alert.alert(
       'Archive Product',
-      `"${product?.name}" will be permanently archived and:\n\n• Hidden from all students\n• Cannot be redeemed or purchased\n• Cannot be edited or restored\n\n⚠️ This action is permanent and cannot be undone!`,
+      `"${product?.name}" will be permanently archived and:\n\n• Hidden from all students\n• Cannot be redeemed or purchased\n• Cannot be edited or restored\n\n This action is permanent and cannot be undone!`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -438,7 +438,7 @@ export default function ProductDetailPage() {
           name: fileName,
         } as any);
 
-        console.log('📤 Uploading media:', { fileName, type: asset.type, uri: asset.uri });
+        console.log(' Uploading media:', { fileName, type: asset.type, uri: asset.uri });
         
         await ProductService.addMediaToProduct(clubId, productId, formData);
         Alert.alert('Success', 'Image uploaded successfully');

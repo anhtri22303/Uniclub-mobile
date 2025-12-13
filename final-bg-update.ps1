@@ -1,6 +1,6 @@
 # Final comprehensive script to update ALL remaining backgrounds
 
-Write-Host "🔍 Scanning for remaining bg-gray-50 backgrounds..." -ForegroundColor Cyan
+Write-Host " Scanning for remaining bg-gray-50 backgrounds..." -ForegroundColor Cyan
 
 $pattern = 'className="flex-1 bg-gray-50"'
 $files = Get-ChildItem -Path "src" -Filter "*.tsx" -Recurse -File | Where-Object {
@@ -28,5 +28,5 @@ foreach ($file in $files) {
     }
 }
 
-Write-Host "`n✅ Updated $count files!" -ForegroundColor Green
+Write-Host "`n  Updated $count files!" -ForegroundColor Green
 Write-Host "🎉 All backgrounds now use #E2E2EF" -ForegroundColor Cyan

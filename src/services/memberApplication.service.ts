@@ -35,7 +35,6 @@ export class MemberApplicationService {
         }
       );
 
-      console.log('✅ Posted member application:', response.data);
       return response.data;
     } catch (error: any) {
       console.error(
@@ -53,7 +52,6 @@ export class MemberApplicationService {
   static async getAllMemberApplications(): Promise<MemberApplication[]> {
     try {
       const response = await axiosClient.get('/api/member-applications');
-      console.log('✅ Fetched all member applications:', response.data);
 
       const data: any = response.data;
 
@@ -65,7 +63,7 @@ export class MemberApplicationService {
       return [];
     } catch (error: any) {
       console.error(
-        '❌ Error fetching member applications:',
+        '  Error fetching member applications:',
         error.response?.data || error.message
       );
       throw error;
@@ -84,7 +82,6 @@ export class MemberApplicationService {
         data: MemberApplication[];
       }>('/api/member-applications/my');
 
-      // console.log('✅ My member applications:', response.data);
 
       // Response structure: { success, message, data }
       if (response.data?.success && response.data?.data) {
@@ -99,7 +96,7 @@ export class MemberApplicationService {
       return [];
     } catch (error: any) {
       console.error(
-        '❌ Error fetching my member applications:',
+        '  Error fetching my member applications:',
         error.response?.data || error.message
       );
       // Return empty array instead of throwing to handle gracefully
@@ -120,10 +117,7 @@ export class MemberApplicationService {
       );
       const resData: any = response.data;
 
-      console.log(
-        `✅ Fetched member applications for club ${clubId}:`,
-        resData
-      );
+
 
       // Handle different response formats
       if (Array.isArray(resData)) return resData;
@@ -134,7 +128,7 @@ export class MemberApplicationService {
       return [];
     } catch (error: any) {
       console.error(
-        `❌ Error fetching member applications for club ${clubId}:`,
+        `  Error fetching member applications for club ${clubId}:`,
         error.response?.data || error.message
       );
       throw error;
@@ -159,14 +153,11 @@ export class MemberApplicationService {
         }
       );
 
-      console.log(
-        `✅ Updated application status to ${status}:`,
-        response.data
-      );
+
       return response.data;
     } catch (error: any) {
       console.error(
-        '❌ Error updating application status:',
+        '  Error updating application status:',
         error.response?.data || error.message
       );
       throw error;
@@ -210,11 +201,10 @@ export class MemberApplicationService {
         `/api/member-applications/${applicationId}`
       );
 
-      console.log('✅ Deleted membership application:', response.data);
       return response.data;
     } catch (error: any) {
       console.error(
-        '❌ Error deleting application:',
+        ' Error deleting application:',
         error.response?.data || error.message
       );
       throw error;

@@ -75,8 +75,7 @@ export default function UniStaffPointsPage() {
     try {
       setLoading(true);
       const clubs = await ClubService.getAllClubs();
-      console.log('=== POINTS PAGE: Loaded clubs ===');
-      console.log('Total clubs:', clubs.length);
+
       setAllClubs(clubs);
     } catch (error: any) {
       console.error('Error loading clubs:', error);

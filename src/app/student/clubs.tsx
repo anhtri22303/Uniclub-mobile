@@ -98,7 +98,7 @@ export default function StudentClubsPage() {
       try {
         // Load applications first
         const applications = await MemberApplicationService.getMyMemberApplications();
-        console.log('📋 Loaded user applications:', applications);
+        console.log(' Loaded user applications:', applications);
         setMyApplications(applications);
         
         // Then load clubs with the applications data
@@ -164,7 +164,7 @@ export default function StudentClubsPage() {
     // Use provided applications or fall back to state
     const applicationsToUse = applications !== undefined ? applications : myApplications;
 
-    // ✅ Check if user has a pending application from API
+    //   Check if user has a pending application from API
     const hasPendingApplication = applicationsToUse.some(
       (app: any) => app.clubId === clubId && app.status === 'PENDING'
     );
@@ -205,7 +205,7 @@ export default function StudentClubsPage() {
     try {
       // Refresh applications first, then reload clubs with the fresh data
       const applications = await MemberApplicationService.getMyMemberApplications();
-      console.log('📋 Refreshed user applications:', applications);
+      console.log(' Refreshed user applications:', applications);
       setMyApplications(applications);
       
       // Reload clubs with the fresh applications data
@@ -237,7 +237,7 @@ export default function StudentClubsPage() {
         message: applicationText.trim(),
       });
 
-      console.log('✅ Application submitted:', response);
+      console.log('  Application submitted:', response);
 
       // Add to pending list for optimistic UI
       setPendingClubIds((prev) => [...prev, selectedClub.id]);
@@ -253,7 +253,7 @@ export default function StudentClubsPage() {
       // Refresh applications first, then reload clubs with the new data
       try {
         const applications = await MemberApplicationService.getMyMemberApplications();
-        console.log('📋 Refreshed user applications after submission:', applications);
+        console.log(' Refreshed user applications after submission:', applications);
         setMyApplications(applications);
         
         // Reload clubs with the fresh applications data

@@ -85,7 +85,6 @@ export default function StudentMembersPage() {
         // Get club IDs from userClubs array (same as Sidebar)
         const clubIds = userClubs.map((club) => club.clubId);
         
-        console.log('User club IDs from userClubs:', clubIds);
         setUserClubIds(clubIds);
         
         // Set first club as default
@@ -120,7 +119,6 @@ export default function StudentMembersPage() {
             leaderName: res.data.leaderName || '',
           }));
         
-        console.log('Loaded clubs details:', validClubs);
         setUserClubsDetails(validClubs);
       } catch (err) {
         console.error('Failed to load clubs details:', err);
@@ -153,7 +151,6 @@ export default function StudentMembersPage() {
         
         // Load members
         const membersData = await MembershipsService.getMembersByClubId(selectedClubId);
-        console.log('Loaded members:', membersData);
         setApiMembers(membersData);
       } catch (err: any) {
         console.error('Failed to load club data:', err);

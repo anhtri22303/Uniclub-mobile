@@ -35,7 +35,7 @@ export default function OrderDetailPage() {
   const isOrderCode = id && typeof id === 'string' && id.toUpperCase().startsWith('UC-');
   const orderId = !isOrderCode && id ? parseInt(id, 10) : null;
   
-  console.log('📋 OrderDetailPage - id:', id, 'isOrderCode:', isOrderCode, 'orderId:', orderId);
+  console.log(' OrderDetailPage - id:', id, 'isOrderCode:', isOrderCode, 'orderId:', orderId);
 
   // Get user from auth store
   const { user } = useAuthStore();
@@ -91,10 +91,10 @@ export default function OrderDetailPage() {
       
       // Check if id is orderCode format (UC-xxx)
       if (isOrderCode) {
-        console.log('🔍 Loading order by orderCode:', id);
+        console.log(' Loading order by orderCode:', id);
         foundOrder = await getRedeemByOrderCode(id as string);
       } else if (orderId) {
-        console.log('🔍 Loading order by orderId:', orderId);
+        console.log(' Loading order by orderId:', orderId);
         foundOrder = await getRedeemOrderById(orderId);
       } else {
         throw new Error('Invalid order identifier');
@@ -188,10 +188,10 @@ export default function OrderDetailPage() {
       let updatedOrder: RedeemOrder;
       if (refundType === 'full') {
         updatedOrder = await refundRedeemOrder(payload);
-        Alert.alert('✅ Success', 'Order has been successfully cancelled and refunded.');
+        Alert.alert('  Success', 'Order has been successfully cancelled and refunded.');
       } else {
         updatedOrder = await refundPartialRedeemOrder(payload);
-        Alert.alert('✅ Success', `Successfully refunded ${parseInt(quantityToRefund, 10)} item(s).`);
+        Alert.alert('  Success', `Successfully refunded ${parseInt(quantityToRefund, 10)} item(s).`);
       }
 
       setOrder(updatedOrder);
@@ -200,7 +200,7 @@ export default function OrderDetailPage() {
       setQuantityToRefund('');
       setRefundType('full');
     } catch (error: any) {
-      Alert.alert('❌ Error', error.message || 'Failed to process refund');
+      Alert.alert('  Error', error.message || 'Failed to process refund');
     } finally {
       setProcessing(false);
     }
@@ -624,7 +624,7 @@ export default function OrderDetailPage() {
                   {order && order.quantity === 1 && (
                     <View className="bg-red-50 border border-red-200 rounded-lg p-2 mt-2">
                       <Text className="text-xs text-red-700">
-                        ⚠️ Cannot do partial refund for orders with only 1 item
+                         Cannot do partial refund for orders with only 1 item
                       </Text>
                     </View>
                   )}

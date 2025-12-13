@@ -7,7 +7,7 @@ import * as SecureStore from 'expo-secure-store';
  * Google Authentication Service
  * Handles Google Sign-In flow and token exchange with backend
  * 
- * ⚠️ CURRENTLY DISABLED - Requires Google Console setup
+ *  CURRENTLY DISABLED - Requires Google Console setup
  * See QUICK_START.md for setup instructions
  */
 export class GoogleAuthService {
@@ -21,7 +21,7 @@ export class GoogleAuthService {
       offlineAccess: true,
       forceCodeForRefreshToken: true,
     });
-    console.log('✅ Google Sign-In configured with webClientId:', ENV.GOOGLE_WEB_CLIENT_ID?.substring(0, 30) + '...');
+    console.log(' Google Sign-In configured with webClientId:', ENV.GOOGLE_WEB_CLIENT_ID?.substring(0, 30) + '...');
   }
 
   /**
@@ -30,11 +30,11 @@ export class GoogleAuthService {
    */
   static async signInWithGoogle() {
     try {
-      console.log('🔵 Starting Google Sign-In flow...');
+      console.log(' Starting Google Sign-In flow...');
 
       // 1. Check if device supports Google Play Services (Android only)
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      console.log('✅ Google Play Services available');
+      console.log(' Google Play Services available');
 
       // 2. Sign in with Google
       const userInfo = await GoogleSignin.signIn();
@@ -43,7 +43,7 @@ export class GoogleAuthService {
         throw new Error('Google Sign-In was not successful');
       }
       
-      console.log('✅ Google Sign-In successful:', userInfo.data.user.email);
+      console.log(' Google Sign-In successful:', userInfo.data.user.email);
 
       // 3. Get ID Token (JWT) - This is what we send to backend
       const tokens = await GoogleSignin.getTokens();
@@ -53,13 +53,13 @@ export class GoogleAuthService {
         throw new Error('Failed to get ID token from Google');
       }
 
-      console.log('✅ Got Google ID Token:', idToken.substring(0, 30) + '...');
-      console.log('📤 Sending ID Token to backend...');
+      console.log(' Got Google ID Token:', idToken.substring(0, 30) + '...');
+      console.log(' Sending ID Token to backend...');
 
       // 4. Send ID Token to backend for verification
       const response = await AuthService.loginWithGoogleToken({ token: idToken });
 
-      console.log('📥 Backend response:', {
+      console.log(' Backend response:', {
         success: response.success,
         message: response.message,
         hasData: !!response.data,
@@ -69,7 +69,7 @@ export class GoogleAuthService {
         // 5. Save JWT token to secure storage
         const jwtToken = response.data.token;
         await SecureStore.setItemAsync('token', jwtToken);
-        console.log('💾 JWT token saved to secure storage');
+        console.log(' JWT token saved to secure storage');
 
         // Transform response to LoginResponse format for auth store
         return {
@@ -88,7 +88,7 @@ export class GoogleAuthService {
       }
 
     } catch (error: any) {
-      console.error('❌ Google Sign-In error:', error);
+      console.error('  Google Sign-In error:', error);
 
       // Handle specific Google Sign-In errors
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -112,7 +112,7 @@ export class GoogleAuthService {
     try {
       await GoogleSignin.signOut();
       await SecureStore.deleteItemAsync('token');
-      console.log('🚪 Signed out successfully');
+      console.log(' Signed out successfully');
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;

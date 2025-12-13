@@ -86,7 +86,7 @@ export const EventRequestsList: React.FC<EventRequestsListProps> = ({
   if (eventRequests.length === 0) {
     return (
       <View className="bg-white rounded-xl p-6 items-center justify-center border border-gray-200">
-        <Text className="text-4xl mb-2">📋</Text>
+        <Text className="text-4xl mb-2"></Text>
         <Text className="text-base font-semibold text-gray-900 mb-1">
           No Event Requests
         </Text>
@@ -151,7 +151,7 @@ export const EventRequestsList: React.FC<EventRequestsListProps> = ({
             {(event.location || event.locationName) && (
               <View className="flex-row items-center">
                 <Text className="text-xs text-gray-500">
-                  📍 {event.location?.name || event.locationName}
+                   {event.location?.name || event.locationName}
                 </Text>
               </View>
             )}

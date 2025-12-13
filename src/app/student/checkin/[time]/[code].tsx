@@ -4,13 +4,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle, Clock } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    StatusBar,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 // Phase configuration with colors and labels
@@ -112,13 +112,11 @@ export default function MemberCheckinByTimeAndCodePage() {
     setIsCheckinLoading(true);
 
     try {
-      console.log('Starting event check-in with token:', checkInCode, 'and phase:', checkInTime);
       
       // Call event check-in API with JWT token and phase
       // Using START, MID, END directly as per API requirements
       const response = await eventCheckin(checkInCode, checkInTime.toUpperCase());
 
-      console.log('Event check-in response:', response);
 
       // Show success alert
       Alert.alert(
@@ -277,7 +275,7 @@ export default function MemberCheckinByTimeAndCodePage() {
         {isCheckedIn && (
           <View className="mt-8 bg-green-50 rounded-xl p-4 border border-green-200">
             <Text className="text-sm text-green-900 text-center font-medium mb-2">
-              ✅ You have successfully checked in to this event
+                You have successfully checked in to this event
             </Text>
             <Text className="text-xs text-green-700 text-center">
               Redirecting to events page...

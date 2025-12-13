@@ -54,7 +54,6 @@ export class ClubService {
       });
 
       const body = response.data;
-      console.log('fetchClubs response:', JSON.stringify(body, null, 2));
 
       // Check if response has nested data structure { success, message, data: { content: [] } }
       if (body && typeof body === 'object' && 'data' in body && typeof body.data === 'object') {
@@ -118,16 +117,13 @@ export class ClubService {
   static async getClubById(id: number): Promise<ClubApiResponse> {
     try {
       const response = await axiosClient.get(`/api/clubs/${id}`);
-      console.log(`📥 getClubById(${id}) raw response:`, response.data);
       
       // Check if response has standard wrapper { success, message, data }
       if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-        console.log(`✅ getClubById(${id}) unwrapped:`, response.data.data);
         return response.data.data as ClubApiResponse;
       }
       
       // Otherwise return response.data directly
-      console.log(`✅ getClubById(${id}) direct:`, response.data);
       return response.data as ClubApiResponse;
     } catch (error) {
       console.error('Error fetching club by ID:', error);
@@ -141,7 +137,6 @@ export class ClubService {
   static async deleteClub(id: number): Promise<void> {
     try {
       await axiosClient.delete(`/api/clubs/${id}`);
-      console.log(`Club ${id} deleted successfully`);
     } catch (error) {
       console.error('Error deleting club:', error);
       throw error;
@@ -195,8 +190,6 @@ export class ClubService {
       const response = await axiosClient.get(`/api/clubs/${clubId}`);
       const body: any = response.data;
       
-      console.log('getClubByIdFull response:', body);
-      
       // If backend returns wrapped response { success, message, data }
       if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
         return body as { success: boolean; message: string; data: ClubApiResponse };
@@ -246,7 +239,6 @@ export class ClubService {
     try {
       const response = await axiosClient.get<any>('/api/clubs/stats');
       const body = response.data;
-      console.log('Fetched club stats response:', body);
 
       // If backend uses { success, message, data }
       if (body && typeof body === 'object' && 'data' in body && 'success' in body && body.success) {
@@ -279,7 +271,6 @@ export class ClubService {
       });
 
       const body = response.data;
-      console.log('getAllClubs response:', JSON.stringify(body, null, 2));
 
       // Check if response has nested data structure { success, message, data: { content: [] } }
       if (body && typeof body === 'object' && 'data' in body && typeof body.data === 'object') {
@@ -290,9 +281,9 @@ export class ClubService {
             name: club.name,
             category: club.majorName || '-',
             leaderName: club.leaderName || 'No Leader',
-            members: club.memberCount ?? 0, // Use nullish coalescing for null values
+            members: club.memberCount ?? 0,
             policy: club.majorPolicyName || '-',
-            events: club.eventCount ?? 0, // Use nullish coalescing for null values
+            events: club.eventCount ?? 0,
             description: club.description,
             status: club.status,
           }));
@@ -306,9 +297,9 @@ export class ClubService {
           name: club.name,
           category: club.majorName || '-',
           leaderName: club.leaderName || 'No Leader',
-          members: club.memberCount ?? 0, // Use nullish coalescing for null values
+          members: club.memberCount ?? 0,
           policy: club.majorPolicyName || '-',
-          events: club.eventCount ?? 0, // Use nullish coalescing for null values
+          events: club.eventCount ?? 0,
           description: club.description,
           status: club.status,
         }));

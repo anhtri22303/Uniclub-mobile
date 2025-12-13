@@ -64,7 +64,7 @@ export default function StudentHistoryPage() {
   const [staffHistoryLoading, setStaffHistoryLoading] = useState(false);
   const [staffHistoryError, setStaffHistoryError] = useState<string | null>(null);
 
-  // ✅ USE REACT QUERY for applications
+  //   USE REACT QUERY for applications
   const {
     data: memberApplications = [],
     isLoading: memberLoading,
@@ -94,20 +94,18 @@ export default function StudentHistoryPage() {
     try {
       setWalletLoading(true);
       setWalletError(null);
-      console.log('📱 Loading wallet data...');
       
       const [walletResponse, transactionsResponse] = await Promise.all([
         WalletService.getWallet(),
         WalletService.getWalletTransactions()
       ]);
       
-      console.log('💰 Wallet response:', walletResponse);
-      console.log('📊 Transactions response:', transactionsResponse);
+
       
       setMyWallet(walletResponse);
       setWalletTransactions(transactionsResponse);
     } catch (err: any) {
-      console.error('❌ Wallet loading error:', err);
+      console.error('  Wallet loading error:', err);
       setWalletError(err?.response?.data?.message || err?.message || 'Failed to load wallet');
     } finally {
       setWalletLoading(false);
@@ -475,7 +473,7 @@ export default function StudentHistoryPage() {
                 }`}
               >
                 <View className="flex-row items-center justify-center">
-                  <Text className="text-lg mr-1">📦</Text>
+                  <Text className="text-lg mr-1"></Text>
                   <Text
                     className={`font-semibold ${
                       activeTab === 'order' ? 'text-blue-600' : 'text-gray-600'
@@ -608,7 +606,7 @@ export default function StudentHistoryPage() {
               onPress={() => setShowStaffHistory(!showStaffHistory)}
             >
               <View className="flex-row items-center gap-2">
-                <Text className="text-lg">📋</Text>
+                <Text className="text-lg"></Text>
                 <Text
                   className={`font-semibold ${
                     showStaffHistory ? 'text-green-600' : 'text-gray-700'
@@ -662,7 +660,7 @@ export default function StudentHistoryPage() {
               </View>
             ) : walletError ? (
               <View className="items-center py-20">
-                <Text className="text-6xl mb-4">⚠️</Text>
+                <Text className="text-6xl mb-4"></Text>
                 <Text className="text-lg font-semibold text-gray-900 mb-2">
                   Error Loading Wallet
                 </Text>
@@ -744,7 +742,7 @@ export default function StudentHistoryPage() {
                 </Text>
                 {walletTransactions.length === 0 ? (
                   <View className="bg-white rounded-xl shadow-sm p-6 items-center">
-                    <Text className="text-4xl mb-2">📋</Text>
+                    <Text className="text-4xl mb-2"></Text>
                     <Text className="text-base font-semibold text-gray-900 mb-1">
                       No Transactions Yet
                     </Text>
@@ -834,7 +832,7 @@ export default function StudentHistoryPage() {
               </View>
             ) : myFeedbackError ? (
               <View className="items-center py-20">
-                <Text className="text-6xl mb-4">⚠️</Text>
+                <Text className="text-6xl mb-4"></Text>
                 <Text className="text-lg font-semibold text-gray-900 mb-2">
                   Error Loading Feedbacks
                 </Text>
@@ -937,7 +935,7 @@ export default function StudentHistoryPage() {
               </View>
             ) : staffHistoryError ? (
               <View className="items-center py-20">
-                <Text className="text-6xl mb-4">⚠️</Text>
+                <Text className="text-6xl mb-4"></Text>
                 <Text className="text-lg font-semibold text-gray-900 mb-2">
                   Error Loading Staff History
                 </Text>
@@ -945,7 +943,7 @@ export default function StudentHistoryPage() {
               </View>
             ) : staffHistoryOrders.length === 0 ? (
               <View className="items-center py-20">
-                <Text className="text-6xl mb-4">📋</Text>
+                <Text className="text-6xl mb-4"></Text>
                 <Text className="text-lg font-semibold text-gray-900 mb-2">
                   No Staff Approval History
                 </Text>
@@ -1040,7 +1038,7 @@ export default function StudentHistoryPage() {
             </View>
           ) : error ? (
             <View className="items-center py-20">
-              <Text className="text-6xl mb-4">⚠️</Text>
+              <Text className="text-6xl mb-4"></Text>
               <Text className="text-lg font-semibold text-gray-900 mb-2">
                 Error Loading Data
               </Text>
@@ -1102,7 +1100,7 @@ export default function StudentHistoryPage() {
                           }`}
                         >
                           <Text className="text-2xl">
-                            {isMemberApp ? '👥' : isClubApp ? '🏢' : isEvent ? '📅' : '📦'}
+                            {isMemberApp ? '👥' : isClubApp ? '🏢' : isEvent ? '📅' : ''}
                           </Text>
                         </View>
 
@@ -1139,7 +1137,7 @@ export default function StudentHistoryPage() {
                                 Host: {data.hostClub?.name || 'Unknown Club'}
                               </Text>
                               <Text className="text-xs text-gray-500 mt-1">
-                                📍 {data.locationName} | 🕒{' '}
+                                 {data.locationName} | 🕒{' '}
                                 {timeObjectToString(data.startTime)} -{' '}
                                 {timeObjectToString(data.endTime)}
                               </Text>

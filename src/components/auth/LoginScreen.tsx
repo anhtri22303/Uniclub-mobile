@@ -1,5 +1,4 @@
 import { AppTextInput } from '@components/ui';
-import { ENV } from '@configs/environment';
 import { Ionicons } from '@expo/vector-icons';
 import { SignUpCredentials } from '@models/auth/auth.types';
 import AuthService from '@services/auth.service';
@@ -10,15 +9,15 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -167,7 +166,6 @@ export default function LoginScreen() {
     setShowLoginError(false);
 
     try {
-      console.log('Attempting login with API URL:', ENV.API_URL);
       const normalizedEmail = email.trim().toLowerCase();
       const loginResponse = await AuthService.login({ email: normalizedEmail, password });
       await login(loginResponse, password); // Pass password to detect "123"
@@ -411,12 +409,10 @@ export default function LoginScreen() {
     setIsGoogleLoading(true);
     
     try {
-      console.log('🔵 Starting Google Sign-In...');
       
       // Sign in with Google and get user data from backend
       const userData = await GoogleAuthService.signInWithGoogle();
       
-      console.log('✅ Google Sign-In successful, logging in...');
       
       // Login to auth store with the user data
       await login(userData);
@@ -435,7 +431,7 @@ export default function LoginScreen() {
       
       router.replace(redirectPath as any);
     } catch (error: any) {
-      console.error('❌ Google Sign-In failed:', error);
+      console.error('  Google Sign-In failed:', error);
       
       let errorMessage = 'Google Sign-In failed. Please try again.';
       
@@ -745,7 +741,7 @@ export default function LoginScreen() {
                   ) : (
                     <View className="flex-row items-center">
                       <Text className="text-white font-bold text-lg">
-                        {isSignUpMode ? '🚀 Sign Up' : '🔓 Sign In'}
+                        {isSignUpMode ? ' Sign Up' : '🔓 Sign In'}
                       </Text>
                       <Ionicons
                         name={isSignUpMode ? 'person-add' : 'arrow-forward'}

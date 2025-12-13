@@ -57,9 +57,7 @@ export class MajorService {
    */
   static async fetchMajors(): Promise<Major[]> {
     try {
-      console.log('fetchMajors: GET /api/university/majors');
       const response = await axiosClient.get<Major[]>('/api/university/majors');
-      // console.log('fetchMajors response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching majors:', error);
@@ -73,9 +71,7 @@ export class MajorService {
    */
   static async fetchMajorById(id: number): Promise<Major> {
     try {
-      console.log(`fetchMajorById: GET /api/university/majors/${id}`);
       const response = await axiosClient.get<Major>(`/api/university/majors/${id}`);
-      console.log('fetchMajorById response:', response.data);
       return response.data;
     } catch (error) {
       console.error(`Error fetching major ${id}:`, error);

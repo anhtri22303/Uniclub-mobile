@@ -34,7 +34,6 @@ export class MembershipsService {
       const response = await axiosClient.get('/api/users/me/clubs');
       const body: any = response.data;
       
-      console.log('Fetched my clubs:', body);
 
       // Backend returns { success, message, data }
       return body?.data || [];
@@ -53,7 +52,6 @@ export class MembershipsService {
       const response = await axiosClient.get('/api/memberships/my-club');
       const body: any = response.data;
       
-      console.log('Fetched my club members:', body);
 
       // Backend returns { success, message, data }
       return body?.data || [];
@@ -72,7 +70,6 @@ export class MembershipsService {
       const response = await axiosClient.get(`/api/clubs/${clubId}/members`);
       const body: any = response.data;
       
-      console.log('Fetched all club members:', body);
 
       if (!body?.success) {
         throw new Error(body?.message || 'Failed to fetch club members');
@@ -93,7 +90,6 @@ export class MembershipsService {
       const response = await axiosClient.get('/api/memberships/my-memberships');
       const body: any = response.data;
       
-      console.log('Fetched my memberships:', body);
 
       // Handle different response formats
       if (body?.success && body?.data) {
@@ -129,7 +125,6 @@ export class MembershipsService {
         }
       );
 
-      console.log('Membership application response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error submitting membership application:', error);
@@ -187,7 +182,6 @@ export class MembershipsService {
       const response = await axiosClient.get(`/api/clubs/${clubId}/leave-requests`);
       const body: any = response.data;
       
-      console.log('Fetched leave requests:', body);
 
       if (!body?.success) {
         throw new Error(body?.message || 'Failed to fetch leave requests');
