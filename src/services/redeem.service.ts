@@ -28,8 +28,10 @@ export interface RedeemOrder {
   clubName: string;
   memberName: string;
   reasonRefund?: string;
+  refundImages?: string[];
   clubId?: number;
   eventId?: number;
+  membershipId?: number;
 }
 
 /**
@@ -113,6 +115,35 @@ export interface RefundPayload {
   orderId: number | string;
   quantityToRefund: number;
   reason: string;
+}
+
+/**
+ * Interface cho đối tượng ảnh lỗi (Refund Image)
+ * (Response từ GET /api/redeem/order/{orderId}/refund/images)
+ */
+export interface RefundImage {
+  id: number;
+  imageUrl: string;
+  publicId: string;
+  displayOrder: number;
+}
+
+/**
+ * Interface cho Order Log (Lịch sử trạng thái đơn hàng)
+ * (Response từ GET /api/order-logs/membership/{membershipId}/order/{orderId})
+ */
+export interface OrderLog {
+  id: number;
+  action: string; // COMPLETED, REFUND, PARTIAL_REFUND, etc.
+  actorId: number;
+  actorName: string;
+  targetUserId: number;
+  targetUserName: string;
+  orderId: number;
+  quantity: number;
+  pointsChange: number;
+  reason: string | null;
+  createdAt: string;
 }
 
 // --- API Functions ---
@@ -285,5 +316,77 @@ export async function refundPartialRedeemOrder(
     payload
   );
   return res.data.data;
+}
+
+// === QUẢN LÝ ẢNH REFUND (GET & DELETE) ===
+
+/**
+ * Upload ảnh lỗi sản phẩm khi hoàn hàng (Refund)
+ * (POST /api/redeem/order/{orderId}/refund/upload-images)
+ * Lưu ý: Tối đa 5 ảnh.
+ */
+export async function uploadRefundImages(
+  orderId: number | string,
+  files: File[]
+): Promise<string[]> {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append('files', file);
+  });
+
+  const res = await axiosClient.post<ApiResponse<string[]>>(
+    `/api/redeem/order/${orderId}/refund/upload-images`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return res.data.data;
+}
+
+/**
+ * Lấy danh sách ảnh lỗi đã upload của một Order
+ * (GET /api/redeem/order/{orderId}/refund/images)
+ */
+export async function getRefundImages(
+  orderId: number | string
+): Promise<RefundImage[]> {
+  const res = await axiosClient.get<ApiResponse<RefundImage[]>>(
+    `/api/redeem/order/${orderId}/refund/images`
+  );
+  return res.data.data;
+}
+
+/**
+ * Xóa một ảnh lỗi cụ thể
+ * (DELETE /api/redeem/order/{orderId}/refund/image/{imageId})
+ */
+export async function deleteRefundImage(
+  orderId: number | string,
+  imageId: number | string
+): Promise<string> {
+  const res = await axiosClient.delete<ApiResponse<string>>(
+    `/api/redeem/order/${orderId}/refund/image/${imageId}`
+  );
+  return res.data.data;
+}
+
+// === ORDER LOGS (Lịch sử thay đổi trạng thái đơn hàng) ===
+
+/**
+ * Lấy lịch sử thay đổi trạng thái của một đơn hàng
+ * (GET /api/order-logs/membership/{membershipId}/order/{orderId})
+ */
+export async function getOrderLogsByMembershipAndOrder(
+  membershipId: number | string,
+  orderId: number | string
+): Promise<OrderLog[]> {
+  const res = await axiosClient.get<OrderLog[]>(
+    `/api/order-logs/membership/${membershipId}/order/${orderId}`
+  );
+  console.log('getOrderLogsByMembershipAndOrder:', res.data);
+  return res.data;
 }
 

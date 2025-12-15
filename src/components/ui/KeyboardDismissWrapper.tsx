@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { Keyboard, TouchableWithoutFeedback, View, ViewProps } from 'react-native';
+import { View, ViewProps } from 'react-native';
 
 /**
  * Wrapper component that dismisses keyboard when user taps outside input fields
@@ -16,17 +16,15 @@ export function KeyboardDismissWrapper({
   style,
   ...props 
 }: KeyboardDismissWrapperProps) {
-  const handleDismiss = () => {
-    if (enabled) {
-      Keyboard.dismiss();
-    }
-  };
-
+  // Currently disabled to avoid scroll blocking issues
+  // Keyboard can be dismissed manually or via ScrollView's keyboardDismissMode
+  
   return (
-    <TouchableWithoutFeedback onPress={handleDismiss} accessible={false}>
-      <View style={[{ flex: 1 }, style]} {...props}>
-        {children}
-      </View>
-    </TouchableWithoutFeedback>
+    <View 
+      style={[{ flex: 1 }, style]} 
+      {...props}
+    >
+      {children}
+    </View>
   );
 }

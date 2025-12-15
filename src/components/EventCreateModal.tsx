@@ -335,7 +335,7 @@ export default function EventCreateModal({
 
                 {showCoHostPicker && (
                   <View className="mt-2 bg-gray-50 border border-gray-300 rounded-lg p-3 max-h-48">
-                    <ScrollView>
+                    <ScrollView nestedScrollEnabled>
                       {clubsLoading ? (
                         <ActivityIndicator color="#0D9488" />
                       ) : (

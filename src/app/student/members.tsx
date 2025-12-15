@@ -10,15 +10,15 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -407,7 +407,7 @@ export default function StudentMembersPage() {
               </View>
 
               {/* Filter Buttons */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4" nestedScrollEnabled>
                 <View className="flex-row gap-3 px-1">
                   <TouchableOpacity
                     onPress={() => setActiveFilter('all')}

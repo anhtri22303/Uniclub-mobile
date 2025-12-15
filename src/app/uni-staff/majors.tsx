@@ -18,7 +18,8 @@ import {
     Switch,
     Text,
     TouchableOpacity,
-    View} from 'react-native';
+    View
+} from 'react-native';
 
 // Color options for major selection
 const COLOR_OPTIONS = [
@@ -485,7 +486,7 @@ export default function UniStaffMajorsPage() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 <View className="space-y-4">
                   {/* Major Name */}
                   <View>
@@ -629,7 +630,7 @@ export default function UniStaffMajorsPage() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 <View className="space-y-4">
                   {/* Major ID */}
                   <View>

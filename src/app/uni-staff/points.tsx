@@ -1,6 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import PointRequestService, { PointRequest } from '@services/point-request.service';
@@ -9,13 +9,13 @@ import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -499,6 +499,7 @@ export default function UniStaffPointsPage() {
                   <ScrollView
                     className="max-h-40"
                     showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled
                   >
                     {approvedRequests.map((req) => (
                       <TouchableOpacity
@@ -784,7 +785,7 @@ export default function UniStaffPointsPage() {
               <Text className="text-gray-600">University to club transactions</Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 py-4">
+            <ScrollView className="flex-1 px-6 py-4" nestedScrollEnabled>
               {transactionsLoading ? (
                 <View className="items-center py-12">
                   <ActivityIndicator size="large" color="#3B82F6" />
@@ -889,7 +890,7 @@ export default function UniStaffPointsPage() {
               <Text className="text-gray-600">University to event transactions</Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 py-4">
+            <ScrollView className="flex-1 px-6 py-4" nestedScrollEnabled>
               {eventTransactionsLoading ? (
                 <View className="items-center py-12">
                   <ActivityIndicator size="large" color="#10B981" />

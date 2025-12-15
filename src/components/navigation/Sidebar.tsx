@@ -1,22 +1,26 @@
 import { useProfile } from '@contexts/ProfileContext';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
   Image,
   Modal,
+  PanResponder,
   ScrollView,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const SIDEBAR_WIDTH = width * 0.75;
+const BUTTON_SIZE = 56; // Size of the toggle button
+const STORAGE_KEY = 'sidebar_button_position';
 
 interface SidebarProps {
   role?: string;
@@ -37,11 +41,20 @@ export default function Sidebar({ role }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-SIDEBAR_WIDTH));
   
+  // Draggable button position
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 48 })).current; // Default position (left edge, top: 48)
+  const [isDragging, setIsDragging] = useState(false);
+  
   // Profile widget state (derived from context)
   const userPoints = profile?.wallet?.balancePoints ?? 0;
   const avatarUrl = profile?.avatarUrl || '';
   const userName = profile?.fullName || user?.fullName || 'User';
   const userEmail = profile?.email || user?.email || '';
+
+  // Load saved button position
+  useEffect(() => {
+    loadButtonPosition();
+  }, []);
 
   // Refresh profile when sidebar opens
   useEffect(() => {
@@ -49,6 +62,96 @@ export default function Sidebar({ role }: SidebarProps) {
       refreshProfile();
     }
   }, [isOpen, user, refreshProfile]);
+
+  // Load button position from storage
+  const loadButtonPosition = async () => {
+    try {
+      const savedPosition = await AsyncStorage.getItem(STORAGE_KEY);
+      if (savedPosition) {
+        const { x, y } = JSON.parse(savedPosition);
+        pan.setValue({ x, y });
+      }
+    } catch (error) {
+      console.error('Error loading button position:', error);
+    }
+  };
+
+  // Save button position to storage
+  const saveButtonPosition = async (x: number, y: number) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y }));
+    } catch (error) {
+      console.error('Error saving button position:', error);
+    }
+  };
+
+  // Reset button position to default
+  const resetButtonPosition = async () => {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      Animated.spring(pan, {
+        toValue: { x: 0, y: 48 },
+        useNativeDriver: false,
+      }).start();
+    } catch (error) {
+      console.error('Error resetting button position:', error);
+    }
+  };
+
+  // Pan responder for draggable button
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gesture) => {
+        // Only capture if moved more than 10 pixels (to allow tap and scroll)
+        const distance = Math.sqrt(gesture.dx * gesture.dx + gesture.dy * gesture.dy);
+        return distance > 10;
+      },
+      onPanResponderGrant: () => {
+        setIsDragging(true);
+        pan.setOffset({
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value,
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (_, gesture) => {
+        pan.flattenOffset();
+        
+        // Get final position
+        let finalX = (pan.x as any)._value;
+        let finalY = (pan.y as any)._value;
+        
+        // Snap to nearest horizontal edge (left or right)
+        const centerX = finalX + BUTTON_SIZE / 2;
+        if (centerX < width / 2) {
+          finalX = 0; // Snap to left edge
+        } else {
+          finalX = width - BUTTON_SIZE; // Snap to right edge
+        }
+        
+        // Constrain Y to screen bounds (with padding)
+        finalY = Math.max(0, Math.min(finalY, height - BUTTON_SIZE));
+        
+        // Animate to edge
+        Animated.spring(pan, {
+          toValue: { x: finalX, y: finalY },
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+        
+        // Save position
+        saveButtonPosition(finalX, finalY);
+        
+        setIsDragging(false);
+      },
+    })
+  ).current;
 
   // Helper functions for points card styling
   const getPointsCardStyle = (points: number) => {
@@ -303,13 +406,7 @@ export default function Sidebar({ role }: SidebarProps) {
           icon: 'gift',
           route: '/student/gift',
           label: 'Gift'
-        },
-        // {
-        //   name: 'wallet',
-        //   icon: 'wallet',
-        //   route: '/student/wallet',
-        //   label: 'Wallet'
-        // }
+        }
       ] : [];
       
       // Items shown only if student is a staff member
@@ -379,6 +476,9 @@ export default function Sidebar({ role }: SidebarProps) {
     // Close sidebar first to prevent any re-renders during logout
     toggleSidebar();
     
+    // Reset button position on logout
+    await resetButtonPosition();
+    
     // Small delay to ensure sidebar animation completes
     setTimeout(async () => {
       await logout();
@@ -395,17 +495,43 @@ export default function Sidebar({ role }: SidebarProps) {
 
   return (
     <>
-      {/* Toggle Button - Always visible in top-left corner */}
-      <TouchableOpacity
-        onPress={toggleSidebar}
-        className="absolute top-4 left-4 bg-teal-600 p-3 rounded-full shadow-lg"
-        style={{ 
+      {/* Draggable Toggle Button */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          transform: [{ translateX: pan.x }, { translateY: pan.y }],
+          width: BUTTON_SIZE,
+          height: BUTTON_SIZE,
           zIndex: 9999,
-          elevation: 10
+          elevation: 10,
         }}
+        pointerEvents="box-none"
       >
-        <Ionicons name="menu" size={24} color="white" />
-      </TouchableOpacity>
+        <View
+          {...panResponder.panHandlers}
+          style={{
+            width: BUTTON_SIZE,
+            height: BUTTON_SIZE,
+          }}
+        >
+          <TouchableOpacity
+            onPress={toggleSidebar}
+            activeOpacity={0.7}
+            className="bg-teal-600 rounded-full shadow-lg"
+            style={{
+              width: BUTTON_SIZE,
+              height: BUTTON_SIZE,
+              justifyContent: 'center',
+              alignItems: 'center',
+              opacity: isDragging ? 0.7 : 1,
+            }}
+          >
+            <Ionicons name="menu" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
 
       {/* Sidebar Modal */}
       <Modal

@@ -15,7 +15,8 @@ import {
     ScrollView,
     Text,
     TouchableOpacity,
-    View} from 'react-native';
+    View
+} from 'react-native';
 
 type TabType = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -472,7 +473,7 @@ export default function UniStaffPointsRequestPage() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 <View className="space-y-4">
                   {/* Request Details */}
                   <View className="bg-gray-50 p-4 rounded-xl">

@@ -9,15 +9,15 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  ScrollView,
-  Share,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    Share,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -580,7 +580,7 @@ export default function VirtualCardScreen() {
               </TouchableOpacity>
             </View>
             
-            <ScrollView className="max-h-96">
+            <ScrollView className="max-h-96" nestedScrollEnabled>
               {availableClubIds.map((clubId) => {
                 const club = profile?.clubs?.find((c: any) => c.clubId === clubId);
                 const membership = profile?.memberships?.find((m: any) => m.club?.clubId === clubId);

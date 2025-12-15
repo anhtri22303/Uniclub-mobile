@@ -18,7 +18,8 @@ import {
     Switch,
     Text,
     TouchableOpacity,
-    View} from 'react-native';
+    View
+} from 'react-native';
 
 type TabType = PolicyTargetType;
 
@@ -588,7 +589,7 @@ export default function UniStaffMultiplierPolicyPage() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 <View className="space-y-4">
                   {/* Target Type */}
                   <View>
@@ -808,7 +809,7 @@ export default function UniStaffMultiplierPolicyPage() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 <View className="space-y-4">
                   {/* Policy ID */}
                   <View>

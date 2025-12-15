@@ -17,7 +17,8 @@ import {
     ScrollView,
     Text,
     TouchableOpacity,
-    View} from 'react-native';
+    View
+} from 'react-native';
 
 type SortField = 'name' | 'capacity' | 'id';
 type SortOrder = 'asc' | 'desc';
@@ -570,7 +571,7 @@ export default function UniStaffLocationsPage() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 <View className="space-y-4">
                   {/* Name Input */}
                   <View>

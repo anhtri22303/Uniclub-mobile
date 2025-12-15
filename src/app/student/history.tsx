@@ -1,5 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import { Ionicons } from '@expo/vector-icons';
 import { useMyClubApplications, useMyMemberApplications, useMyRedeemOrders } from '@hooks/useQueryHooks';
 import { Picker } from '@react-native-picker/picker';
 import type { ClubApplication } from '@services/clubApplication.service';
@@ -7,19 +8,23 @@ import EventService, { type Event, timeObjectToString } from '@services/event.se
 import EventStaffService, { type StaffHistoryOrder } from '@services/eventStaff.service';
 import FeedbackService, { type Feedback } from '@services/feedback.service';
 import type { MemberApplication } from '@services/memberApplication.service';
-import type { RedeemOrder } from '@services/redeem.service';
+import type { OrderLog, RedeemOrder } from '@services/redeem.service';
+import * as RedeemService from '@services/redeem.service';
 import UserService, { type ApiMembershipWallet } from '@services/user.service';
 import WalletService, { type ClubToMemberTransaction } from '@services/wallet.service';
 import { useAuthStore } from '@stores/auth.store';
+import { useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,7 +40,9 @@ type TabType = 'member' | 'club' | 'order' | 'event' | 'wallet';
 
 export default function StudentHistoryPage() {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<TabType>('member');
+  const params = useLocalSearchParams();
+  const initialTab = (params.tab as TabType) || 'member';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [filter, setFilter] = useState<string>('all');
 
   // Wallet state
@@ -43,6 +50,10 @@ export default function StudentHistoryPage() {
   const [walletTransactions, setWalletTransactions] = useState<ClubToMemberTransaction[]>([]);
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletTypeFilter, setWalletTypeFilter] = useState<string>('all');
+  const [walletDateFilter, setWalletDateFilter] = useState<string>('all');
+  const [walletCurrentPage, setWalletCurrentPage] = useState(1);
+  const [walletItemsPerPage] = useState(10);
 
   // Event state
   const [myEvents, setMyEvents] = useState<Event[]>([]);
@@ -63,6 +74,16 @@ export default function StudentHistoryPage() {
   const [staffHistoryOrders, setStaffHistoryOrders] = useState<StaffHistoryOrder[]>([]);
   const [staffHistoryLoading, setStaffHistoryLoading] = useState(false);
   const [staffHistoryError, setStaffHistoryError] = useState<string | null>(null);
+
+  // Order Logs Modal state
+  const [selectedOrderForLogs, setSelectedOrderForLogs] = useState<RedeemOrder | null>(null);
+  const [isOrderLogsModalOpen, setIsOrderLogsModalOpen] = useState(false);
+  const [orderLogs, setOrderLogs] = useState<OrderLog[]>([]);
+  const [orderLogsLoading, setOrderLogsLoading] = useState(false);
+  const [orderLogsError, setOrderLogsError] = useState<string | null>(null);
+
+  // Order Product Type Filter
+  const [orderProductTypeFilter, setOrderProductTypeFilter] = useState<string>('all');
 
   //   USE REACT QUERY for applications
   const {
@@ -190,6 +211,34 @@ export default function StudentHistoryPage() {
     }
   }, [showStaffHistory]);
 
+  // Load order logs when modal opens
+  const loadOrderLogs = async (order: RedeemOrder) => {
+    if (!order.membershipId) return;
+    
+    try {
+      setOrderLogsLoading(true);
+      setOrderLogsError(null);
+      const logs = await RedeemService.getOrderLogsByMembershipAndOrder(
+        order.membershipId,
+        order.orderId
+      );
+      setOrderLogs(logs || []);
+    } catch (err: any) {
+      console.error('Failed to fetch order logs:', err);
+      setOrderLogsError(err?.response?.data?.message || err?.message || 'Failed to load order logs');
+      setOrderLogs([]);
+    } finally {
+      setOrderLogsLoading(false);
+    }
+  };
+
+  // Handle order card click
+  const handleOrderClick = (order: RedeemOrder) => {
+    setSelectedOrderForLogs(order);
+    setIsOrderLogsModalOpen(true);
+    loadOrderLogs(order);
+  };
+
   // Group feedbacks by eventId
   const feedbackGroups = useMemo(() => {
     const groups: Record<number, { eventId: number; eventName: string; clubName: string; items: Feedback[] }> = {};
@@ -218,10 +267,20 @@ export default function StudentHistoryPage() {
     }
   };
 
+  // Load initial data based on query param
+  useEffect(() => {
+    if (initialTab === 'wallet' && !myWallet) {
+      loadWalletData();
+    } else if (initialTab === 'event' && myEvents.length === 0) {
+      loadEventsData();
+    }
+  }, []);
+
   // Handle tab change
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     setFilter('all');
+    setOrderProductTypeFilter('all'); // Reset order product type filter
     setShowMyFeedback(false); // Reset feedback view when changing tabs
     setShowStaffHistory(false); // Reset staff history view when changing tabs
 
@@ -303,7 +362,7 @@ export default function StudentHistoryPage() {
       }));
     }
 
-    // Apply filter
+    // Apply status filter
     if (filter !== 'all') {
       activities = activities.filter((activity) => {
         const data = activity.data as any;
@@ -311,11 +370,53 @@ export default function StudentHistoryPage() {
       });
     }
 
-    // Sort by date descending
-    return activities.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [activeTab, memberApplications, clubApplications, redeemOrders, myEvents, filter]);
+    // Apply product type filter for orders
+    if (activeTab === 'order' && orderProductTypeFilter !== 'all') {
+      activities = activities.filter((activity) => {
+        if (activity.type === 'redeemOrder') {
+          return (activity.data as RedeemOrder).productType === orderProductTypeFilter;
+        }
+        return true;
+      });
+    }
+
+    // Sort with priority: PENDING first, then by date (newest first), then by status priority
+    return activities.sort((a, b) => {
+      const statusA = (a.data as any).status || 'UNKNOWN';
+      const statusB = (b.data as any).status || 'UNKNOWN';
+      
+      // PENDING (or PENDING_UNISTAFF for events) always comes first
+      const isPendingA = statusA === 'PENDING' || statusA === 'PENDING_UNISTAFF';
+      const isPendingB = statusB === 'PENDING' || statusB === 'PENDING_UNISTAFF';
+      
+      if (isPendingA && !isPendingB) return -1;
+      if (isPendingB && !isPendingA) return 1;
+      
+      // Both are PENDING - sort by date (newest first)
+      if (isPendingA && isPendingB) {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      }
+      
+      // Neither is PENDING - sort by date first
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      
+      if (dateA !== dateB) {
+        return dateB - dateA; // Newest first
+      }
+      
+      // Same date - prioritize APPROVED/COMPLETED over REJECTED/CANCELLED
+      const isApprovedA = statusA === 'APPROVED' || statusA === 'COMPLETED';
+      const isApprovedB = statusB === 'APPROVED' || statusB === 'COMPLETED';
+      
+      if (isApprovedA && !isApprovedB) return -1;
+      if (isApprovedB && !isApprovedA) return 1;
+      if (statusA === 'REJECTED' && statusB !== 'REJECTED') return 1;
+      if (statusB === 'REJECTED' && statusA !== 'REJECTED') return -1;
+      
+      return 0;
+    });
+  }, [activeTab, memberApplications, clubApplications, redeemOrders, myEvents, filter, orderProductTypeFilter]);
 
   // Get status color
   const getStatusColor = (status: string) => {
@@ -385,6 +486,77 @@ export default function StudentHistoryPage() {
         return 'text-gray-800';
     }
   };
+
+  // Filter wallet transactions
+  const filteredWalletTransactions = useMemo(() => {
+    let filtered = [...walletTransactions];
+    
+    // Filter by type
+    if (walletTypeFilter !== 'all') {
+      filtered = filtered.filter(t => t.type === walletTypeFilter);
+    }
+    
+    // Filter by date
+    if (walletDateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      filtered = filtered.filter(t => {
+        const transactionDate = new Date(t.createdAt);
+        
+        switch (walletDateFilter) {
+          case 'today':
+            return transactionDate >= today;
+          case 'week':
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return transactionDate >= weekAgo;
+          case 'month':
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            return transactionDate >= monthAgo;
+          case 'year':
+            const yearAgo = new Date(today);
+            yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+            return transactionDate >= yearAgo;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [walletTransactions, walletTypeFilter, walletDateFilter]);
+
+  // Calculate wallet statistics from filtered transactions
+  const walletStats = useMemo(() => {
+    let totalIncoming = 0;
+    let totalOutgoing = 0;
+    
+    filteredWalletTransactions.forEach(t => {
+      const amount = parseInt(t.signedAmount?.replace(/[^0-9-]/g, '') || '0');
+      if (amount > 0) {
+        totalIncoming += amount;
+      } else {
+        totalOutgoing += Math.abs(amount);
+      }
+    });
+    
+    return {
+      totalIncoming,
+      totalOutgoing,
+      transactionCount: filteredWalletTransactions.length
+    };
+  }, [filteredWalletTransactions]);
+
+  // Paginated wallet transactions
+  const paginatedWalletTransactions = useMemo(() => {
+    const startIndex = (walletCurrentPage - 1) * walletItemsPerPage;
+    const endIndex = startIndex + walletItemsPerPage;
+    return filteredWalletTransactions.slice(startIndex, endIndex);
+  }, [filteredWalletTransactions, walletCurrentPage, walletItemsPerPage]);
+
+  const walletTotalPages = Math.ceil(filteredWalletTransactions.length / walletItemsPerPage);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -596,7 +768,7 @@ export default function StudentHistoryPage() {
 
         {/* Staff History Toggle for Order tab */}
         {activeTab === 'order' && (
-          <View className="mb-4">
+          <View className="mb-4 gap-2">
             <TouchableOpacity
               className={`px-3 py-2 rounded-md border ${
                 showStaffHistory
@@ -606,7 +778,7 @@ export default function StudentHistoryPage() {
               onPress={() => setShowStaffHistory(!showStaffHistory)}
             >
               <View className="flex-row items-center gap-2">
-                <Text className="text-lg"></Text>
+                <Text className="text-lg">📋</Text>
                 <Text
                   className={`font-semibold ${
                     showStaffHistory ? 'text-green-600' : 'text-gray-700'
@@ -616,6 +788,22 @@ export default function StudentHistoryPage() {
                 </Text>
               </View>
             </TouchableOpacity>
+
+            {/* Product Type Filter - only show when staff history is OFF */}
+            {!showStaffHistory && (
+              <View className="bg-white rounded-lg border border-gray-200 p-2">
+                <Text className="text-xs text-gray-600 mb-1 px-2">Product Type:</Text>
+                <Picker
+                  selectedValue={orderProductTypeFilter}
+                  onValueChange={setOrderProductTypeFilter}
+                  style={{ height: 45 }}
+                >
+                  <Picker.Item label="All Types" value="all" />
+                  <Picker.Item label="Club Item" value="CLUB_ITEM" />
+                  <Picker.Item label="Event Item" value="EVENT_ITEM" />
+                </Picker>
+              </View>
+            )}
           </View>
         )}
 
@@ -736,80 +924,322 @@ export default function StudentHistoryPage() {
                   </View>
                 </View>
 
+                {/* Transaction Overview Statistics */}
+                <Text className="text-lg font-bold text-gray-900 mb-3 px-1">
+                  Transaction Overview
+                </Text>
+                <View className="flex-row gap-2 mb-4">
+                  {/* Total Incoming */}
+                  <View className="flex-1 bg-green-50 border border-green-200 rounded-xl p-3">
+                    <View className="flex-row items-center mb-2">
+                      <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
+                        <Text className="text-lg">⬆</Text>
+                      </View>
+                      <Text className="text-xs text-green-700 font-semibold">Incoming</Text>
+                    </View>
+                    <Text className="text-2xl font-bold text-green-600 mb-1">
+                      +{walletStats.totalIncoming}
+                    </Text>
+                    <Text className="text-xs text-green-600">points received</Text>
+                  </View>
+
+                  {/* Total Outgoing */}
+                  <View className="flex-1 bg-red-50 border border-red-200 rounded-xl p-3">
+                    <View className="flex-row items-center mb-2">
+                      <View className="w-8 h-8 bg-red-100 rounded-full items-center justify-center mr-2">
+                        <Text className="text-lg">⬇</Text>
+                      </View>
+                      <Text className="text-xs text-red-700 font-semibold">Outgoing</Text>
+                    </View>
+                    <Text className="text-2xl font-bold text-red-600 mb-1">
+                      -{walletStats.totalOutgoing}
+                    </Text>
+                    <Text className="text-xs text-red-600">points spent</Text>
+                  </View>
+                </View>
+
+                {/* Total Transactions Card */}
+                <View className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-2">
+                        <Text className="text-lg">📊</Text>
+                      </View>
+                      <Text className="text-sm text-blue-700 font-semibold">Total Transactions</Text>
+                    </View>
+                    <Text className="text-2xl font-bold text-blue-600">
+                      {walletStats.transactionCount}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Transaction Filters */}
+                <View className="mb-3">
+                  <View className="flex-row gap-2 mb-2">
+                    {/* Type Filter */}
+                    <View className="flex-1 bg-white rounded-lg border border-gray-200">
+                      <Text className="text-xs text-gray-600 px-2 pt-1">Filter by Type:</Text>
+                      <Picker
+                        selectedValue={walletTypeFilter}
+                        onValueChange={(value) => {
+                          setWalletTypeFilter(value);
+                          setWalletCurrentPage(1);
+                        }}
+                        style={{ height: 45 }}
+                      >
+                        <Picker.Item label="All Types" value="all" />
+                        {Array.from(new Set(walletTransactions.map(t => t.type))).sort().map((type) => (
+                          <Picker.Item 
+                            key={type} 
+                            label={type.replace(/_/g, ' ')} 
+                            value={type} 
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+
+                    {/* Date Filter */}
+                    <View className="flex-1 bg-white rounded-lg border border-gray-200">
+                      <Text className="text-xs text-gray-600 px-2 pt-1">Filter by Date:</Text>
+                      <Picker
+                        selectedValue={walletDateFilter}
+                        onValueChange={(value) => {
+                          setWalletDateFilter(value);
+                          setWalletCurrentPage(1);
+                        }}
+                        style={{ height: 45 }}
+                      >
+                        <Picker.Item label="All Time" value="all" />
+                        <Picker.Item label="Today" value="today" />
+                        <Picker.Item label="This Week" value="week" />
+                        <Picker.Item label="This Month" value="month" />
+                        <Picker.Item label="This Year" value="year" />
+                      </Picker>
+                    </View>
+                  </View>
+
+                  {/* Clear Filters Button */}
+                  {(walletTypeFilter !== 'all' || walletDateFilter !== 'all') && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setWalletTypeFilter('all');
+                        setWalletDateFilter('all');
+                        setWalletCurrentPage(1);
+                      }}
+                      className="bg-gray-100 px-3 py-2 rounded-lg"
+                    >
+                      <Text className="text-sm text-gray-700 text-center">Clear Filters</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
                 {/* Transaction History */}
                 <Text className="text-lg font-bold text-gray-900 mb-3 px-1">
                   Transaction History
                 </Text>
-                {walletTransactions.length === 0 ? (
+                {filteredWalletTransactions.length === 0 ? (
                   <View className="bg-white rounded-xl shadow-sm p-6 items-center">
-                    <Text className="text-4xl mb-2"></Text>
+                    <Text className="text-4xl mb-2">📜</Text>
                     <Text className="text-base font-semibold text-gray-900 mb-1">
-                      No Transactions Yet
+                      {walletTransactions.length === 0 ? 'No Transactions Yet' : 'No Matching Transactions'}
                     </Text>
                     <Text className="text-sm text-gray-500 text-center">
-                      Your transaction history will appear here
+                      {walletTransactions.length === 0 
+                        ? 'Your transaction history will appear here'
+                        : 'Try adjusting your filters to see more transactions'
+                      }
                     </Text>
                   </View>
                 ) : (
-                  walletTransactions.map((transaction) => {
-                    const isIncoming = transaction.signedAmount?.startsWith('+');
-                    return (
-                      <View
-                        key={transaction.id}
-                        className={`bg-white rounded-xl shadow-sm mb-3 border-l-4 ${
-                          isIncoming ? 'border-l-green-500' : 'border-l-red-500'
-                        } p-4`}
-                      >
-                        <View className="flex-row items-start gap-3">
-                          <View
-                            className={`w-10 h-10 rounded-full items-center justify-center ${
-                              isIncoming ? 'bg-green-100' : 'bg-red-100'
-                            }`}
-                          >
-                            <Text className="text-xl">
-                              {isIncoming ? '⬇️' : '⬆️'}
-                            </Text>
-                          </View>
-                          <View className="flex-1">
-                            <View className="flex-row items-center gap-2 mb-1">
-                              <View className="bg-gray-100 px-2 py-0.5 rounded">
-                                <Text className="text-xs text-gray-700">
-                                  {transaction.type.replace(/_/g, ' ')}
-                                </Text>
-                              </View>
-                              <Text
-                                className={`text-lg font-bold ${
-                                  isIncoming ? 'text-green-600' : 'text-red-600'
-                                }`}
-                              >
-                                {transaction.signedAmount} pts
-                              </Text>
-                            </View>
-                            <Text className="text-sm text-gray-600 mb-2">
-                              {transaction.description}
-                            </Text>
-                            {(transaction.senderName || transaction.receiverName) && (
-                              <View className="flex-row gap-3 mb-1">
-                                {transaction.senderName && (
-                                  <Text className="text-xs text-gray-500">
-                                    From: <Text className="font-semibold">{transaction.senderName}</Text>
-                                  </Text>
-                                )}
-                                {transaction.receiverName && (
-                                  <Text className="text-xs text-gray-500">
-                                    To: <Text className="font-semibold">{transaction.receiverName}</Text>
-                                  </Text>
-                                )}
-                              </View>
-                            )}
-                            <Text className="text-xs text-gray-400 mt-1">
-                              {formatDate(transaction.createdAt)}
-                            </Text>
-                          </View>
+                  <>
+                    {/* Table Header */}
+                    <View className="bg-gray-50 border border-gray-200 rounded-t-xl">
+                      <View className="flex-row items-center p-3 border-b border-gray-200">
+                        <View className="flex-1">
+                          <Text className="text-xs font-bold text-gray-700">Type</Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-xs font-bold text-gray-700">Description</Text>
+                        </View>
+                        <View className="w-20">
+                          <Text className="text-xs font-bold text-gray-700 text-right">Amount</Text>
                         </View>
                       </View>
-                    );
-                  })
+                    </View>
+
+                    {/* Table Body */}
+                    <View className="border-l border-r border-gray-200">
+                      {paginatedWalletTransactions.map((transaction, index) => {
+                        const isIncoming = transaction.signedAmount?.startsWith('+');
+                        const isEven = index % 2 === 0;
+                        
+                        return (
+                          <View
+                            key={transaction.id}
+                            className={`border-b border-gray-200 ${isEven ? 'bg-white' : 'bg-gray-50/50'}`}
+                          >
+                            <View className="flex-row items-start p-3">
+                              {/* Type Column */}
+                              <View className="flex-1">
+                                <View className="flex-row items-center gap-2 mb-1">
+                                  <View className={`w-8 h-8 rounded-full items-center justify-center ${
+                                    isIncoming ? 'bg-green-100' : 'bg-red-100'
+                                  }`}>
+                                    <Text className="text-base">
+                                      {isIncoming ? '⬇️' : '⬆️'}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <View className="bg-gray-100 px-2 py-1 rounded self-start">
+                                  <Text className="text-xs text-gray-700 font-medium">
+                                    {transaction.type.replace(/_/g, ' ')}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              {/* Description Column */}
+                              <View className="flex-1 px-2">
+                                <Text className="text-sm text-gray-900 mb-1" numberOfLines={2}>
+                                  {transaction.description}
+                                </Text>
+                                {/* From/To Info */}
+                                {(transaction.senderName || transaction.receiverName) && (
+                                  <View className="mb-1">
+                                    {transaction.senderName && (
+                                      <Text className="text-xs text-gray-500" numberOfLines={1}>
+                                        From: <Text className="font-semibold">{transaction.senderName}</Text>
+                                      </Text>
+                                    )}
+                                    {transaction.receiverName && (
+                                      <Text className="text-xs text-gray-500" numberOfLines={1}>
+                                        To: <Text className="font-semibold">{transaction.receiverName}</Text>
+                                      </Text>
+                                    )}
+                                  </View>
+                                )}
+                                {/* Date */}
+                                <Text className="text-xs text-gray-400">
+                                  {new Date(transaction.createdAt).toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </Text>
+                              </View>
+
+                              {/* Amount Column */}
+                              <View className="w-20">
+                                <Text className={`text-base font-bold text-right ${
+                                  isIncoming ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {transaction.signedAmount}
+                                </Text>
+                                <Text className="text-xs text-gray-500 text-right">pts</Text>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+
+                    {/* Table Footer */}
+                    <View className="bg-gray-50 border border-gray-200 border-t-0 rounded-b-xl p-2" />
+
+                    {/* Wallet Pagination */}
+                    {walletTotalPages > 1 && (
+                      <View className="mt-4 bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+                        <View className="flex-row items-center justify-between mb-3">
+                          <Text className="text-sm text-gray-600">
+                            Page {walletCurrentPage} of {walletTotalPages}
+                          </Text>
+                          <Text className="text-sm text-gray-600">
+                            {filteredWalletTransactions.length} transaction{filteredWalletTransactions.length !== 1 ? 's' : ''}
+                          </Text>
+                        </View>
+                        <View className="flex-row items-center justify-center gap-2">
+                          <TouchableOpacity
+                            onPress={() => setWalletCurrentPage(1)}
+                            disabled={walletCurrentPage === 1}
+                            className={`px-3 py-2 rounded-lg ${
+                              walletCurrentPage === 1 
+                                ? 'bg-gray-100' 
+                                : 'bg-blue-600'
+                            }`}
+                          >
+                            <Text className={`text-sm font-semibold ${
+                              walletCurrentPage === 1 
+                                ? 'text-gray-400' 
+                                : 'text-white'
+                            }`}>
+                              First
+                            </Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            onPress={() => setWalletCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={walletCurrentPage === 1}
+                            className={`px-3 py-2 rounded-lg ${
+                              walletCurrentPage === 1 
+                                ? 'bg-gray-100' 
+                                : 'bg-blue-600'
+                            }`}
+                          >
+                            <Text className={`text-sm font-semibold ${
+                              walletCurrentPage === 1 
+                                ? 'text-gray-400' 
+                                : 'text-white'
+                            }`}>
+                              Prev
+                            </Text>
+                          </TouchableOpacity>
+                          
+                          <View className="bg-blue-100 px-4 py-2 rounded-lg">
+                            <Text className="text-sm font-bold text-blue-600">
+                              {walletCurrentPage}
+                            </Text>
+                          </View>
+                          
+                          <TouchableOpacity
+                            onPress={() => setWalletCurrentPage(prev => Math.min(walletTotalPages, prev + 1))}
+                            disabled={walletCurrentPage === walletTotalPages}
+                            className={`px-3 py-2 rounded-lg ${
+                              walletCurrentPage === walletTotalPages 
+                                ? 'bg-gray-100' 
+                                : 'bg-blue-600'
+                            }`}
+                          >
+                            <Text className={`text-sm font-semibold ${
+                              walletCurrentPage === walletTotalPages 
+                                ? 'text-gray-400' 
+                                : 'text-white'
+                            }`}>
+                              Next
+                            </Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            onPress={() => setWalletCurrentPage(walletTotalPages)}
+                            disabled={walletCurrentPage === walletTotalPages}
+                            className={`px-3 py-2 rounded-lg ${
+                              walletCurrentPage === walletTotalPages 
+                                ? 'bg-gray-100' 
+                                : 'bg-blue-600'
+                            }`}
+                          >
+                            <Text className={`text-sm font-semibold ${
+                              walletCurrentPage === walletTotalPages 
+                                ? 'text-gray-400' 
+                                : 'text-white'
+                            }`}>
+                              Last
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
             )
@@ -1078,13 +1508,26 @@ export default function StudentHistoryPage() {
                 const data = activity.data as any;
 
                 return (
-                  <View
+                  <TouchableOpacity
                     key={index}
                     className={`bg-white rounded-xl shadow-sm mb-3 overflow-hidden border-l-4 ${getStatusColor(
                       data.status
                     )}`}
+                    onPress={() => {
+                      if (isOrder) {
+                        handleOrderClick(data as RedeemOrder);
+                      }
+                    }}
+                    disabled={!isOrder}
+                    activeOpacity={isOrder ? 0.7 : 1}
                   >
                     <View className="p-4">
+                      {/* Click hint for orders */}
+                      {isOrder && (
+                        <View className="absolute top-2 right-2 bg-blue-100 px-2 py-1 rounded-full">
+                          <Text className="text-xs text-blue-600 font-medium">Tap for details</Text>
+                        </View>
+                      )}
                       {/* Header */}
                       <View className="flex-row items-start mb-3">
                         {/* Icon */}
@@ -1255,6 +1698,27 @@ export default function StudentHistoryPage() {
                         </View>
                       )}
 
+                      {/* Refund Images */}
+                      {isOrder && data.refundImages && data.refundImages.length > 0 && (
+                        <View className="bg-gray-50 p-3 rounded-lg mb-3">
+                          <Text className="text-xs font-semibold text-gray-700 mb-2">
+                            Error Images:
+                          </Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View className="flex-row gap-2">
+                              {data.refundImages.map((img: string, idx: number) => (
+                                <Image
+                                  key={idx}
+                                  source={{ uri: img }}
+                                  className="w-20 h-20 rounded-lg"
+                                  resizeMode="cover"
+                                />
+                              ))}
+                            </View>
+                          </ScrollView>
+                        </View>
+                      )}
+
                       {/* Reviewed By */}
                       {(data.handledByName || (data.reviewedBy && typeof data.reviewedBy === 'object' && data.reviewedBy.fullName)) && (
                         <Text className="text-xs text-gray-500 mb-2">
@@ -1270,7 +1734,7 @@ export default function StudentHistoryPage() {
                         </Text>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -1279,6 +1743,132 @@ export default function StudentHistoryPage() {
       </View>
 
       <NavigationBar role={user?.role} user={user || undefined} />
+
+      {/* Order Logs Modal */}
+      <Modal
+        visible={isOrderLogsModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsOrderLogsModalOpen(false)}
+      >
+        <View className="flex-1 bg-black/50">
+          <View className="flex-1 mt-20">
+            <View className="flex-1 bg-white rounded-t-3xl">
+              {/* Modal Header */}
+              <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
+                <Text className="text-xl font-bold text-gray-900">Order Logs</Text>
+                <TouchableOpacity
+                  onPress={() => setIsOrderLogsModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                >
+                  <Ionicons name="close" size={20} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Modal Content */}
+              <ScrollView className="flex-1 p-4" nestedScrollEnabled>
+                {selectedOrderForLogs && (
+                  <View className="bg-blue-50 p-4 rounded-xl mb-4">
+                    <Text className="text-sm font-semibold text-blue-900 mb-1">
+                      {selectedOrderForLogs.productName}
+                    </Text>
+                    <Text className="text-xs text-blue-700">
+                      Order Code: {selectedOrderForLogs.orderCode}
+                    </Text>
+                    <Text className="text-xs text-blue-700">
+                      Quantity: {selectedOrderForLogs.quantity} | Points: {selectedOrderForLogs.totalPoints}
+                    </Text>
+                  </View>
+                )}
+
+                {orderLogsLoading ? (
+                  <View className="items-center py-8">
+                    <ActivityIndicator size="large" color="#3B82F6" />
+                    <Text className="text-sm text-gray-500 mt-2">Loading logs...</Text>
+                  </View>
+                ) : orderLogsError ? (
+                  <View className="items-center py-8">
+                    <Text className="text-red-600 text-sm">{orderLogsError}</Text>
+                  </View>
+                ) : orderLogs.length === 0 ? (
+                  <View className="items-center py-8">
+                    <Text className="text-gray-500 text-sm">No logs found for this order</Text>
+                  </View>
+                ) : (
+                  <View className="gap-3">
+                    {orderLogs.map((log) => {
+                      const isPositive = log.pointsChange > 0;
+                      const actionColors = {
+                        CREATE: 'bg-blue-100 text-blue-800',
+                        COMPLETED: 'bg-green-100 text-green-800',
+                        REFUND: 'bg-red-100 text-red-800',
+                        PARTIAL_REFUND: 'bg-orange-100 text-orange-800',
+                      };
+                      const actionColor = actionColors[log.action as keyof typeof actionColors] || 'bg-gray-100 text-gray-800';
+
+                      return (
+                        <View key={log.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                          {/* Action Badge and Date */}
+                          <View className="flex-row items-center justify-between mb-3">
+                            <View className={`px-3 py-1 rounded-full ${actionColor.split(' ')[0]}`}>
+                              <Text className={`text-xs font-bold ${actionColor.split(' ')[1]}`}>
+                                {log.action}
+                              </Text>
+                            </View>
+                            <Text className="text-xs text-gray-500">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </Text>
+                          </View>
+
+                          {/* Actor and Target Info */}
+                          <View className="gap-2 mb-2">
+                            <View className="flex-row">
+                              <Text className="text-xs text-gray-500 w-24">Actor:</Text>
+                              <Text className="text-xs text-gray-900 font-medium flex-1">
+                                {log.actorName}
+                              </Text>
+                            </View>
+                            <View className="flex-row">
+                              <Text className="text-xs text-gray-500 w-24">Target:</Text>
+                              <Text className="text-xs text-gray-900 font-medium flex-1">
+                                {log.targetUserName}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Order Details */}
+                          <View className="flex-row border-t border-gray-100 pt-2 mt-2">
+                            <View className="flex-1">
+                              <Text className="text-xs text-gray-500">Quantity</Text>
+                              <Text className="text-sm font-semibold text-gray-900">
+                                {log.quantity}
+                              </Text>
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-xs text-gray-500">Points Change</Text>
+                              <Text className={`text-sm font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                                {isPositive ? '+' : ''}{log.pointsChange}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Reason */}
+                          {log.reason && (
+                            <View className="border-t border-gray-100 pt-2 mt-2">
+                              <Text className="text-xs text-gray-500 mb-1">Reason:</Text>
+                              <Text className="text-sm text-gray-700">{log.reason}</Text>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

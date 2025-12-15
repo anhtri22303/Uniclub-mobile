@@ -8,13 +8,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -552,7 +552,7 @@ export default function PublicEventsPage() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView className="flex-1 p-6">
+            <ScrollView className="flex-1 p-6" nestedScrollEnabled>
               {/* Expired Filter */}
               <View className="mb-6">
                 <Text className="text-base font-semibold text-gray-900 mb-3">

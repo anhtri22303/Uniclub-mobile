@@ -9,7 +9,6 @@ import Toast from 'react-native-toast-message';
 import '../../global.css';
 
 import AuthWrapper from '@components/auth/AuthWrapper';
-import { KeyboardDismissWrapper } from '@components/ui';
 import { toastConfig } from '@configs/toast.config';
 import { ProfileProvider } from '@contexts/ProfileContext';
 import { QueryProvider } from '@contexts/QueryProvider';
@@ -38,9 +37,8 @@ export default function RootLayout() {
     <QueryProvider>
       <ProfileProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <KeyboardDismissWrapper>
-            <AuthWrapper>
-              <Stack>
+          <AuthWrapper>
+            <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="login" options={{ headerShown: false }} />
               <Stack.Screen name="dev-tools" options={{ headerShown: false }} />
@@ -85,7 +83,6 @@ export default function RootLayout() {
           </AuthWrapper>
           <StatusBar style="auto" />
           <Toast config={toastConfig} />
-          </KeyboardDismissWrapper>
         </ThemeProvider>
       </ProfileProvider>
     </QueryProvider>

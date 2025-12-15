@@ -65,11 +65,11 @@ export default function NavigationBar({ role, user }: NavigationBarProps) {
     const homeActiveRoute = userRole === 'student' ? '/student' : '/club-leader';
     const tabs: TabItem[] = [
       {
-        name: 'home',
-        icon: 'home',
-        route: baseRoute,
-        label: 'Home',
-        activeRoute: homeActiveRoute // Custom active route for checking
+        name: userRole === 'student' ? 'wallet' : 'home',
+        icon: userRole === 'student' ? 'wallet' : 'home',
+        route: userRole === 'student' ? '/student/history?tab=wallet' : baseRoute,
+        label: userRole === 'student' ? 'Wallet' : 'Home',
+        activeRoute: userRole === 'student' ? '/student/history' : homeActiveRoute // Custom active route for checking
       },
       {
         name: 'club',

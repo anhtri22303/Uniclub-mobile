@@ -13,7 +13,8 @@ import {
     ScrollView,
     Text,
     TouchableOpacity,
-    View} from 'react-native';
+    View
+} from 'react-native';
 
 type SortField = 'name' | 'description' | 'tagId';
 type SortOrder = 'asc' | 'desc';
@@ -479,7 +480,7 @@ export default function UniStaffTagsPage() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 <View className="space-y-4">
                   {/* Name Input */}
                   <View>
