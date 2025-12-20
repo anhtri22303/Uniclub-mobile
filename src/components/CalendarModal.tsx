@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import {
-  Dimensions,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Modal,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 interface Event {
@@ -110,7 +110,8 @@ export default function CalendarModal({
         if (event.days && Array.isArray(event.days) && event.days.length > 0) {
           event.days.forEach((day: any) => {
             if (day.date) {
-              const dateKey = new Date(day.date).toDateString();
+              // Use ISO date format (YYYY-MM-DD) for consistent grouping
+              const dateKey = new Date(day.date).toLocaleDateString('en-CA');
               if (!grouped[dateKey]) {
                 grouped[dateKey] = [];
               }
@@ -126,7 +127,8 @@ export default function CalendarModal({
         }
         // Legacy single-day event: use event.date or startDate
         else if (event.date || event.startDate) {
-          const dateKey = new Date(event.date || event.startDate!).toDateString();
+          // Use ISO date format (YYYY-MM-DD) for consistent grouping
+          const dateKey = new Date(event.date || event.startDate!).toLocaleDateString('en-CA');
           if (!grouped[dateKey]) {
             grouped[dateKey] = [];
           }
@@ -149,13 +151,13 @@ export default function CalendarModal({
   // Get events for selected date
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
-    const dateKey = selectedDate.toDateString();
+    const dateKey = selectedDate.toLocaleDateString('en-CA');
     return eventsByDate[dateKey] || [];
   }, [selectedDate, eventsByDate]);
 
   // Get event indicator color for a date
   const getEventIndicator = (date: Date) => {
-    const dateKey = date.toDateString();
+    const dateKey = date.toLocaleDateString('en-CA');
     const dateEvents = eventsByDate[dateKey];
     
     if (!dateEvents || dateEvents.length === 0) return null;
@@ -165,9 +167,9 @@ export default function CalendarModal({
     const hasApproved = dateEvents.some(e => e.status === 'APPROVED');
     const hasCompleted = dateEvents.some(e => e.status === 'COMPLETED');
     
-    if (hasOngoing) return '#EC4899'; // Pink for ONGOING
-    if (hasApproved) return '#3B82F6'; // Blue for APPROVED
-    if (hasCompleted) return '#F59E0B'; // Orange for COMPLETED
+    if (hasOngoing) return '#9333EA'; // Purple for ONGOING
+    if (hasApproved) return '#10B981'; // Green for APPROVED
+    if (hasCompleted) return '#1E40AF'; // Blue for COMPLETED
     
     return null;
   };
@@ -192,14 +194,24 @@ export default function CalendarModal({
     return date1.toDateString() === date2.toDateString();
   };
 
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'ONGOING':
-        return { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-300' };
+        return { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' };
       case 'APPROVED':
-        return { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' };
+        return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' };
       case 'COMPLETED':
-        return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' };
+        return { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' };
       default:
         return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
     }
@@ -383,98 +395,118 @@ export default function CalendarModal({
                         style={{ backgroundColor: indicatorColor || '#9CA3AF' }}
                       />
                       
-                      <View className="p-4">
+                      <View className="p-3">
+                        {/* Event Title with Status Badge */}
                         <View className="flex-row items-start justify-between mb-2">
-                          <Text className="flex-1 text-base font-bold text-gray-800 mr-2" numberOfLines={2}>
+                          <Text className="flex-1 text-sm font-bold text-gray-800 mr-2" numberOfLines={2}>
                             {event.name}
                           </Text>
                           
                           {/* Status Badge */}
                           <View className={`px-2 py-1 rounded-full border ${statusColors.border} ${statusColors.bg}`}>
-                            <Text className={`text-xs font-semibold ${statusColors.text}`}>
+                            <Text className={`text-[10px] font-semibold ${statusColors.text}`}>
                               {event.status}
                             </Text>
                           </View>
                         </View>
 
-                        {/* Event Details */}
-                        <View className="space-y-2">
-                          {/* Multi-day indicator */}
-                          {event.days && event.days.length > 1 && (
-                            <View className="flex-row items-center">
-                              <Ionicons name="calendar-outline" size={14} color="#3B82F6" />
-                              <Text className="text-xs text-blue-600 ml-2 font-semibold">
-                                {event.days.length} days event
+                        {/* Host Club */}
+                        {event.hostClub && (
+                          <View className="flex-row items-center mb-2">
+                            <Ionicons name="people" size={12} color="#6B7280" />
+                            <Text className="text-xs text-gray-600 ml-1 flex-1" numberOfLines={1}>
+                              {event.hostClub.name}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Multi-day Indicator */}
+                        {event.days && event.days.length > 1 && (
+                          <View className="flex-row items-center mb-2 bg-blue-50 px-2 py-1 rounded">
+                            <Ionicons name="calendar" size={10} color="#3B82F6" />
+                            <Text className="text-[10px] text-blue-600 ml-1 font-semibold">
+                              {event.days.length} days event
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Date */}
+                        <View className="flex-row items-center mb-1">
+                          <Ionicons name="calendar-outline" size={12} color="#6B7280" />
+                          <Text className="text-xs text-gray-600 ml-1 flex-1" numberOfLines={1}>
+                            {formatDate(eventDateStr)}
+                          </Text>
+                        </View>
+
+                        {/* Time - Use currentDay times for multi-day events */}
+                        {(() => {
+                          const startTimeStr = event.currentDayStartTime || event.startTime || event.time || '';
+                          const endTimeStr = event.currentDayEndTime || event.endTime || '';
+                          const start = typeof startTimeStr === 'string' ? startTimeStr : '';
+                          const end = typeof endTimeStr === 'string' ? endTimeStr : '';
+                          return (start || end) ? (
+                            <View className="flex-row items-center mb-1">
+                              <Ionicons name="time-outline" size={12} color="#6B7280" />
+                              <Text className="text-xs text-gray-600 ml-1" numberOfLines={1}>
+                                {start && end ? `${start} - ${end}` : start || 'Time TBA'}
                               </Text>
                             </View>
-                          )}
+                          ) : null;
+                        })()}
 
-                          {/* Time - Use currentDay times for multi-day events */}
-                          {(() => {
-                            const displayTime = event.currentDayStartTime || event.startTime || event.time;
-                            const displayEndTime = event.currentDayEndTime || event.endTime;
-                            return displayTime ? (
-                              <View className="flex-row items-center">
-                                <Ionicons name="time-outline" size={14} color="#6B7280" />
-                                <Text className="text-sm text-gray-600 ml-2">
-                                  {displayTime}
-                                  {displayEndTime && ` - ${displayEndTime}`}
-                                </Text>
-                              </View>
-                            ) : null;
-                          })()}
+                        {/* Location */}
+                        {event.locationName && (
+                          <View className="flex-row items-center mb-2">
+                            <Ionicons name="location-outline" size={12} color="#6B7280" />
+                            <Text className="text-xs text-gray-600 ml-1 flex-1" numberOfLines={1}>
+                              {event.locationName}
+                            </Text>
+                          </View>
+                        )}
 
-                          {/* Location */}
-                          {event.locationName && (
-                            <View className="flex-row items-center">
-                              <Ionicons name="location-outline" size={14} color="#6B7280" />
-                              <Text className="text-sm text-gray-600 ml-2" numberOfLines={1}>
-                                {event.locationName}
-                              </Text>
-                            </View>
-                          )}
-
+                        {/* Type and Points */}
+                        <View className="flex-row items-center flex-wrap gap-1.5">
                           {/* Type Badge */}
-                          <View className="flex-row items-center">
-                            <View
-                              className={`px-2 py-1 rounded border ${
+                          <View
+                            className={`px-2 py-1 rounded border ${
+                              event.type === 'PRIVATE'
+                                ? 'bg-purple-50 border-purple-200'
+                                : event.type === 'SPECIAL'
+                                ? 'bg-pink-50 border-pink-200'
+                                : 'bg-blue-50 border-blue-200'
+                            }`}
+                          >
+                            <Text
+                              className={`text-[10px] font-semibold ${
                                 event.type === 'PRIVATE'
-                                  ? 'bg-purple-50 border-purple-200'
+                                  ? 'text-purple-700'
                                   : event.type === 'SPECIAL'
-                                  ? 'bg-pink-50 border-pink-200'
-                                  : 'bg-blue-50 border-blue-200'
+                                  ? 'text-pink-700'
+                                  : 'text-blue-700'
                               }`}
                             >
-                              <Text
-                                className={`text-xs font-semibold ${
-                                  event.type === 'PRIVATE'
-                                    ? 'text-purple-700'
-                                    : event.type === 'SPECIAL'
-                                    ? 'text-pink-700'
-                                    : 'text-blue-700'
-                                }`}
-                              >
-                                {event.type}
-                              </Text>
-                            </View>
-
-                            {/* Commit Points */}
-                            {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
-                              <View className="flex-row items-center ml-3">
-                                <Ionicons name="pricetag" size={14} color="#F59E0B" />
-                                <Text className="text-xs text-gray-600 ml-1">
-                                  {event.commitPointCost} pts
-                                </Text>
-                              </View>
-                            )}
+                              {event.type}
+                            </Text>
                           </View>
 
-                          {/* Host Club */}
-                          {event.hostClub && (
-                            <View className="flex-row items-center">
-                              <Ionicons name="people-outline" size={14} color="#6B7280" />
-                              <Text className="text-xs text-gray-500 ml-2">
-                                By {event.hostClub.name}
+                          {/* Commit Points */}
+                          {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
+                            <View className="bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                              <Text className="text-[10px] font-semibold text-amber-700">
+                                {event.commitPointCost} pts
+                              </Text>
+                            </View>
+                          )}
+
+                          {/* Reward Points */}
+                          {event.budgetPoints !== undefined && event.budgetPoints > 0 && (
+                            <View className="bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                              <Text className="text-[10px] font-semibold text-emerald-700">
+                                +{(() => {
+                                  const budgetPoints = event.budgetPoints ?? 0;
+                                  const maxCheckInCount = event.maxCheckInCount ?? 1;
+                                  return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0;
+                                })()} pts
                               </Text>
                             </View>
                           )}

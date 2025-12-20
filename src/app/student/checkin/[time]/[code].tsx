@@ -5,20 +5,20 @@ import { ArrowLeft, CheckCircle, Clock } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   SafeAreaView,
   StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 // Phase configuration with colors and labels
 const PHASE_CONFIG = {
   START: {
     label: 'START',
     description: 'Beginning of event',
-    colors: ['#10b981', '#059669'], // green
+    colors: ['#10b981', '#059669'] as const, // green
     bgColor: 'bg-green-100',
     borderColor: 'border-green-500',
     textColor: 'text-green-700',
@@ -26,7 +26,7 @@ const PHASE_CONFIG = {
   MID: {
     label: 'MID',
     description: 'Middle of event',
-    colors: ['#3b82f6', '#2563eb'], // blue
+    colors: ['#3b82f6', '#2563eb'] as const, // blue
     bgColor: 'bg-blue-100',
     borderColor: 'border-blue-500',
     textColor: 'text-blue-700',
@@ -34,7 +34,7 @@ const PHASE_CONFIG = {
   END: {
     label: 'END',
     description: 'End of event',
-    colors: ['#a855f7', '#9333ea'], // purple
+    colors: ['#a855f7', '#9333ea'] as const, // purple
     bgColor: 'bg-purple-100',
     borderColor: 'border-purple-500',
     textColor: 'text-purple-700',
@@ -42,7 +42,7 @@ const PHASE_CONFIG = {
   NONE: {
     label: 'GENERAL',
     description: 'Event check-in',
-    colors: ['#6b7280', '#4b5563'], // gray
+    colors: ['#6b7280', '#4b5563'] as const, // gray
     bgColor: 'bg-gray-100',
     borderColor: 'border-gray-500',
     textColor: 'text-gray-700',
@@ -69,41 +69,49 @@ export default function MemberCheckinByTimeAndCodePage() {
     
     // Validate parameters on mount
     if (!checkInCode || typeof checkInCode !== 'string') {
-      Alert.alert(
-        'Invalid Token',
-        'Check-in token is missing or invalid',
-        [
-          {
-            text: 'Go Back',
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Token',
+        text2: 'Check-in token is missing or invalid',
+        visibilityTime: 3000,
+        position: 'top',
+      });
+      setTimeout(() => router.back(), 3000);
       return;
     }
 
     if (!checkInTime || typeof checkInTime !== 'string') {
-      Alert.alert(
-        'Invalid Phase',
-        'Check-in phase is missing or invalid',
-        [
-          {
-            text: 'Go Back',
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Phase',
+        text2: 'Check-in phase is missing or invalid',
+        visibilityTime: 3000,
+        position: 'top',
+      });
+      setTimeout(() => router.back(), 3000);
     }
   }, [checkInCode, checkInTime]);
 
   const handleCheckin = async () => {
     if (!checkInCode || typeof checkInCode !== 'string') {
-      Alert.alert('Invalid Token', 'Check-in token is missing or invalid');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Token',
+        text2: 'Check-in token is missing or invalid',
+        visibilityTime: 3000,
+        position: 'top',
+      });
       return;
     }
 
     if (!checkInTime || typeof checkInTime !== 'string') {
-      Alert.alert('Invalid Phase', 'Check-in phase is missing or invalid');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Phase',
+        text2: 'Check-in phase is missing or invalid',
+        visibilityTime: 3000,
+        position: 'top',
+      });
       return;
     }
 
@@ -112,37 +120,42 @@ export default function MemberCheckinByTimeAndCodePage() {
     setIsCheckinLoading(true);
 
     try {
-      
       // Call event check-in API with JWT token and phase
       // Using START, MID, END directly as per API requirements
       const response = await eventCheckin(checkInCode, checkInTime.toUpperCase());
 
+      // Show success toast
+      Toast.show({
+        type: 'success',
+        text1: 'Check-in Successful! 🎉',
+        text2: response?.message || "You've successfully checked in to the event!",
+        visibilityTime: 3000,
+        position: 'top',
+      });
 
-      // Show success alert
-      Alert.alert(
-        'Check-in Successful! 🎉',
-        response?.message || "You've successfully checked in to the event!",
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setIsCheckedIn(true);
-              // Redirect after successful check-in
-              setTimeout(() => {
-                router.replace('/student/events');
-              }, 500);
-            },
-          },
-        ]
-      );
+      setIsCheckedIn(true);
+      
+      // Redirect after successful check-in
+      setTimeout(() => {
+        router.replace('/student/events');
+      }, 2000);
     } catch (error: any) {
-      console.error('Event check-in error:', error);
-
       // Extract error message
       const errorMessage =
         error?.message || 'An error occurred during check-in. Please try again.';
 
-      Alert.alert('Check-in Failed', String(errorMessage));
+      Toast.show({
+        type: 'error',
+        text1: 'Check-in Failed',
+        text2: String(errorMessage),
+        visibilityTime: 3000,
+        position: 'top',
+      });
+
+      // Redirect after showing error
+      setTimeout(() => {
+        router.replace('/student/events');
+      }, 2000);
     } finally {
       setIsCheckinLoading(false);
     }
@@ -153,61 +166,55 @@ export default function MemberCheckinByTimeAndCodePage() {
       <StatusBar barStyle="dark-content" />
       
       {/* Header */}
-      <View className="px-4 py-4 bg-white border-b border-gray-200">
+      <View className="px-4 py-5 bg-white border-b border-gray-200">
         <View className="flex-row items-center">
           <TouchableOpacity
             onPress={() => router.back()}
-            className="mr-3 p-2 -ml-2"
+            className="mr-4 p-2 -ml-2"
           >
-            <ArrowLeft size={24} color="#000" />
+            <ArrowLeft size={28} color="#000" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold">Event Check-in</Text>
+          <Text className="text-2xl font-bold">Event Check-in</Text>
         </View>
       </View>
 
       {/* Main Content */}
       <View className="flex-1 justify-center px-6">
-        <View className="items-center mb-8">
+        <View className="items-center mb-10">
           {/* Icon Circle */}
-          <View className="w-32 h-32 rounded-full bg-blue-100 items-center justify-center mb-6">
+          <View className="w-36 h-36 rounded-full bg-blue-100 items-center justify-center mb-8">
             {isCheckedIn ? (
-              <CheckCircle size={64} color="#10b981" />
+              <CheckCircle size={72} color="#10b981" />
             ) : (
-              <CheckCircle size={64} color="#3b82f6" strokeWidth={2} />
+              <CheckCircle size={72} color="#3b82f6" strokeWidth={2} />
             )}
           </View>
 
           {/* Title */}
-          <Text className="text-3xl font-extrabold text-center mb-3 text-gray-900">
+          <Text className="text-4xl font-extrabold text-center mb-4 text-gray-900">
             Event Check-in
           </Text>
 
           {/* Subtitle */}
-          <Text className="text-base text-center text-gray-600 mb-4">
+          <Text className="text-lg text-center text-gray-600 mb-6">
             {isCheckedIn
               ? 'Successfully checked in!'
               : 'Tap the button below to check in'}
           </Text>
 
           {/* Phase Badge */}
-          <View className={`rounded-full px-6 py-3 border-2 ${phaseConfig.borderColor} ${phaseConfig.bgColor} flex-row items-center mb-4`}>
-            <Clock size={24} color={phaseConfig.colors[0]} />
-            <View className="ml-3">
-              <Text className={`text-lg font-bold ${phaseConfig.textColor}`}>
+          <View className={`rounded-full px-8 py-4 border-2 ${phaseConfig.borderColor} ${phaseConfig.bgColor} flex-row items-center mb-6`}>
+            <Clock size={28} color={phaseConfig.colors[0]} />
+            <View className="ml-4">
+              <Text className={`text-xl font-bold ${phaseConfig.textColor}`}>
                 {phaseConfig.label}
               </Text>
-              <Text className={`text-xs ${phaseConfig.textColor}`}>
+              <Text className={`text-sm ${phaseConfig.textColor}`}>
                 {phaseConfig.description}
               </Text>
             </View>
           </View>
 
-          {/* Token Info (for debugging) */}
-          {__DEV__ && checkInCode && (
-            <Text className="text-xs text-gray-400 mt-2 text-center">
-              Token: {checkInCode.substring(0, 20)}...
-            </Text>
-          )}
         </View>
 
         {/* Check-in Button */}
@@ -226,27 +233,27 @@ export default function MemberCheckinByTimeAndCodePage() {
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              className="py-6"
+              className="py-7"
             >
               <View className="flex-row items-center justify-center">
                 {isCheckinLoading ? (
                   <>
-                    <ActivityIndicator size="large" color="#fff" className="mr-3" />
+                    <ActivityIndicator size="large" color="#fff" className="mr-4" />
                     <Text className="text-white text-2xl font-bold">
                       Processing...
                     </Text>
                   </>
                 ) : isCheckedIn ? (
                   <>
-                    <CheckCircle size={32} color="#fff" strokeWidth={3} />
-                    <Text className="text-white text-2xl font-bold ml-3">
+                    <CheckCircle size={36} color="#fff" strokeWidth={3} />
+                    <Text className="text-white text-2xl font-bold ml-4">
                       Checked In!
                     </Text>
                   </>
                 ) : (
                   <>
-                    <CheckCircle size={32} color="#fff" strokeWidth={3} />
-                    <Text className="text-white text-2xl font-bold ml-3">
+                    <CheckCircle size={36} color="#fff" strokeWidth={3} />
+                    <Text className="text-white text-2xl font-bold ml-4">
                       Check In Now
                     </Text>
                   </>
@@ -258,14 +265,14 @@ export default function MemberCheckinByTimeAndCodePage() {
 
         {/* Info Card */}
         {!isCheckedIn && (
-          <View className={`mt-8 rounded-xl p-4 border ${phaseConfig.borderColor} ${phaseConfig.bgColor}`}>
-            <Text className={`text-sm font-medium text-center ${phaseConfig.textColor}`}>
+          <View className={`mt-10 rounded-xl p-5 border ${phaseConfig.borderColor} ${phaseConfig.bgColor}`}>
+            <Text className={`text-base font-medium text-center ${phaseConfig.textColor}`}>
               💡 Make sure you're at the event venue before checking in
             </Text>
-            <Text className={`text-xs text-center mt-2 ${phaseConfig.textColor}`}>
+            <Text className={`text-sm text-center mt-3 ${phaseConfig.textColor}`}>
               This QR code is valid for a limited time
             </Text>
-            <Text className={`text-xs text-center font-bold mt-1 ${phaseConfig.textColor}`}>
+            <Text className={`text-sm text-center font-bold mt-2 ${phaseConfig.textColor}`}>
               Phase: {phaseConfig.label}
             </Text>
           </View>
@@ -273,11 +280,11 @@ export default function MemberCheckinByTimeAndCodePage() {
 
         {/* Success Message */}
         {isCheckedIn && (
-          <View className="mt-8 bg-green-50 rounded-xl p-4 border border-green-200">
-            <Text className="text-sm text-green-900 text-center font-medium mb-2">
+          <View className="mt-10 bg-green-50 rounded-xl p-5 border border-green-200">
+            <Text className="text-base text-green-900 text-center font-medium mb-2">
                 You have successfully checked in to this event
             </Text>
-            <Text className="text-xs text-green-700 text-center">
+            <Text className="text-sm text-green-700 text-center">
               Redirecting to events page...
             </Text>
           </View>
@@ -285,12 +292,11 @@ export default function MemberCheckinByTimeAndCodePage() {
       </View>
 
       {/* Footer */}
-      <View className="px-6 py-4 bg-white border-t border-gray-200">
-        <Text className="text-xs text-gray-500 text-center">
+      <View className="px-6 py-5 bg-white border-t border-gray-200">
+        <Text className="text-sm text-gray-500 text-center">
           UniClub Event Management System
         </Text>
       </View>
     </SafeAreaView>
   );
 }
-

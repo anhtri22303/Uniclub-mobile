@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   LogBox,
   ScrollView,
   Text,
@@ -18,16 +19,37 @@ LogBox.ignoreLogs([
   'AxiosError',
   'Request failed with status code',
   'Public event check-in error',
+  'Couldn\'t find a navigation context',
 ]);
 
 export default function StudentPublicCheckinPage() {
   const router = useRouter();
   const { checkInCode } = useLocalSearchParams<{ checkInCode: string }>();
   
+  console.log('StudentPublicCheckinPage mounted, checkInCode:', checkInCode);
+  
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isCheckinLoading, setIsCheckinLoading] = useState(false);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+
+  // Handle back navigation
+  const handleGoBack = () => {
+    try {
+      router.back();
+    } catch (e) {
+      BackHandler.exitApp();
+    }
+  };
+
+  // Navigate to events page
+  const navigateToEvents = () => {
+    try {
+      router.push('/student/events');
+    } catch (e) {
+      console.log('Navigation failed:', e);
+    }
+  };
 
   // Load event details when component mounts
   useEffect(() => {
@@ -88,7 +110,7 @@ export default function StudentPublicCheckinPage() {
 
       // Redirect after successful check-in
       setTimeout(() => {
-        router.push('/student/events');
+        navigateToEvents();
       }, 2000);
     } catch (error: any) {
       // Extract error message from response
@@ -100,6 +122,26 @@ export default function StudentPublicCheckinPage() {
         errorMessage = error.response.data.message;
       } else if (error?.message && !error.message.includes('status code')) {
         errorMessage = error.message;
+      }
+
+      // Check if user already checked in - redirect to profile
+      if (errorMessage.toLowerCase().includes('already checked in')) {
+        Toast.show({
+          type: 'info',
+          text1: 'Already Checked In',
+          text2: 'Redirecting to your profile...',
+          visibilityTime: 2000,
+          position: 'top',
+        });
+        
+        setTimeout(() => {
+          try {
+            router.push('/profile');
+          } catch (e) {
+            console.log('Navigation to profile failed:', e);
+          }
+        }, 1500);
+        return;
       }
 
       // Show toast notification only (suppressing console errors)
@@ -152,60 +194,60 @@ export default function StudentPublicCheckinPage() {
   };
 
   if (loading) {
+    console.log('Rendering loading state...');
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#0D9488" />
-          <Text className="mt-4 text-lg text-gray-600">Loading event details...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0D9488" />
+        <Text style={{ marginTop: 16, fontSize: 18, color: '#4B5563' }}>Loading event details...</Text>
+      </View>
     );
   }
 
   if (!event) {
+    console.log('Rendering event not found state...');
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <View className="flex-1 items-center justify-center px-4">
-          <View className="items-center">
-            <Text className="text-6xl mb-4"> </Text>
-            <Text className="text-3xl font-bold text-red-600 mb-2">Event Not Found</Text>
-            <Text className="text-gray-600 text-center mb-6">
-              The event you're looking for doesn't exist or has been removed.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/student/events')}
-              className="bg-teal-600 px-6 py-3 rounded-lg"
-            >
-              <Text className="text-white font-semibold">Back to Events</Text>
-            </TouchableOpacity>
-          </View>
+      <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>❌</Text>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#DC2626', marginBottom: 8 }}>Event Not Found</Text>
+          <Text style={{ color: '#4B5563', textAlign: 'center', marginBottom: 24 }}>
+            The event you're looking for doesn't exist or has been removed.
+          </Text>
+          <TouchableOpacity
+            onPress={navigateToEvents}
+            style={{ backgroundColor: '#0D9488', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Back to Events</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
+
+  console.log('Rendering event details, event:', event.name);
 
   const typeBadge = getTypeBadge(event.type);
   const statusBadge = getStatusBadge(event.status);
   const isMultiDay = isMultiDayEvent(event);
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-teal-50 to-blue-50">
-      <ScrollView className="flex-1">
-        <View className="px-4 py-6">
-          {/* Event Card with enhanced shadow and border */}
-          <View className="bg-white rounded-3xl shadow-2xl border-2 border-teal-100 overflow-hidden">
-            {/* Header Section with Gradient Background */}
-            <View className="bg-gradient-to-r from-teal-500 to-blue-500 px-4 pt-6 pb-4">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F0FDFA' }}>
+      <ScrollView style={{ flex: 1 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
+          {/* Event Card */}
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 2, borderColor: '#CCFBF1', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8 }}>
+            {/* Header Section */}
+            <View style={{ backgroundColor: '#0D9488', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 16 }}>
               {/* Type and Status Badges */}
-              <View className="flex-row items-center justify-center gap-2 mb-4">
-                <View className={`${typeBadge.bg} px-4 py-1.5 rounded-full border ${typeBadge.border}`}>
-                  <Text className={`${typeBadge.text} text-xs font-bold`}>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+                <View style={{ backgroundColor: typeBadge.bg === 'bg-green-100' ? '#DCFCE7' : typeBadge.bg === 'bg-purple-100' ? '#F3E8FF' : typeBadge.bg === 'bg-blue-100' ? '#DBEAFE' : '#F3F4F6', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: typeBadge.border === 'border-green-500' ? '#22C55E' : typeBadge.border === 'border-purple-500' ? '#A855F7' : typeBadge.border === 'border-blue-500' ? '#3B82F6' : '#9CA3AF' }}>
+                  <Text style={{ color: typeBadge.text === 'text-green-700' ? '#15803D' : typeBadge.text === 'text-purple-700' ? '#7E22CE' : typeBadge.text === 'text-blue-700' ? '#1D4ED8' : '#374151', fontSize: 12, fontWeight: 'bold' }}>
                     {typeBadge.label}
                   </Text>
                 </View>
                 {event.status && (
-                  <View className={`${statusBadge.bg} px-4 py-1.5 rounded-full border ${statusBadge.border}`}>
-                    <Text className={`${statusBadge.text} text-xs font-bold`}>
+                  <View style={{ backgroundColor: statusBadge.bg === 'bg-green-100' ? '#DCFCE7' : statusBadge.bg === 'bg-blue-100' ? '#DBEAFE' : '#F3F4F6', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: statusBadge.border === 'border-green-500' ? '#22C55E' : statusBadge.border === 'border-blue-500' ? '#3B82F6' : '#9CA3AF' }}>
+                    <Text style={{ color: statusBadge.text === 'text-green-700' ? '#15803D' : statusBadge.text === 'text-blue-700' ? '#1D4ED8' : '#374151', fontSize: 12, fontWeight: 'bold' }}>
                       {event.status}
                     </Text>
                   </View>
@@ -213,54 +255,52 @@ export default function StudentPublicCheckinPage() {
               </View>
 
               {/* Event Title */}
-              <View className="items-center">
-                <Text className="text-white text-3xl font-extrabold text-center mb-2">
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
                   {event.name}
                 </Text>
                 {event.description && (
-                  <Text className="text-teal-50 text-base text-center px-4">{event.description}</Text>
+                  <Text style={{ color: '#CCFBF1', fontSize: 14, textAlign: 'center', paddingHorizontal: 16 }}>{event.description}</Text>
                 )}
               </View>
             </View>
 
             {/* Event Details Section */}
-            <View className="px-5 py-6">
-              <View className="space-y-4">
-                {/* Date and Time - Enhanced for Multi-day Events */}
-                <View className="bg-teal-50 rounded-xl p-4 border border-teal-200">
+            <View style={{ paddingHorizontal: 20, paddingVertical: 24 }}>
+              <View style={{ gap: 16 }}>
+                {/* Date and Time */}
+                <View style={{ backgroundColor: '#F0FDFA', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#99F6E4' }}>
                   {isMultiDay && event.days ? (
                     <>
-                      <View className="flex-row items-center mb-3">
-                        <View className="w-12 h-12 bg-teal-500 rounded-xl items-center justify-center">
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                        <View style={{ width: 48, height: 48, backgroundColor: '#0D9488', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                           <Ionicons name="calendar" size={24} color="#FFF" />
                         </View>
-                        <View className="ml-3 flex-1">
-                          <Text className="text-teal-900 text-xs font-semibold mb-1">Multi-Day Event</Text>
-                          <Text className="text-teal-800 font-bold text-base">
+                        <View style={{ marginLeft: 12, flex: 1 }}>
+                          <Text style={{ color: '#134E4A', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Multi-Day Event</Text>
+                          <Text style={{ color: '#115E59', fontWeight: 'bold', fontSize: 16 }}>
                             {formatEventDateRange(event)}
                           </Text>
-                          <Text className="text-teal-600 text-xs mt-1">
+                          <Text style={{ color: '#0D9488', fontSize: 12, marginTop: 4 }}>
                             {event.days.length} day{event.days.length > 1 ? 's' : ''}
                           </Text>
                         </View>
                       </View>
                       {/* Show individual days */}
-                      <View className="mt-3 space-y-2">
+                      <View style={{ marginTop: 12, gap: 8 }}>
                         {event.days.map((day: any, index: number) => (
-                          <View key={index} className="bg-white rounded-lg p-3 border border-teal-100">
-                            <View className="flex-row items-center justify-between">
-                              <View className="flex-row items-center flex-1">
-                                <View className="w-8 h-8 bg-teal-500 rounded-full items-center justify-center mr-2">
-                                  <Text className="text-white text-xs font-bold">{index + 1}</Text>
-                                </View>
-                                <View className="flex-1">
-                                  <Text className="text-gray-900 font-semibold text-sm">
-                                    {formatDate(day.date)}
-                                  </Text>
-                                  <Text className="text-gray-500 text-xs">
-                                    {day.startTime} - {day.endTime}
-                                  </Text>
-                                </View>
+                          <View key={index} style={{ backgroundColor: '#FFFFFF', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#CCFBF1' }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={{ width: 32, height: 32, backgroundColor: '#0D9488', borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+                                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>{index + 1}</Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ color: '#111827', fontWeight: '600', fontSize: 14 }}>
+                                  {formatDate(day.date)}
+                                </Text>
+                                <Text style={{ color: '#6B7280', fontSize: 12 }}>
+                                  {day.startTime} - {day.endTime}
+                                </Text>
                               </View>
                             </View>
                           </View>
@@ -270,27 +310,27 @@ export default function StudentPublicCheckinPage() {
                   ) : (
                     <>
                       {/* Single-day event display */}
-                      <View className="flex-row items-center mb-3">
-                        <View className="w-12 h-12 bg-teal-500 rounded-xl items-center justify-center">
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                        <View style={{ width: 48, height: 48, backgroundColor: '#0D9488', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                           <Ionicons name="calendar" size={24} color="#FFF" />
                         </View>
-                        <View className="ml-3 flex-1">
-                          <Text className="text-teal-900 text-xs font-semibold mb-1">Date</Text>
-                          <Text className="text-teal-800 font-bold text-base">
+                        <View style={{ marginLeft: 12, flex: 1 }}>
+                          <Text style={{ color: '#134E4A', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Date</Text>
+                          <Text style={{ color: '#115E59', fontWeight: 'bold', fontSize: 16 }}>
                             {formatDate(event.date || event.startDate)}
                           </Text>
-                          <Text className="text-teal-600 text-xs">{event.date || event.startDate}</Text>
+                          <Text style={{ color: '#0D9488', fontSize: 12 }}>{event.date || event.startDate}</Text>
                         </View>
                       </View>
                       {/* Time */}
                       {(event.startTime || event.endTime) && (
-                        <View className="flex-row items-center bg-white rounded-lg p-3 border border-teal-100">
-                          <View className="w-10 h-10 bg-teal-100 rounded-lg items-center justify-center">
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#CCFBF1' }}>
+                          <View style={{ width: 40, height: 40, backgroundColor: '#CCFBF1', borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
                             <Ionicons name="time" size={20} color="#0D9488" />
                           </View>
-                          <View className="ml-3 flex-1">
-                            <Text className="text-gray-500 text-xs mb-1">Time</Text>
-                            <Text className="text-gray-900 font-semibold text-sm">
+                          <View style={{ marginLeft: 12, flex: 1 }}>
+                            <Text style={{ color: '#6B7280', fontSize: 12, marginBottom: 4 }}>Time</Text>
+                            <Text style={{ color: '#111827', fontWeight: '600', fontSize: 14 }}>
                               {event.startTime && event.endTime
                                 ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
                                 : 'Time not specified'}
@@ -304,28 +344,28 @@ export default function StudentPublicCheckinPage() {
 
                 {/* Location */}
                 {event.locationName && (
-                  <View className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                    <View className="flex-row items-center">
-                      <View className="w-12 h-12 bg-blue-500 rounded-xl items-center justify-center">
+                  <View style={{ backgroundColor: '#EFF6FF', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#BFDBFE' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ width: 48, height: 48, backgroundColor: '#3B82F6', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                         <Ionicons name="location" size={24} color="#FFF" />
                       </View>
-                      <View className="ml-3 flex-1">
-                        <Text className="text-blue-900 text-xs font-semibold mb-1">Location</Text>
-                        <Text className="text-blue-800 font-bold text-base">{event.locationName}</Text>
+                      <View style={{ marginLeft: 12, flex: 1 }}>
+                        <Text style={{ color: '#1E3A8A', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Location</Text>
+                        <Text style={{ color: '#1E40AF', fontWeight: 'bold', fontSize: 16 }}>{event.locationName}</Text>
                       </View>
                     </View>
                   </View>
                 )}
 
                 {/* Attendance */}
-                <View className="bg-purple-50 rounded-xl p-4 border border-purple-200">
-                  <View className="flex-row items-center">
-                    <View className="w-12 h-12 bg-purple-500 rounded-xl items-center justify-center">
+                <View style={{ backgroundColor: '#FAF5FF', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#E9D5FF' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 48, height: 48, backgroundColor: '#A855F7', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                       <Ionicons name="people" size={24} color="#FFF" />
                     </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="text-purple-900 text-xs font-semibold mb-1">Attendance</Text>
-                      <Text className="text-purple-800 font-bold text-base">
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                      <Text style={{ color: '#581C87', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Attendance</Text>
+                      <Text style={{ color: '#7E22CE', fontWeight: 'bold', fontSize: 16 }}>
                         {event.currentCheckInCount || 0} / {event.maxCheckInCount || 0} checked in
                       </Text>
                     </View>
@@ -333,16 +373,16 @@ export default function StudentPublicCheckinPage() {
                 </View>
               </View>
 
-              {/* Host Club - Enhanced with gradient */}
+              {/* Host Club */}
               {event.hostClub && (
-                <View className="mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border-2 border-blue-200">
-                  <View className="flex-row items-center">
-                    <View className="w-12 h-12 bg-blue-500 rounded-xl items-center justify-center">
+                <View style={{ marginTop: 16, backgroundColor: '#EFF6FF', padding: 16, borderRadius: 12, borderWidth: 2, borderColor: '#BFDBFE' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 48, height: 48, backgroundColor: '#3B82F6', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                       <Ionicons name="business" size={24} color="#FFF" />
                     </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="text-blue-600 text-xs font-semibold mb-1">Hosted by</Text>
-                      <Text className="text-blue-900 font-extrabold text-lg">
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                      <Text style={{ color: '#2563EB', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Hosted by</Text>
+                      <Text style={{ color: '#1E3A8A', fontWeight: '800', fontSize: 18 }}>
                         {event.hostClub.name}
                       </Text>
                     </View>
@@ -351,21 +391,22 @@ export default function StudentPublicCheckinPage() {
               )}
 
               {/* Separator */}
-              <View className="my-6 h-px bg-gray-200" />
+              <View style={{ marginVertical: 24, height: 1, backgroundColor: '#E5E7EB' }} />
 
-              {/* Check-in Button - Enhanced with gradient and animation effect */}
+              {/* Check-in Button */}
               <TouchableOpacity
                 onPress={handleCheckin}
                 disabled={isCheckinLoading || isCheckedIn}
                 activeOpacity={0.8}
-                className={`py-6 rounded-2xl flex-row items-center justify-center shadow-xl ${
-                  isCheckedIn
-                    ? 'bg-white border-4 border-green-500'
-                    : isCheckinLoading
-                    ? 'bg-gray-300'
-                    : 'bg-gradient-to-r from-teal-600 to-blue-600'
-                }`}
                 style={{
+                  paddingVertical: 24,
+                  borderRadius: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isCheckedIn ? '#FFFFFF' : isCheckinLoading ? '#D1D5DB' : '#0D9488',
+                  borderWidth: isCheckedIn ? 4 : 0,
+                  borderColor: isCheckedIn ? '#22C55E' : 'transparent',
                   shadowColor: isCheckedIn ? '#22C55E' : isCheckinLoading ? '#D1D5DB' : '#0D9488',
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
@@ -376,30 +417,26 @@ export default function StudentPublicCheckinPage() {
                 {isCheckinLoading ? (
                   <>
                     <ActivityIndicator size="large" color="#666" />
-                    <Text className="text-gray-700 text-xl font-bold ml-3">Processing...</Text>
+                    <Text style={{ color: '#374151', fontSize: 20, fontWeight: 'bold', marginLeft: 12 }}>Processing...</Text>
                   </>
                 ) : isCheckedIn ? (
                   <>
                     <Ionicons name="checkmark-circle" size={32} color="#22C55E" />
-                    <Text className="text-green-600 text-2xl font-extrabold ml-3">Checked In!</Text>
+                    <Text style={{ color: '#16A34A', fontSize: 24, fontWeight: '800', marginLeft: 12 }}>Checked In!</Text>
                   </>
                 ) : (
                   <>
                     <Ionicons name="checkmark-circle-outline" size={32} color="#FFF" />
-                    <Text className="text-white text-2xl font-extrabold ml-3">Check In Now</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 24, fontWeight: '800', marginLeft: 12 }}>Check In Now</Text>
                   </>
                 )}
               </TouchableOpacity>
 
               {/* Info Note with check-in code */}
-              <View className="mt-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <Text className="text-center text-sm text-gray-600 mb-2">
+              <View style={{ marginTop: 24, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                <Text style={{ textAlign: 'center', fontSize: 14, color: '#4B5563', marginBottom: 8 }}>
                   This is a public event - no registration required
                 </Text>
-                <View className="flex-row items-center justify-center">
-                  <Text className="text-xs text-gray-500">Check-in Code: </Text>
-                  <Text className="text-xs text-gray-700 font-mono font-bold">{event.checkInCode}</Text>
-                </View>
               </View>
             </View>
           </View>

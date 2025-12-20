@@ -6,8 +6,11 @@ import Sidebar from '@components/navigation/Sidebar';
 import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { ClubService } from '@services/club.service';
+import EventService from '@services/event.service';
 import { Major, MajorService } from '@services/major.service';
 import UserService, { ApiMembershipWallet, EditProfileRequest, ProfileStats, UserProfile } from '@services/user.service';
+import { ClubWallet, WalletService } from '@services/wallet.service';
 import { useAuthStore } from '@stores/auth.store';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -78,6 +81,33 @@ export default function ProfileScreen() {
   // Profile stats state (real data from API)
   const [userStats, setUserStats] = useState<ProfileStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+
+  // Club wallet state (for club leaders only)
+  const [clubWallet, setClubWallet] = useState<ClubWallet | null>(null);
+  const [clubWalletLoading, setClubWalletLoading] = useState(false);
+
+  // Admin statistics state (for uni_staff/admin roles)
+  const [adminStats, setAdminStats] = useState({
+    totalUsers: 0,
+    totalClubs: 0,
+    totalEvents: 0,
+  });
+  const [adminStatsLoading, setAdminStatsLoading] = useState(true);
+
+  // Point levels configuration for visual feedback
+  const pointLevels = [
+    { min: 10000, label: '10,000+', gradient: ['#FBBF24', '#EC4899', '#9333EA'], name: '🏆 Legendary', desc: 'Rainbow flame' },
+    { min: 7000, label: '7,000+', gradient: ['#F43F5E', '#EF4444', '#F43F5E'], name: '💎 Epic', desc: 'Crimson flame' },
+    { min: 5000, label: '5,000+', gradient: ['#F97316', '#EF4444', '#EC4899'], name: '👑 Master', desc: 'Hot flame' },
+    { min: 3000, label: '3,000+', gradient: ['#FB923C', '#EA580C'], name: '⭐ Expert', desc: 'Orange flame' },
+    { min: 2000, label: '2,000+', gradient: ['#FACC15', '#F97316'], name: '🌟 Advanced', desc: 'Yellow flame' },
+    { min: 1500, label: '1,500+', gradient: ['#FDE047', '#EAB308'], name: '✨ Skilled', desc: 'Bright flame' },
+    { min: 1000, label: '1,000+', gradient: ['#84CC16', '#EAB308'], name: '📈 Intermediate', desc: 'Warming up' },
+    { min: 500, label: '500+', gradient: ['#4ADE80', '#84CC16'], name: '🌱 Beginner', desc: 'Green flame' },
+    { min: 200, label: '200+', gradient: ['#22D3EE', '#4ADE80'], name: '🔰 Novice', desc: 'Cool flame' },
+    { min: 50, label: '50+', gradient: ['#60A5FA', '#22D3EE'], name: '🌿 Starter', desc: 'Blue flame' },
+    { min: 0, label: '0-49', gradient: ['#CBD5E1', '#94A3B8'], name: '💤 Inactive', desc: 'No flame' },
+  ];
 
   // Animation for flame icon
   const flameAnimation = useRef(new Animated.Value(1)).current;
@@ -176,6 +206,24 @@ export default function ProfileScreen() {
         setMemberships(walletsList);
       }
 
+      // Load club wallet for club leaders
+      if (user?.role === 'club_leader') {
+        setClubWalletLoading(true);
+        try {
+          // Get clubId from user's clubIds array
+          const clubId = user.clubIds?.[0];
+          if (clubId) {
+            const wallet = await WalletService.getClubWallet(clubId);
+            setClubWallet(wallet);
+          }
+        } catch (clubWalletErr) {
+          console.error('Failed to load club wallet:', clubWalletErr);
+          // Don't show error - just keep null state
+        } finally {
+          setClubWalletLoading(false);
+        }
+      }
+
       // Load profile statistics for students and club leaders
       if (user?.role === 'student' || user?.role === 'club_leader') {
         try {
@@ -201,10 +249,49 @@ export default function ProfileScreen() {
     }
   };
 
+  // Load admin statistics from APIs
+  const loadAdminStats = async () => {
+    try {
+      setAdminStatsLoading(true);
+      
+      // Call all APIs in parallel
+      const [users, events, clubs] = await Promise.all([
+        UserService.fetchUsers(),
+        EventService.fetchEvent(),
+        ClubService.fetchClubs()
+      ]);
+      
+      // Calculate totals
+      const totalUsers = Array.isArray(users) ? users.length : 0;
+      const totalEvents = Array.isArray(events) ? events.length : 0;
+      const totalClubs = Array.isArray(clubs) ? clubs.length : 0;
+      
+      setAdminStats({
+        totalUsers,
+        totalClubs,
+        totalEvents,
+      });
+      
+    } catch (error) {
+      console.error('Error loading admin stats:', error);
+      // Keep default values on error
+    } finally {
+      setAdminStatsLoading(false);
+    }
+  };
+
   // Load profile on mount
   useEffect(() => {
     loadProfile();
   }, [user?.userId]);
+
+  // Load admin statistics for admin users
+  useEffect(() => {
+    const isAdminRole = ['uni_staff', 'staff'].includes(user?.role || '');
+    if (isAdminRole) {
+      loadAdminStats();
+    }
+  }, [user?.role]);
 
   // Start flame animation based on points
   useEffect(() => {
@@ -550,9 +637,26 @@ export default function ProfileScreen() {
   };
 
   const getPointsCardStyle = (points: number) => {
+    // 11-tier point levels matching Sidebar
+    if (points >= 10000) {
+      return {
+        cardBgColors: ['#EC4899', '#EC4899'], // Pink - Legendary
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
+      };
+    }
+    if (points >= 7000) {
+      return {
+        cardBgColors: ['#F43F5E', '#F43F5E'], // Rose - Epic
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
+      };
+    }
     if (points >= 5000) {
       return {
-        cardBgColors: ['#9333EA', '#EC4899'], // purple to pink gradient
+        cardBgColors: ['#F97316', '#F97316'], // Orange - Master
         textColor: 'text-white',
         iconColor: 'white',
         iconBg: 'bg-white/20',
@@ -560,7 +664,23 @@ export default function ProfileScreen() {
     }
     if (points >= 3000) {
       return {
-        cardBgColors: ['#0EA5E9', '#6366F1'], // sky to indigo gradient
+        cardBgColors: ['#EA580C', '#EA580C'], // Deep Orange - Expert
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
+      };
+    }
+    if (points >= 2000) {
+      return {
+        cardBgColors: ['#F59E0B', '#F59E0B'], // Amber - Advanced
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
+      };
+    }
+    if (points >= 1500) {
+      return {
+        cardBgColors: ['#EAB308', '#EAB308'], // Yellow - Skilled
         textColor: 'text-white',
         iconColor: 'white',
         iconBg: 'bg-white/20',
@@ -568,17 +688,42 @@ export default function ProfileScreen() {
     }
     if (points >= 1000) {
       return {
-        cardBgColors: ['#FEF3C7', '#FEF3C7'], // amber light
-        textColor: 'text-amber-900',
-        iconColor: '#D97706',
-        iconBg: 'bg-amber-200',
+        cardBgColors: ['#84CC16', '#84CC16'], // Lime - Intermediate
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
       };
     }
+    if (points >= 500) {
+      return {
+        cardBgColors: ['#22C55E', '#22C55E'], // Green - Beginner
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
+      };
+    }
+    if (points >= 200) {
+      return {
+        cardBgColors: ['#14B8A6', '#14B8A6'], // Teal - Novice
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
+      };
+    }
+    if (points >= 50) {
+      return {
+        cardBgColors: ['#06B6D4', '#06B6D4'], // Cyan - Starter
+        textColor: 'text-white',
+        iconColor: 'white',
+        iconBg: 'bg-white/20',
+      };
+    }
+    // Default: 0-49 points - Inactive
     return {
-      cardBgColors: ['#F1F5F9', '#F1F5F9'], // gray
-      textColor: 'text-gray-800',
-      iconColor: '#6B7280',
-      iconBg: 'bg-gray-200',
+      cardBgColors: ['#94A3B8', '#94A3B8'], // Slate gray
+      textColor: 'text-slate-800',
+      iconColor: '#475569',
+      iconBg: 'bg-slate-200',
     };
   };
 
@@ -920,8 +1065,15 @@ export default function ProfileScreen() {
               memberships.map((membership) => {
                 const pointsStyle = getPointsCardStyle(membership.balancePoints);
                 return (
-                  <View
+                  <TouchableOpacity
                     key={membership.walletId}
+                    onPress={() => {
+                      if (user?.role === 'club_leader') {
+                        router.push('/club-leader/points' as any);
+                      } else if (user?.role === 'student') {
+                        router.push('/student/history?tab=wallet' as any);
+                      }
+                    }}
                     className="rounded-3xl p-6 shadow-lg mb-3"
                     style={{
                       backgroundColor: pointsStyle.cardBgColors[0],
@@ -946,7 +1098,7 @@ export default function ProfileScreen() {
                         <Ionicons name="flame" size={24} color={pointsStyle.iconColor} />
                       </Animated.View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             ) : (
@@ -963,6 +1115,45 @@ export default function ProfileScreen() {
                   </View>
                 </View>
               </View>
+            )}
+
+            {/* Club Wallet Card for Club Leaders */}
+            {user?.role === 'club_leader' && (
+              clubWalletLoading ? (
+                <View className="rounded-3xl p-6 shadow-lg bg-blue-500 mb-3">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className="text-sm font-medium text-white/90">Club Points</Text>
+                      <ActivityIndicator color="white" size="small" className="mt-2" />
+                    </View>
+                    <View className="bg-white/20 p-3 rounded-full">
+                      <Ionicons name="flame" size={24} color="white" />
+                    </View>
+                  </View>
+                </View>
+              ) : clubWallet ? (
+                <TouchableOpacity
+                  onPress={() => router.push('/club-leader/points' as any)}
+                  className="rounded-3xl p-6 shadow-lg mb-3"
+                  style={{
+                    backgroundColor: '#3B82F6', // Blue gradient for club wallet
+                  }}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className="text-sm font-medium text-white/90">
+                        Club Points
+                      </Text>
+                      <Text className="text-3xl font-bold text-white">
+                        {clubWallet.balancePoints.toLocaleString()}
+                      </Text>
+                    </View>
+                    <View className="bg-white/20 p-3 rounded-full">
+                      <Ionicons name="flame" size={24} color="white" />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ) : null
             )}
           </View>
         )}
@@ -1123,6 +1314,57 @@ export default function ProfileScreen() {
               )}
             </View>
 
+            {/* Quick Statistics for Admin */}
+            <View className="bg-white rounded-3xl p-6 shadow-lg">
+              <View className="flex-row items-center mb-4">
+                <Ionicons name="bar-chart" size={24} color="#6366F1" />
+                <Text className="text-xl font-bold text-gray-800 ml-3">Quick Statistics</Text>
+              </View>
+              
+              <View className="space-y-3">
+                <View className="flex-row items-center justify-between p-4 bg-blue-50 rounded-xl">
+                  <View className="flex-row items-center">
+                    <Ionicons name="people" size={24} color="#3B82F6" />
+                    <Text className="text-gray-700 ml-3">Total Users</Text>
+                  </View>
+                  {adminStatsLoading ? (
+                    <ActivityIndicator size="small" color="#3B82F6" />
+                  ) : (
+                    <Text className="text-xl font-bold text-blue-600">
+                      {adminStats.totalUsers.toLocaleString()}
+                    </Text>
+                  )}
+                </View>
+                
+                <View className="flex-row items-center justify-between p-4 bg-green-50 rounded-xl">
+                  <View className="flex-row items-center">
+                    <Ionicons name="calendar" size={24} color="#10B981" />
+                    <Text className="text-gray-700 ml-3">Total Events</Text>
+                  </View>
+                  {adminStatsLoading ? (
+                    <ActivityIndicator size="small" color="#10B981" />
+                  ) : (
+                    <Text className="text-xl font-bold text-green-600">
+                      {adminStats.totalEvents.toLocaleString()}
+                    </Text>
+                  )}
+                </View>
+                
+                <View className="flex-row items-center justify-between p-4 bg-purple-50 rounded-xl">
+                  <View className="flex-row items-center">
+                    <Ionicons name="business" size={24} color="#8B5CF6" />
+                    <Text className="text-gray-700 ml-3">Total Clubs</Text>
+                  </View>
+                  {adminStatsLoading ? (
+                    <ActivityIndicator size="small" color="#8B5CF6" />
+                  ) : (
+                    <Text className="text-xl font-bold text-purple-600">
+                      {adminStats.totalClubs.toLocaleString()}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
 
           </View>
         ) : (

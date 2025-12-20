@@ -12,13 +12,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -143,6 +143,40 @@ export default function StudentEventsPage() {
     }
   }, [selectedClubId, userClubIds.length]);
 
+  // Helper function to sort events by date and time (newest to oldest)
+  const sortEventsByDateTime = (eventList: Event[]) => {
+    return eventList.sort((a: Event, b: Event) => {
+      // Parse dates for comparison - support both multi-day and single-day events
+      // For multi-day, use first day's date (startDate)
+      let dateAStr = a.startDate || a.date || '1970-01-01';
+      let dateBStr = b.startDate || b.date || '1970-01-01';
+      
+      // If event has days array, use first day's date
+      if (a.days && a.days.length > 0) dateAStr = a.days[0].date;
+      if (b.days && b.days.length > 0) dateBStr = b.days[0].date;
+
+      const dateA = new Date(dateAStr);
+      const dateB = new Date(dateBStr);
+
+      // Compare dates first (newest first)
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateB.getTime() - dateA.getTime();
+      }
+
+      // If dates are equal, compare times (latest startTime first)
+      const timeAStr = typeof a.startTime === 'string' ? a.startTime : (a.startTime ? timeObjectToString(a.startTime) : a.time || '00:00');
+      const timeBStr = typeof b.startTime === 'string' ? b.startTime : (b.startTime ? timeObjectToString(b.startTime) : b.time || '00:00');
+
+      // Convert time strings to comparable format (HH:MM to minutes)
+      const parseTime = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+
+      return parseTime(timeBStr) - parseTime(timeAStr);
+    });
+  };
+
   // Helper function to check if event is registered
   const isEventRegistered = (eventId: number) => {
     return myRegistrations.some((reg) => reg.eventId === eventId);
@@ -263,7 +297,9 @@ export default function StudentEventsPage() {
       return true;
     });
 
-    setFilteredEvents(filtered);
+    // Apply sorting to filtered events
+    const sorted = sortEventsByDateTime([...filtered]);
+    setFilteredEvents(sorted);
   }, [searchTerm, events, clubs, showExpiredFilter, showRegisteredOnly, myRegistrations]);
 
   // Get event status
@@ -682,7 +718,7 @@ export default function StudentEventsPage() {
                           </View>
                         </TouchableOpacity>
                         
-                        {!isExpired && (event.status === 'APPROVED' || event.status === 'ONGOING') && (
+                        {event.type !== 'PUBLIC' && !isExpired && event.status === 'APPROVED' && (
                           <TouchableOpacity
                             onPress={() => handleRegisterClick(event)}
                             disabled={isRegistering || isRegistered}
@@ -1006,18 +1042,21 @@ export default function StudentEventsPage() {
         </View>
       </Modal>
 
-      {/* Calendar Modal */}
+      {/* Calendar Modal - Always show all events regardless of filters */}
       <CalendarModal
         visible={showCalendarModal}
         onClose={() => setShowCalendarModal(false)}
-        events={filteredEvents
-          .filter(event => event.date !== undefined && event.date !== null)
-          .map(event => ({
-            ...event,
-            date: event.date as string,
-            startTime: typeof event.startTime === 'string' ? event.startTime : event.startTime ? timeObjectToString(event.startTime) : undefined,
-            endTime: typeof event.endTime === 'string' ? event.endTime : event.endTime ? timeObjectToString(event.endTime) : undefined,
-          }))}
+        events={events.map(event => ({
+          ...event,
+          // Preserve all date-related fields for both single-day and multi-day events
+          date: event.date,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          days: event.days,
+          startTime: typeof event.startTime === 'string' ? event.startTime : event.startTime ? timeObjectToString(event.startTime) : undefined,
+          endTime: typeof event.endTime === 'string' ? event.endTime : event.endTime ? timeObjectToString(event.endTime) : undefined,
+          time: event.time,
+        }))}
         onEventClick={(event) => {
           setShowCalendarModal(false);
           router.push(`/student/events/${event.id}` as any);

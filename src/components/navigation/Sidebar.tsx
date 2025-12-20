@@ -1,6 +1,8 @@
 import { useProfile } from '@contexts/ProfileContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiMembershipWallet } from '@services/user.service';
+import { ClubWallet, WalletService } from '@services/wallet.service';
 import { useAuthStore } from '@stores/auth.store';
 import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -45,8 +47,15 @@ export default function Sidebar({ role }: SidebarProps) {
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 48 })).current; // Default position (left edge, top: 48)
   const [isDragging, setIsDragging] = useState(false);
   
+  // Club wallet state (for club leaders)
+  const [clubWallet, setClubWallet] = useState<ClubWallet | null>(null);
+  const [clubWalletLoading, setClubWalletLoading] = useState(false);
+  
+  // Wallet selection state (for multiple wallets)
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('');
+  const [showWalletDropdown, setShowWalletDropdown] = useState(false);
+  
   // Profile widget state (derived from context)
-  const userPoints = profile?.wallet?.balancePoints ?? 0;
   const avatarUrl = profile?.avatarUrl || '';
   const userName = profile?.fullName || user?.fullName || 'User';
   const userEmail = profile?.email || user?.email || '';
@@ -55,6 +64,25 @@ export default function Sidebar({ role }: SidebarProps) {
   useEffect(() => {
     loadButtonPosition();
   }, []);
+
+  // Load club wallet for club leaders
+  useEffect(() => {
+    const loadClubWallet = async () => {
+      if (role === 'club_leader' && !loadingProfile && user?.clubIds?.[0]) {
+        setClubWalletLoading(true);
+        try {
+          const clubId = user.clubIds[0];
+          const wallet = await WalletService.getClubWallet(clubId);
+          setClubWallet(wallet);
+        } catch (error) {
+          console.error('Failed to load club wallet:', error);
+        } finally {
+          setClubWalletLoading(false);
+        }
+      }
+    };
+    loadClubWallet();
+  }, [role, loadingProfile, user?.clubIds]);
 
   // Refresh profile when sidebar opens
   useEffect(() => {
@@ -153,42 +181,140 @@ export default function Sidebar({ role }: SidebarProps) {
     })
   ).current;
 
-  // Helper functions for points card styling
-  const getPointsCardStyle = (points: number) => {
+  // Helper functions for points card styling - Updated to match web
+  const getPointsCardStyle = (points: number, isClubWallet: boolean = false) => {
+    // If it's club wallet, return fixed blue style
+    if (isClubWallet) {
+      return {
+        bgColor: '#3B82F6', // Blue for club wallet
+        textColor: 'text-white',
+        subtitleColor: 'text-white/90',
+        iconBg: 'bg-white/20',
+        iconColor: 'white',
+      };
+    }
+    if (points >= 10000) {
+      return {
+        bgColor: '#EC4899', // Pink/Purple gradient base
+        textColor: 'text-white',
+        subtitleColor: 'text-white/90',
+        iconBg: 'bg-white/30',
+        iconColor: 'white',
+      };
+    }
+    if (points >= 7000) {
+      return {
+        bgColor: '#F43F5E', // Rose/Red
+        textColor: 'text-white',
+        subtitleColor: 'text-white/85',
+        iconBg: 'bg-white/25',
+        iconColor: 'white',
+      };
+    }
     if (points >= 5000) {
       return {
-        bgColor: 'bg-gradient-to-r from-purple-600 to-pink-600',
+        bgColor: '#F97316', // Orange/Red/Pink
         textColor: 'text-white',
         subtitleColor: 'text-white/80',
         iconBg: 'bg-white/20',
-        iconColor: 'text-white',
+        iconColor: 'white',
       };
     }
     if (points >= 3000) {
       return {
-        bgColor: 'bg-gradient-to-r from-sky-500 to-indigo-500',
+        bgColor: '#EA580C', // Orange
         textColor: 'text-white',
         subtitleColor: 'text-white/80',
         iconBg: 'bg-white/20',
-        iconColor: 'text-white',
+        iconColor: 'white',
+      };
+    }
+    if (points >= 2000) {
+      return {
+        bgColor: '#F59E0B', // Yellow/Orange
+        textColor: 'text-white',
+        subtitleColor: 'text-white/80',
+        iconBg: 'bg-white/20',
+        iconColor: 'white',
+      };
+    }
+    if (points >= 1500) {
+      return {
+        bgColor: '#EAB308', // Yellow
+        textColor: 'text-white',
+        subtitleColor: 'text-white/75',
+        iconBg: 'bg-white/20',
+        iconColor: 'white',
       };
     }
     if (points >= 1000) {
       return {
-        bgColor: 'bg-amber-50',
-        textColor: 'text-amber-900',
-        subtitleColor: 'text-amber-700',
-        iconBg: 'bg-amber-200',
-        iconColor: 'text-amber-600',
+        bgColor: '#84CC16', // Lime/Yellow
+        textColor: 'text-white',
+        subtitleColor: 'text-white/80',
+        iconBg: 'bg-white/20',
+        iconColor: 'white',
+      };
+    }
+    if (points >= 500) {
+      return {
+        bgColor: '#22C55E', // Green/Lime
+        textColor: 'text-white',
+        subtitleColor: 'text-white/75',
+        iconBg: 'bg-white/20',
+        iconColor: 'white',
+      };
+    }
+    if (points >= 200) {
+      return {
+        bgColor: '#14B8A6', // Cyan/Green
+        textColor: 'text-white',
+        subtitleColor: 'text-white/80',
+        iconBg: 'bg-white/20',
+        iconColor: 'white',
+      };
+    }
+    if (points >= 50) {
+      return {
+        bgColor: '#06B6D4', // Blue/Cyan
+        textColor: 'text-white',
+        subtitleColor: 'text-white/80',
+        iconBg: 'bg-white/20',
+        iconColor: 'white',
       };
     }
     return {
-      bgColor: 'bg-slate-100',
+      bgColor: '#94A3B8', // Slate/Gray
       textColor: 'text-slate-800',
-      subtitleColor: 'text-slate-500',
+      subtitleColor: 'text-slate-600',
       iconBg: 'bg-slate-200',
-      iconColor: 'text-slate-600',
+      iconColor: '#475569',
     };
+  };
+
+  // Point levels configuration for reference
+  const pointLevels = [
+    { min: 10000, label: '10,000+', name: '🏆 Legendary', desc: 'Rainbow flame' },
+    { min: 7000, label: '7,000+', name: '💎 Epic', desc: 'Crimson flame' },
+    { min: 5000, label: '5,000+', name: '👑 Master', desc: 'Hot flame' },
+    { min: 3000, label: '3,000+', name: '⭐ Expert', desc: 'Orange flame' },
+    { min: 2000, label: '2,000+', name: '🌟 Advanced', desc: 'Yellow flame' },
+    { min: 1500, label: '1,500+', name: '✨ Skilled', desc: 'Bright flame' },
+    { min: 1000, label: '1,000+', name: '📈 Intermediate', desc: 'Warming up' },
+    { min: 500, label: '500+', name: '🌱 Beginner', desc: 'Green flame' },
+    { min: 200, label: '200+', name: '🔰 Novice', desc: 'Cool flame' },
+    { min: 50, label: '50+', name: '🌿 Starter', desc: 'Blue flame' },
+    { min: 0, label: '0-49', name: '💤 Inactive', desc: 'No flame' },
+  ];
+
+  // Get current point level
+  const getCurrentPointLevel = (points: number) => {
+    for (const level of pointLevels) {
+      if (points >= level.min) {
+        return level;
+      }
+    }
+    return pointLevels[pointLevels.length - 1];
   };
 
   const getUserInitials = () => {
@@ -200,8 +326,114 @@ export default function Sidebar({ role }: SidebarProps) {
       .slice(0, 2);
   };
 
+  // Compute memberships list (similar to web)
+  const memberships = useMemo((): ApiMembershipWallet[] => {
+    if (!profile) return [];
+
+    // Support both new API (wallets) and old API (wallet)
+    let walletsList = profile?.wallets || [];
+
+    if (!walletsList || walletsList.length === 0) {
+      if (profile?.wallet) {
+        // Create an array with 1 wallet - user's personal wallet
+        walletsList = [{
+          walletId: profile.wallet.walletId,
+          balancePoints: profile.wallet.balancePoints,
+          ownerType: profile.wallet.ownerType || 'USER',
+          clubId: 0,
+          clubName: 'My Points',
+          userId: profile.wallet.userId,
+          userFullName: profile.wallet.userFullName
+        }];
+      }
+    }
+
+    // For club leaders, add club wallet at the beginning
+    if (role === 'club_leader' && clubWallet) {
+      const clubWalletEntry: ApiMembershipWallet = {
+        walletId: clubWallet.walletId,
+        balancePoints: clubWallet.balancePoints,
+        ownerType: clubWallet.ownerType,
+        clubId: clubWallet.clubId,
+        clubName: clubWallet.clubName || 'Club Wallet',
+        userId: clubWallet.userId || 0,
+        userFullName: clubWallet.userFullName || ''
+      };
+      
+      // Add club wallet at the beginning
+      walletsList = [clubWalletEntry, ...walletsList];
+    }
+
+    // Map data - rename personal wallet to "My Points"
+    return walletsList.map((w: any) => ({
+      walletId: w.walletId,
+      balancePoints: w.balancePoints,
+      ownerType: w.ownerType === 'USER' ? 'USER' : w.ownerType,
+      clubId: w.clubId,
+      clubName: w.ownerType === 'USER' ? 'My Points' : w.clubName,
+      userId: w.userId,
+      userFullName: w.userFullName
+    }));
+  }, [profile, role, clubWallet]);
+
+  // Auto-select first wallet when memberships change
+  useEffect(() => {
+    if (memberships.length === 0) {
+      setSelectedWalletId('');
+      return;
+    }
+
+    // Prefer Club Wallet (ownerType = "CLUB") as default for club leader
+    if (role === 'club_leader' && clubWallet) {
+      const clubWalletInList = memberships.find(m => m.ownerType === 'CLUB');
+      if (clubWalletInList) {
+        setSelectedWalletId(clubWalletInList.walletId.toString());
+        return;
+      }
+    }
+
+    // If no wallet selected yet, select the first one
+    if (!selectedWalletId && memberships.length > 0) {
+      setSelectedWalletId(memberships[0].walletId.toString());
+    }
+  }, [memberships, selectedWalletId, role, clubWallet]);
+
+  // Compute user points from selected wallet
+  const userPoints = useMemo(() => {
+    if (loadingProfile || memberships.length === 0) return 0;
+
+    // Find the selected wallet
+    const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId);
+    if (selectedMembership) {
+      return Number(selectedMembership.balancePoints) || 0;
+    }
+
+    // Fallback to 0 if not found
+    return 0;
+  }, [selectedWalletId, memberships, loadingProfile]);
+
+  // Check if selected wallet is club wallet
+  const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId);
+  const isClubWallet = selectedMembership?.ownerType === 'CLUB';
+
   const shouldShowPoints = role === 'student' || role === 'club_leader';
-  const pointsStyle = getPointsCardStyle(userPoints);
+  const pointsStyle = getPointsCardStyle(userPoints, isClubWallet);
+
+  // Handle wallet selection
+  const handleWalletSelect = (walletId: string) => {
+    setSelectedWalletId(walletId);
+    setShowWalletDropdown(false);
+  };
+
+  // Handle points card press
+  const handlePointsCardPress = () => {
+    if (role === 'club_leader') {
+      router.push('/club-leader/points' as any);
+    } else if (role === 'student') {
+      router.push('/student/history?tab=wallet' as any);
+    }
+    toggleSidebar();
+  };
 
   // Menu items based on role
   const getMenuItems = (): MenuItem[] => {
@@ -615,7 +847,7 @@ export default function Sidebar({ role }: SidebarProps) {
 
             {/* Profile Widget Footer */}
             <View className="border-t border-gray-200 bg-gray-50">
-              {loadingProfile ? (
+              {loadingProfile || clubWalletLoading ? (
                 <View className="p-6 items-center">
                   <ActivityIndicator size="small" color="#0D9488" />
                 </View>
@@ -623,20 +855,104 @@ export default function Sidebar({ role }: SidebarProps) {
                 <View className="p-4 space-y-3">
                   {/* Points Card (for students and club leaders) */}
                   {shouldShowPoints && (
-                    <View className="rounded-lg overflow-hidden shadow-sm bg-gradient-to-r from-purple-600 to-pink-600" style={{ backgroundColor: '#9333EA' }}>
-                      <View className="p-4 flex-row items-center justify-between">
-                        <View className="flex-1">
-                          <Text className="text-xs font-medium text-white/80 mb-1">
-                            Accumulated Points
-                          </Text>
-                          <Text className="text-3xl font-bold text-white">
-                            {userPoints?.toLocaleString() || '0'}
-                          </Text>
+                    <View>
+                      {/* Main Points Card */}
+                      <TouchableOpacity
+                        onPress={memberships.length >= 2 ? () => setShowWalletDropdown(!showWalletDropdown) : handlePointsCardPress}
+                        className="rounded-lg overflow-hidden shadow-md"
+                        style={{ backgroundColor: pointsStyle.bgColor }}
+                        activeOpacity={0.8}
+                      >
+                        <View className="p-4 flex-row items-center justify-between">
+                          <View className="flex-1">
+                            <View className="flex-row items-center">
+                              <Text className="text-xs font-medium text-white/80 mb-1">
+                                {selectedMembership?.clubName || 'Points'}
+                              </Text>
+                              {memberships.length >= 2 && (
+                                <Ionicons 
+                                  name={showWalletDropdown ? 'chevron-up' : 'chevron-down'} 
+                                  size={14} 
+                                  color="rgba(255,255,255,0.8)" 
+                                  style={{ marginLeft: 4, marginBottom: 4 }}
+                                />
+                              )}
+                            </View>
+                            <Text className="text-3xl font-bold text-white">
+                              {userPoints?.toLocaleString() || '0'}
+                            </Text>
+                            {/* Point Level Badge */}
+                            <View className="flex-row items-center mt-1">
+                              <Text className="text-xs text-white/70">
+                                {getCurrentPointLevel(userPoints).name}
+                              </Text>
+                            </View>
+                          </View>
+                          <View className="p-3 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                            <Ionicons name="flame" size={28} color={pointsStyle.iconColor} />
+                          </View>
                         </View>
-                        <View className="p-3 rounded-full bg-white/20">
-                          <Ionicons name="flame" size={28} color="white" />
+                      </TouchableOpacity>
+
+                      {/* Wallet Dropdown (when 2+ memberships) */}
+                      {showWalletDropdown && memberships.length >= 2 && (
+                        <View className="mt-2 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                          {memberships.map((membership, index) => {
+                            const isSelected = selectedWalletId === membership.walletId.toString();
+                            const walletColors = [
+                              '#3B82F6', // Blue
+                              '#10B981', // Emerald
+                              '#F59E0B', // Amber
+                              '#EF4444', // Red
+                              '#8B5CF6', // Purple
+                              '#22C55E', // Green
+                            ];
+                            const color = walletColors[index % walletColors.length];
+                            
+                            return (
+                              <TouchableOpacity
+                                key={membership.walletId}
+                                onPress={() => handleWalletSelect(membership.walletId.toString())}
+                                className={`flex-row items-center p-3 ${index > 0 ? 'border-t border-gray-100' : ''}`}
+                                style={{ backgroundColor: isSelected ? '#EBF5FF' : 'white' }}
+                              >
+                                <View 
+                                  className="w-10 h-10 rounded-lg items-center justify-center mr-3"
+                                  style={{ backgroundColor: color }}
+                                >
+                                  <Text className="text-white font-bold text-lg">
+                                    {membership.clubName.charAt(0).toUpperCase()}
+                                  </Text>
+                                </View>
+                                <View className="flex-1">
+                                  <Text className="font-semibold text-gray-900" numberOfLines={1}>
+                                    {membership.clubName}
+                                  </Text>
+                                  <Text className="text-xs text-gray-500">
+                                    {membership.balancePoints.toLocaleString()} pts
+                                  </Text>
+                                </View>
+                                {isSelected && (
+                                  <View className="w-6 h-6 rounded-full bg-blue-500 items-center justify-center">
+                                    <Ionicons name="checkmark" size={16} color="white" />
+                                  </View>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                          
+                          {/* Go to Points Page Button */}
+                          <TouchableOpacity
+                            onPress={handlePointsCardPress}
+                            className="flex-row items-center justify-center p-3 border-t border-gray-200 bg-gray-50"
+                          >
+                            <Ionicons name="wallet" size={16} color="#6366F1" />
+                            <Text className="text-sm font-medium text-indigo-600 ml-2">
+                              View Points History
+                            </Text>
+                          </TouchableOpacity>
                         </View>
-                      </View>
+                      )}
                     </View>
                   )}
 

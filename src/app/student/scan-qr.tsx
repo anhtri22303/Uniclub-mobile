@@ -32,13 +32,56 @@ export default function ScanQRPage() {
         return;
       }
 
-      // Case 2: URL format (e.g., exp://host/--/student/checkin/START/token)
+      // Case 2: Expo dev URL format (exp://192.168.x.x:8081/--/student/checkin/TIME/TOKEN)
+      if (data.startsWith('exp://')) {
+        console.log('Expo dev URL detected:', data);
+        
+        // Parse the Expo URL manually
+        // Format: exp://192.168.1.50:8081/--/student/checkin/START/token
+        const expUrlMatch = data.match(/exp:\/\/[^\/]+\/--\/(.+)/);
+        if (expUrlMatch) {
+          const pathAfterSeparator = expUrlMatch[1]; // student/checkin/START/token
+          const pathParts = pathAfterSeparator.split('/').filter(Boolean);
+          console.log('Expo URL path parts:', pathParts);
+          
+          // Find checkin in path
+          const checkinIndex = pathParts.findIndex(part => part.toLowerCase() === 'checkin');
+          
+          if (checkinIndex !== -1) {
+            const time = pathParts[checkinIndex + 1];  // START, MID, END
+            const token = pathParts[checkinIndex + 2]; // JWT token
+            
+            if (time && token) {
+              console.log('Expo check-in detected - time:', time, 'token:', token.substring(0, 30) + '...');
+              router.push(`/student/checkin/${time}/${token}` as any);
+              return;
+            }
+          }
+        }
+        
+        // Fallback: try to extract from path without "--"
+        const simpleExpMatch = data.match(/exp:\/\/[^\/]+\/(.+)/);
+        if (simpleExpMatch) {
+          const pathParts = simpleExpMatch[1].split('/').filter(p => p !== '--' && p);
+          console.log('Simple Expo path parts:', pathParts);
+          
+          const checkinIndex = pathParts.findIndex(part => part.toLowerCase() === 'checkin');
+          if (checkinIndex !== -1 && pathParts[checkinIndex + 1] && pathParts[checkinIndex + 2]) {
+            const time = pathParts[checkinIndex + 1];
+            const token = pathParts[checkinIndex + 2];
+            console.log('Fallback Expo check-in - time:', time, 'token:', token.substring(0, 30) + '...');
+            router.push(`/student/checkin/${time}/${token}` as any);
+            return;
+          }
+        }
+      }
+
+      // Case 3: Standard URL format (https://uniclub.id.vn/student/checkin/...)
       const url = new URL(data);
       console.log('Parsed URL:', url.href);
       console.log('URL pathname:', url.pathname);
       
-      // Handle Expo URL format with "--" separator
-      // Path could be: /--/student/checkin/START/token or /student/checkin/START/token
+      // Handle URL format with "--" separator
       let pathParts = url.pathname.split('/').filter(Boolean);
       console.log('Path parts:', pathParts);
       

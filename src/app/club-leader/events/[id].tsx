@@ -937,7 +937,9 @@ export default function EventDetailPage() {
                     </View>
                   </View>
                   <Text className="text-blue-900 text-xl font-bold">
-                    {summaryLoading ? '...' : eventSummary.registrationsCount || 0}
+                    {summaryLoading 
+                      ? '...' 
+                      : `${eventSummary.registrationsCount} ${event.type === 'PUBLIC' ? 'checked in' : 'registered'}`}
                   </Text>
                 </View>
                 <View className="flex-1 bg-amber-50 border border-amber-200 rounded-lg p-4">

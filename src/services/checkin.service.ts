@@ -92,7 +92,7 @@ export const eventCheckin = async (eventJwtToken: string, level: string = 'NONE'
       data: data?.data || null
     };
   } catch (error: any) {
-    const errorMsg = error?.response?.data?.message || error?.response?.data || error?.message || 'Check-in failed';
+    const errorMsg = error?.response?.data?.error || error?.response?.data?.message || error?.response?.data || error?.message || 'Check-in failed';
     throw new Error(typeof errorMsg === 'string' ? errorMsg : 'Check-in failed');
   }
 };

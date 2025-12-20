@@ -212,7 +212,7 @@ export async function getClubRedeemOrders(
 }
 
 /**
- * (MỚI) Lấy lịch sử các đơn hàng đổi quà của một Event
+ * Lấy lịch sử các đơn hàng đổi quà của một Event
  * (GET /api/redeem/orders/event/{eventId})
  */
 export async function getEventRedeemOrders(
@@ -225,7 +225,7 @@ export async function getEventRedeemOrders(
 }
 
 /**
- * (MỚI) Lấy tất cả đơn hàng Event của một Club
+ * Lấy tất cả đơn hàng Event của một Club
  * (GET /api/redeem/event/club/{clubId})
  */
 export async function getAllEventOrdersByClub(
@@ -238,7 +238,7 @@ export async function getAllEventOrdersByClub(
 }
 
 /**
- * (MỚI) Lấy lịch sử các đơn hàng đổi quà của chính member đang đăng nhập
+ * Lấy lịch sử các đơn hàng đổi quà của chính member đang đăng nhập
  * (GET /api/redeem/orders/member)
  */
 export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
@@ -252,8 +252,8 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
 // === PUT (Cập nhật trạng thái đơn) ===
 
 /**
- * (MỚI) Lấy thông tin chi tiết đơn hàng theo orderId
- * (GET /api/redeem/orders/{orderId})
+ * Lấy thông tin chi tiết đơn hàng theo orderId
+ * (GET /api/redeem/order/id/{orderId})
  */
 export async function getRedeemOrderById(
   orderId: number | string
@@ -265,7 +265,7 @@ export async function getRedeemOrderById(
 }
 
 /**
- * (MỚI) Lấy thông tin chi tiết đơn hàng theo orderCode (QR Scan)
+ * Lấy thông tin chi tiết đơn hàng theo orderCode (QR Scan)
  * (GET /api/redeem/orders/{orderCode})
  */
 export async function getRedeemByOrderCode(
@@ -278,7 +278,7 @@ export async function getRedeemByOrderCode(
 }
 
 /**
- * (MỚI) Hoàn thành một đơn hàng (chuyển status sang COMPLETED)
+ * Hoàn thành một đơn hàng (chuyển status sang COMPLETED)
  * (PUT /api/redeem/order/{orderId}/complete)
  */
 export async function completeRedeemOrder(
@@ -292,7 +292,7 @@ export async function completeRedeemOrder(
 
 /**
  * (CẬP NHẬT) Hoàn trả toàn bộ đơn hàng (chuyển status sang REFUNDED)
- * (PUT /api/redeem/order/{orderId}/refund)
+ * (PUT /api/redeem/order/refund)
  */
 export async function refundRedeemOrder(
   payload: RefundPayload
@@ -306,7 +306,7 @@ export async function refundRedeemOrder(
 
 /**
  * (CẬP NHẬT) Hoàn trả một phần đơn hàng
- * (PUT /api/redeem/order/{orderId}/refund-partial)
+ * (PUT /api/redeem/order/refund-partial)
  */
 export async function refundPartialRedeemOrder(
   payload: RefundPayload

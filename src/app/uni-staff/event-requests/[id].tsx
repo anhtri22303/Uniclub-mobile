@@ -1,16 +1,18 @@
 import ApproveBudgetModal from '@components/ApproveBudgetModal';
+import AttendeeListModal from '@components/AttendeeListModal';
 import EventWalletHistoryModal from '@components/EventWalletHistoryModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
+import RegistrationListModal from '@components/RegistrationListModal';
 import { Ionicons } from '@expo/vector-icons';
 import {
-    Event,
-    EventSummary,
-    eventSettle,
-    getEventById,
-    getEventSettle,
-    getEventSummary,
-    rejectEvent
+  Event,
+  EventSummary,
+  completeEvent,
+  getEventById,
+  getEventSettle,
+  getEventSummary,
+  rejectEvent
 } from '@services/event.service';
 import FeedbackService, { Feedback } from '@services/feedback.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -18,14 +20,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -60,6 +62,10 @@ export default function UniStaffEventDetailPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<string>('all');
+
+  // Attendee and Registration List modal states
+  const [showAttendeeListModal, setShowAttendeeListModal] = useState(false);
+  const [showRegistrationListModal, setShowRegistrationListModal] = useState(false);
 
   useEffect(() => {
     loadEventData();
@@ -158,19 +164,19 @@ export default function UniStaffEventDetailPage() {
     if (!event) return;
     setSettling(true);
     try {
-      const response = await eventSettle(event.id);
+      const response = await completeEvent(event.id);
       Alert.alert(
-        'Event Settled',
-        response.message || `Event ${event.name} has been settled successfully`
+        'Event Completed',
+        response.message || `Event ${event.name} has been completed successfully`
       );
       setIsEventSettled(true);
       const updatedData = await getEventById(eventId);
       setEvent(updatedData);
     } catch (err: any) {
-      console.error('Settle failed', err);
+      console.error('Complete event failed', err);
       Alert.alert(
         'Error',
-        err?.response?.data?.message || err?.message || 'Failed to settle event'
+        err?.response?.data?.message || err?.message || 'Failed to complete event'
       );
     } finally {
       setSettling(false);
@@ -363,17 +369,34 @@ export default function UniStaffEventDetailPage() {
               </View>
             </View>
 
-            {event.commitPointCost !== undefined && (
-              <View>
-                <Text className="text-xs font-medium text-gray-500 mb-1">Commit Point</Text>
-                <View className="flex-row items-center">
-                  <Ionicons name="trophy" size={14} color="#10B981" />
-                  <Text className="text-sm font-semibold text-emerald-600 ml-1">
-                    {event.commitPointCost} points
-                  </Text>
+            {/* Points Information */}
+            <View className="gap-2 mt-2">
+              {event.commitPointCost !== undefined && (
+                <View className="flex-1 bg-gray-50 rounded-xl p-3">
+                  <View className="flex-row items-center gap-2 mb-1">
+                    <Ionicons name="ticket" size={14} color="#6B7280" />
+                    <Text className="text-xs font-medium text-gray-600">Commit Point Cost</Text>
+                  </View>
+                  <Text className="text-xl font-bold text-gray-800">{event.commitPointCost} points</Text>
                 </View>
+              )}
+              
+              {/* Receive Point */}
+              <View className="flex-1 bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <Ionicons name="gift" size={14} color="#059669" />
+                  <Text className="text-xs font-medium text-emerald-700">Receive Point</Text>
+                </View>
+                <Text className="text-xl font-bold text-emerald-700">
+                  {(() => {
+                    const budgetPoints = event.budgetPoints ?? 0
+                    const maxCheckInCount = event.maxCheckInCount ?? 1
+                    return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                  })()} points
+                </Text>
+                <Text className="text-xs text-emerald-600 mt-1">Per full attendance</Text>
               </View>
-            )}
+            </View>
           </View>
         </View>
 
@@ -391,9 +414,13 @@ export default function UniStaffEventDetailPage() {
                 <Text className="text-xl font-bold text-gray-800">{event.maxCheckInCount}</Text>
               </View>
               <View className="flex-1 bg-gray-50 rounded-xl p-3">
-                <Text className="text-xs text-gray-600 mb-1">Registrations</Text>
+                <Text className="text-xs text-gray-600 mb-1">Current Check-ins</Text>
                 <Text className="text-xl font-bold text-gray-800">
-                  {eventSummary ? eventSummary.registrationsCount : event.currentCheckInCount}
+                  {summaryLoading
+                    ? 'Loading...'
+                    : eventSummary
+                    ? `${eventSummary.registrationsCount}/${event.maxCheckInCount}`
+                    : `${event.currentCheckInCount}/${event.maxCheckInCount}`}
                 </Text>
               </View>
             </View>
@@ -415,11 +442,32 @@ export default function UniStaffEventDetailPage() {
               eventSummary && (
                 <View className="mt-3 gap-2">
                   <View className="bg-blue-50 rounded-xl p-3 border border-blue-200">
-                    <Text className="text-xs font-medium text-blue-700 mb-1">
-                      Total Registrations
-                    </Text>
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="text-xs font-medium text-blue-700">
+                        {event.type === 'PUBLIC' ? 'Total Check-ins' : 'Total Registrations'}
+                      </Text>
+                      <View className="flex-row gap-2">
+                        <TouchableOpacity
+                          onPress={() => setShowAttendeeListModal(true)}
+                          className="bg-blue-600 px-3 py-1 rounded-lg"
+                        >
+                          <Text className="text-xs font-semibold text-white">Lists</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setShowRegistrationListModal(true)}
+                          disabled={event.type === 'PUBLIC'}
+                          className={`px-3 py-1 rounded-lg ${
+                            event.type === 'PUBLIC' ? 'bg-gray-300' : 'bg-purple-600'
+                          }`}
+                        >
+                          <Text className={`text-xs font-semibold ${
+                            event.type === 'PUBLIC' ? 'text-gray-500' : 'text-white'
+                          }`}>Register Lists</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                     <Text className="text-lg font-bold text-blue-900">
-                      {summaryLoading ? 'Loading...' : `${eventSummary.registrationsCount} registered`}
+                      {summaryLoading ? 'Loading...' : `${eventSummary.registrationsCount} ${event.type === 'PUBLIC' ? 'checked in' : 'registered'}`}
                     </Text>
                   </View>
                   <View className="bg-amber-50 rounded-xl p-3 border border-amber-200">
@@ -661,6 +709,26 @@ export default function UniStaffEventDetailPage() {
             </View>
           </View>
         </View>
+      )}
+
+      {/* Attendee List Modal */}
+      {event && (
+        <AttendeeListModal
+          visible={showAttendeeListModal}
+          onClose={() => setShowAttendeeListModal(false)}
+          eventId={event.id}
+          eventName={event.name}
+        />
+      )}
+
+      {/* Registration List Modal */}
+      {event && (
+        <RegistrationListModal
+          visible={showRegistrationListModal}
+          onClose={() => setShowRegistrationListModal(false)}
+          eventId={event.id}
+          eventName={event.name}
+        />
       )}
 
       <NavigationBar role={user?.role} user={user || undefined} />

@@ -23,6 +23,12 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   useEffect(() => {
     // Only navigate after component is mounted and loading is complete
     if (!isLoading && isMounted) {
+      // Skip auth redirect for public routes
+      const isPublicRoute = pathname?.includes('/checkin/public/');
+      if (isPublicRoute) {
+        return; // Don't redirect for public check-in pages
+      }
+
       // Use setTimeout to ensure navigation happens after render cycle
       const timeoutId = setTimeout(() => {
         if (!isAuthenticated && pathname !== '/login') {
@@ -38,7 +44,10 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     }
   }, [isAuthenticated, isLoading, user?.role, router, pathname, isMounted]);
 
-  if (isLoading) {
+  // Skip loading screen for public routes
+  const isPublicRoute = pathname?.includes('/checkin/public/');
+  
+  if (isLoading && !isPublicRoute) {
     return (
       <View className="flex-1 justify-center items-center bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
         <ActivityIndicator size="large" color="#0D9488" />

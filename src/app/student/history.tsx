@@ -13,7 +13,7 @@ import * as RedeemService from '@services/redeem.service';
 import UserService, { type ApiMembershipWallet } from '@services/user.service';
 import WalletService, { type ClubToMemberTransaction } from '@services/wallet.service';
 import { useAuthStore } from '@stores/auth.store';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -40,6 +40,7 @@ type TabType = 'member' | 'club' | 'order' | 'event' | 'wallet';
 
 export default function StudentHistoryPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const params = useLocalSearchParams();
   const initialTab = (params.tab as TabType) || 'member';
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
@@ -213,16 +214,20 @@ export default function StudentHistoryPage() {
 
   // Load order logs when modal opens
   const loadOrderLogs = async (order: RedeemOrder) => {
-    if (!order.membershipId) return;
+    if (!order.membershipId || !order.orderId) {
+      setOrderLogsError('Missing order information');
+      return;
+    }
     
     try {
       setOrderLogsLoading(true);
       setOrderLogsError(null);
+      setOrderLogs([]);
       const logs = await RedeemService.getOrderLogsByMembershipAndOrder(
         order.membershipId,
         order.orderId
       );
-      setOrderLogs(logs || []);
+      setOrderLogs(Array.isArray(logs) ? logs : []);
     } catch (err: any) {
       console.error('Failed to fetch order logs:', err);
       setOrderLogsError(err?.response?.data?.message || err?.message || 'Failed to load order logs');
@@ -235,8 +240,15 @@ export default function StudentHistoryPage() {
   // Handle order card click
   const handleOrderClick = (order: RedeemOrder) => {
     setSelectedOrderForLogs(order);
+    setOrderLogs([]);
+    setOrderLogsError(null);
     setIsOrderLogsModalOpen(true);
     loadOrderLogs(order);
+  };
+
+  // Handle event card click - navigate to event details
+  const handleEventClick = (eventId: number) => {
+    router.push(`/student/events/${eventId}`);
   };
 
   // Group feedbacks by eventId
@@ -1053,72 +1065,91 @@ export default function StudentHistoryPage() {
                 ) : (
                   <>
                     {/* Table Header */}
-                    <View className="bg-gray-50 border border-gray-200 rounded-t-xl">
-                      <View className="flex-row items-center p-3 border-b border-gray-200">
-                        <View className="flex-1">
-                          <Text className="text-xs font-bold text-gray-700">Type</Text>
+                    <View className="bg-white border border-gray-200 rounded-t-xl shadow-sm">
+                      <View className="flex-row items-center px-3 py-3">
+                        <View className="w-12">
+                          <Text className="text-xs font-bold text-gray-600"></Text>
                         </View>
-                        <View className="flex-1">
-                          <Text className="text-xs font-bold text-gray-700">Description</Text>
+                        <View className="flex-1 pl-2">
+                          <Text className="text-xs font-bold text-gray-600 uppercase tracking-wide">Type / Description</Text>
                         </View>
                         <View className="w-20">
-                          <Text className="text-xs font-bold text-gray-700 text-right">Amount</Text>
+                          <Text className="text-xs font-bold text-gray-600 text-right uppercase tracking-wide">Amount</Text>
                         </View>
                       </View>
                     </View>
 
                     {/* Table Body */}
-                    <View className="border-l border-r border-gray-200">
+                    <View className="bg-white border-l border-r border-gray-200">
                       {paginatedWalletTransactions.map((transaction, index) => {
                         const isIncoming = transaction.signedAmount?.startsWith('+');
-                        const isEven = index % 2 === 0;
+                        const isLast = index === paginatedWalletTransactions.length - 1;
+                        
+                        // Get icon based on transaction type
+                        const getTypeIcon = (type: string) => {
+                          switch (type) {
+                            case 'COMMIT_LOCK': return '🔒';
+                            case 'BONUS_REWARD': return '🎁';
+                            case 'CLUB_TO_MEMBER': return '🏆';
+                            case 'REFUND_PRODUCT': return '↩️';
+                            case 'EVENT_REWARD': return '⭐';
+                            default: return isIncoming ? '📥' : '📤';
+                          }
+                        };
                         
                         return (
                           <View
                             key={transaction.id}
-                            className={`border-b border-gray-200 ${isEven ? 'bg-white' : 'bg-gray-50/50'}`}
+                            className={`${!isLast ? 'border-b border-gray-100' : ''}`}
                           >
-                            <View className="flex-row items-start p-3">
-                              {/* Type Column */}
-                              <View className="flex-1">
-                                <View className="flex-row items-center gap-2 mb-1">
-                                  <View className={`w-8 h-8 rounded-full items-center justify-center ${
-                                    isIncoming ? 'bg-green-100' : 'bg-red-100'
-                                  }`}>
-                                    <Text className="text-base">
-                                      {isIncoming ? '⬇️' : '⬆️'}
-                                    </Text>
-                                  </View>
-                                </View>
-                                <View className="bg-gray-100 px-2 py-1 rounded self-start">
-                                  <Text className="text-xs text-gray-700 font-medium">
-                                    {transaction.type.replace(/_/g, ' ')}
+                            <View className="flex-row items-center px-3 py-3">
+                              {/* Icon Column */}
+                              <View className="w-12">
+                                <View className={`w-10 h-10 rounded-xl items-center justify-center ${
+                                  isIncoming ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                                }`}>
+                                  <Text className="text-lg">
+                                    {getTypeIcon(transaction.type)}
                                   </Text>
                                 </View>
                               </View>
 
-                              {/* Description Column */}
-                              <View className="flex-1 px-2">
-                                <Text className="text-sm text-gray-900 mb-1" numberOfLines={2}>
+                              {/* Type & Description Column */}
+                              <View className="flex-1 pl-2">
+                                {/* Type Badge */}
+                                <View className={`self-start px-2 py-0.5 rounded-md mb-1 ${
+                                  isIncoming ? 'bg-green-100' : 'bg-red-100'
+                                }`}>
+                                  <Text className={`text-[10px] font-bold uppercase ${
+                                    isIncoming ? 'text-green-700' : 'text-red-700'
+                                  }`}>
+                                    {transaction.type.replace(/_/g, ' ')}
+                                  </Text>
+                                </View>
+                                
+                                {/* Description */}
+                                <Text className="text-sm text-gray-900 font-medium" numberOfLines={2}>
                                   {transaction.description}
                                 </Text>
+                                
                                 {/* From/To Info */}
                                 {(transaction.senderName || transaction.receiverName) && (
-                                  <View className="mb-1">
+                                  <View className="mt-1">
                                     {transaction.senderName && (
                                       <Text className="text-xs text-gray-500" numberOfLines={1}>
-                                        From: <Text className="font-semibold">{transaction.senderName}</Text>
+                                        From: <Text className="text-gray-700">{transaction.senderName}</Text>
                                       </Text>
                                     )}
                                     {transaction.receiverName && (
                                       <Text className="text-xs text-gray-500" numberOfLines={1}>
-                                        To: <Text className="font-semibold">{transaction.receiverName}</Text>
+                                        To: <Text className="text-gray-700">{transaction.receiverName}</Text>
                                       </Text>
                                     )}
                                   </View>
                                 )}
+                                
                                 {/* Date */}
-                                <Text className="text-xs text-gray-400">
+                                <Text className="text-[11px] text-gray-400 mt-1">
                                   {new Date(transaction.createdAt).toLocaleString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
@@ -1130,13 +1161,13 @@ export default function StudentHistoryPage() {
                               </View>
 
                               {/* Amount Column */}
-                              <View className="w-20">
-                                <Text className={`text-base font-bold text-right ${
+                              <View className="w-20 items-end">
+                                <Text className={`text-base font-bold ${
                                   isIncoming ? 'text-green-600' : 'text-red-600'
                                 }`}>
                                   {transaction.signedAmount}
                                 </Text>
-                                <Text className="text-xs text-gray-500 text-right">pts</Text>
+                                <Text className="text-[10px] text-gray-400 font-medium">pts</Text>
                               </View>
                             </View>
                           </View>
@@ -1145,7 +1176,7 @@ export default function StudentHistoryPage() {
                     </View>
 
                     {/* Table Footer */}
-                    <View className="bg-gray-50 border border-gray-200 border-t-0 rounded-b-xl p-2" />
+                    <View className="bg-gray-50 border border-gray-200 border-t-0 rounded-b-xl p-1" />
 
                     {/* Wallet Pagination */}
                     {walletTotalPages > 1 && (
@@ -1516,39 +1547,17 @@ export default function StudentHistoryPage() {
                     onPress={() => {
                       if (isOrder) {
                         handleOrderClick(data as RedeemOrder);
+                      } else if (isEvent) {
+                        handleEventClick(data.id);
                       }
                     }}
-                    disabled={!isOrder}
-                    activeOpacity={isOrder ? 0.7 : 1}
+                    disabled={!isOrder && !isEvent}
+                    activeOpacity={isOrder || isEvent ? 0.7 : 1}
                   >
                     <View className="p-4">
-                      {/* Click hint for orders */}
-                      {isOrder && (
-                        <View className="absolute top-2 right-2 bg-blue-100 px-2 py-1 rounded-full">
-                          <Text className="text-xs text-blue-600 font-medium">Tap for details</Text>
-                        </View>
-                      )}
-                      {/* Header */}
-                      <View className="flex-row items-start mb-3">
-                        {/* Icon */}
-                        <View
-                          className={`w-12 h-12 rounded-full items-center justify-center mr-3 ${
-                            isMemberApp
-                              ? 'bg-blue-100'
-                              : isClubApp
-                              ? 'bg-indigo-100'
-                              : isEvent
-                              ? 'bg-emerald-100'
-                              : 'bg-purple-100'
-                          }`}
-                        >
-                          <Text className="text-2xl">
-                            {isMemberApp ? '👥' : isClubApp ? '🏢' : isEvent ? '📅' : ''}
-                          </Text>
-                        </View>
-
-                        {/* Content */}
-                        <View className="flex-1">
+                      {/* Header with Status Badge */}
+                      <View className="flex-row items-start justify-between mb-3">
+                        <View className="flex-1 mr-2">
                           <Text className="text-base font-bold text-gray-900 mb-1">
                             {isMemberApp
                               ? 'Member Application'
@@ -1558,51 +1567,8 @@ export default function StudentHistoryPage() {
                               ? data.name
                               : 'Product Order'}
                           </Text>
-
-                          {isMemberApp ? (
-                            <Text className="text-sm text-gray-600">
-                              Applied to: {data.clubName || `Club ${data.clubId}`}
-                            </Text>
-                          ) : isClubApp ? (
-                            <>
-                              <Text className="text-sm text-gray-600 mb-1">
-                                Club: {data.clubName}
-                              </Text>
-                              {data.majorName && (
-                                <Text className="text-xs text-gray-500">
-                                  Major: {data.majorName}
-                                </Text>
-                              )}
-                            </>
-                          ) : isEvent ? (
-                            <>
-                              <Text className="text-sm text-gray-600">
-                                Host: {data.hostClub?.name || 'Unknown Club'}
-                              </Text>
-                              <Text className="text-xs text-gray-500 mt-1">
-                                 {data.locationName} | 🕒{' '}
-                                {timeObjectToString(data.startTime)} -{' '}
-                                {timeObjectToString(data.endTime)}
-                              </Text>
-                              <Text className="text-sm font-semibold text-emerald-600 mt-1">
-                                Commit points: {data.commitPointCost} points
-                              </Text>
-                            </>
-                          ) : (
-                            <>
-                              <Text className="text-sm text-gray-600 mb-1">
-                                Product: {data.productName}
-                              </Text>
-                              <Text className="text-sm text-gray-600">
-                                Quantity: {data.quantity}
-                              </Text>
-                              <Text className="text-sm font-medium text-blue-600 mt-1">
-                                Total Points: {data.totalPoints}
-                              </Text>
-                            </>
-                          )}
                         </View>
-
+                        
                         {/* Status Badge */}
                         <View
                           className={`px-3 py-1 rounded-full border ${getStatusBadgeColor(
@@ -1618,6 +1584,85 @@ export default function StudentHistoryPage() {
                           </Text>
                         </View>
                       </View>
+
+                      {/* Content Section */}
+                      <View className="mb-3">
+                        {isMemberApp ? (
+                          <View className="flex-row items-center gap-2 mb-2">
+                            <Text className="text-2xl">👥</Text>
+                            <Text className="text-sm text-gray-700">
+                              Applied to: <Text className="font-semibold text-gray-900">{data.clubName || `Club ${data.clubId}`}</Text>
+                            </Text>
+                          </View>
+                        ) : isClubApp ? (
+                          <>
+                            <View className="flex-row items-center gap-2 mb-2">
+                              <Text className="text-2xl">🏢</Text>
+                              <Text className="text-sm text-gray-700">
+                                Club: <Text className="font-semibold text-gray-900">{data.clubName}</Text>
+                              </Text>
+                            </View>
+                            {data.majorName && (
+                              <Text className="text-sm text-gray-600 ml-9">
+                                Major: {data.majorName}
+                              </Text>
+                            )}
+                          </>
+                        ) : isEvent ? (
+                          <>
+                            <View className="flex-row items-center gap-2 mb-2">
+                              <Text className="text-2xl">📅</Text>
+                              <Text className="text-sm text-gray-700">
+                                Host: <Text className="font-semibold text-gray-900">{data.hostClub?.name || 'Unknown Club'}</Text>
+                              </Text>
+                            </View>
+                            <View className="ml-9">
+                              <Text className="text-sm text-gray-600 mb-1">
+                                📍 {data.locationName}
+                              </Text>
+                              <Text className="text-sm text-gray-600 mb-1">
+                                🕒 {timeObjectToString(data.startTime)} - {timeObjectToString(data.endTime)}
+                              </Text>
+                              <Text className="text-sm font-semibold text-emerald-600">
+                                💎 {data.commitPointCost} points
+                              </Text>
+                            </View>
+                          </>
+                        ) : (
+                          <>
+                            <View className="flex-row items-center gap-2 mb-2">
+                              <Text className="text-2xl">🛍️</Text>
+                              <Text className="text-sm text-gray-700">
+                                Product: <Text className="font-semibold text-gray-900">{data.productName}</Text>
+                              </Text>
+                            </View>
+                            <View className="ml-9 gap-1">
+                              <Text className="text-sm text-gray-700">
+                                Quantity: <Text className="font-semibold text-gray-900">{data.quantity}</Text>
+                              </Text>
+                              <Text className="text-sm font-semibold text-blue-600">
+                                Total Points: {data.totalPoints}
+                              </Text>
+                            </View>
+                          </>
+                        )}
+                      </View>
+
+                      {/* Click hint for orders and events */}
+                      {isOrder && (
+                        <View className="bg-blue-50 px-3 py-2 rounded-lg mb-3">
+                          <Text className="text-xs text-blue-600 font-medium text-center">
+                            👆 Tap to view order details and history
+                          </Text>
+                        </View>
+                      )}
+                      {isEvent && (
+                        <View className="bg-emerald-50 px-3 py-2 rounded-lg mb-3">
+                          <Text className="text-xs text-emerald-600 font-medium text-center">
+                            👆 Tap to view event details
+                          </Text>
+                        </View>
+                      )}
 
                       {/* Description/Reason/Message */}
                       {(data.message || data.reason || data.description || data.vision || data.orderCode || data.clubName) && !isOrder && !isEvent && (
@@ -1660,16 +1705,19 @@ export default function StudentHistoryPage() {
                       {/* Order Details */}
                       {isOrder && (
                         <View className="bg-gray-50 p-3 rounded-lg mb-3">
-                          <Text className="text-sm text-gray-700 mb-1">
-                            Order Code: <Text className="font-medium">{data.orderCode}</Text>
-                          </Text>
-                          <Text className="text-xs text-gray-600 mb-1">
-                            From: {data.clubName}
-                          </Text>
+                          <View className="flex-row items-center justify-between mb-2">
+                            <Text className="text-xs font-semibold text-gray-600">Order Code:</Text>
+                            <Text className="text-sm font-bold text-gray-900">{data.orderCode}</Text>
+                          </View>
+                          <View className="flex-row items-center justify-between mb-2">
+                            <Text className="text-xs font-semibold text-gray-600">From:</Text>
+                            <Text className="text-sm font-semibold text-gray-900">{data.clubName}</Text>
+                          </View>
                           {data.productType && (
-                            <Text className="text-xs text-gray-600">
-                              Type: {data.productType}
-                            </Text>
+                            <View className="flex-row items-center justify-between">
+                              <Text className="text-xs font-semibold text-gray-600">Type:</Text>
+                              <Text className="text-sm font-semibold text-gray-900">{data.productType}</Text>
+                            </View>
                           )}
                         </View>
                       )}
@@ -1752,118 +1800,197 @@ export default function StudentHistoryPage() {
         onRequestClose={() => setIsOrderLogsModalOpen(false)}
       >
         <View className="flex-1 bg-black/50">
-          <View className="flex-1 mt-20">
-            <View className="flex-1 bg-white rounded-t-3xl">
+          <View className="flex-1 mt-16">
+            <View className="flex-1 bg-white rounded-t-3xl shadow-2xl">
               {/* Modal Header */}
-              <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
-                <Text className="text-xl font-bold text-gray-900">Order Logs</Text>
+              <View className="flex-row items-center justify-between p-5 border-b border-gray-200 bg-gray-50">
+                <View className="flex-1">
+                  <Text className="text-xl font-bold text-gray-900">Order History</Text>
+                  <Text className="text-xs text-gray-500 mt-1">
+                    View all changes and actions for this order
+                  </Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => setIsOrderLogsModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                  className="w-10 h-10 rounded-full bg-white items-center justify-center shadow-sm border border-gray-200"
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={20} color="#374151" />
+                  <Ionicons name="close" size={24} color="#374151" />
                 </TouchableOpacity>
               </View>
 
               {/* Modal Content */}
-              <ScrollView className="flex-1 p-4" nestedScrollEnabled>
+              <ScrollView className="flex-1" showsVerticalScrollIndicator={false} nestedScrollEnabled>
                 {selectedOrderForLogs && (
-                  <View className="bg-blue-50 p-4 rounded-xl mb-4">
-                    <Text className="text-sm font-semibold text-blue-900 mb-1">
+                  <View className="bg-white p-4 mx-4 mt-4 rounded-2xl border-2 border-blue-200 shadow-sm">
+                    <Text className="text-lg font-bold text-gray-900 mb-3">
                       {selectedOrderForLogs.productName}
                     </Text>
-                    <Text className="text-xs text-blue-700">
-                      Order Code: {selectedOrderForLogs.orderCode}
-                    </Text>
-                    <Text className="text-xs text-blue-700">
-                      Quantity: {selectedOrderForLogs.quantity} | Points: {selectedOrderForLogs.totalPoints}
-                    </Text>
-                  </View>
-                )}
-
-                {orderLogsLoading ? (
-                  <View className="items-center py-8">
-                    <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text className="text-sm text-gray-500 mt-2">Loading logs...</Text>
-                  </View>
-                ) : orderLogsError ? (
-                  <View className="items-center py-8">
-                    <Text className="text-red-600 text-sm">{orderLogsError}</Text>
-                  </View>
-                ) : orderLogs.length === 0 ? (
-                  <View className="items-center py-8">
-                    <Text className="text-gray-500 text-sm">No logs found for this order</Text>
-                  </View>
-                ) : (
-                  <View className="gap-3">
-                    {orderLogs.map((log) => {
-                      const isPositive = log.pointsChange > 0;
-                      const actionColors = {
-                        CREATE: 'bg-blue-100 text-blue-800',
-                        COMPLETED: 'bg-green-100 text-green-800',
-                        REFUND: 'bg-red-100 text-red-800',
-                        PARTIAL_REFUND: 'bg-orange-100 text-orange-800',
-                      };
-                      const actionColor = actionColors[log.action as keyof typeof actionColors] || 'bg-gray-100 text-gray-800';
-
-                      return (
-                        <View key={log.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                          {/* Action Badge and Date */}
-                          <View className="flex-row items-center justify-between mb-3">
-                            <View className={`px-3 py-1 rounded-full ${actionColor.split(' ')[0]}`}>
-                              <Text className={`text-xs font-bold ${actionColor.split(' ')[1]}`}>
-                                {log.action}
-                              </Text>
-                            </View>
-                            <Text className="text-xs text-gray-500">
-                              {new Date(log.createdAt).toLocaleString()}
-                            </Text>
-                          </View>
-
-                          {/* Actor and Target Info */}
-                          <View className="gap-2 mb-2">
-                            <View className="flex-row">
-                              <Text className="text-xs text-gray-500 w-24">Actor:</Text>
-                              <Text className="text-xs text-gray-900 font-medium flex-1">
-                                {log.actorName}
-                              </Text>
-                            </View>
-                            <View className="flex-row">
-                              <Text className="text-xs text-gray-500 w-24">Target:</Text>
-                              <Text className="text-xs text-gray-900 font-medium flex-1">
-                                {log.targetUserName}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Order Details */}
-                          <View className="flex-row border-t border-gray-100 pt-2 mt-2">
-                            <View className="flex-1">
-                              <Text className="text-xs text-gray-500">Quantity</Text>
-                              <Text className="text-sm font-semibold text-gray-900">
-                                {log.quantity}
-                              </Text>
-                            </View>
-                            <View className="flex-1">
-                              <Text className="text-xs text-gray-500">Points Change</Text>
-                              <Text className={`text-sm font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                                {isPositive ? '+' : ''}{log.pointsChange}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Reason */}
-                          {log.reason && (
-                            <View className="border-t border-gray-100 pt-2 mt-2">
-                              <Text className="text-xs text-gray-500 mb-1">Reason:</Text>
-                              <Text className="text-sm text-gray-700">{log.reason}</Text>
-                            </View>
-                          )}
+                    <View className="gap-2.5">
+                      <View className="flex-row items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                        <Text className="text-sm text-gray-600 font-medium">Order Code:</Text>
+                        <Text className="text-sm text-gray-900 font-bold">
+                          {selectedOrderForLogs.orderCode}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                        <Text className="text-sm text-gray-600 font-medium">Quantity:</Text>
+                        <Text className="text-sm text-gray-900 font-bold">
+                          {selectedOrderForLogs.quantity}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                        <Text className="text-sm text-gray-600 font-medium">Total Points:</Text>
+                        <Text className="text-sm text-blue-600 font-bold">
+                          {selectedOrderForLogs.totalPoints} pts
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                        <Text className="text-sm text-gray-600 font-medium">Status:</Text>
+                        <View className={`px-3 py-1 rounded-full ${getStatusBadgeColor(selectedOrderForLogs.status)}`}>
+                          <Text className={`text-xs font-bold ${getStatusTextColor(selectedOrderForLogs.status)}`}>
+                            {selectedOrderForLogs.status}
+                          </Text>
                         </View>
-                      );
-                    })}
+                      </View>
+                    </View>
                   </View>
                 )}
+
+                <View className="p-4">
+                  {orderLogsLoading ? (
+                    <View className="items-center py-12">
+                      <ActivityIndicator size="large" color="#3B82F6" />
+                      <Text className="text-sm text-gray-500 mt-3">Loading order history...</Text>
+                    </View>
+                  ) : orderLogsError ? (
+                    <View className="items-center py-12 px-4">
+                      <Text className="text-4xl mb-3">⚠️</Text>
+                      <Text className="text-red-600 text-sm font-semibold mb-1">Error Loading Logs</Text>
+                      <Text className="text-red-500 text-xs text-center">{orderLogsError}</Text>
+                    </View>
+                  ) : orderLogs.length === 0 ? (
+                    <View className="items-center py-12">
+                      <Text className="text-5xl mb-3">📋</Text>
+                      <Text className="text-gray-900 font-semibold mb-1">No History Yet</Text>
+                      <Text className="text-gray-500 text-sm text-center px-8">
+                        No logs found for this order
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="gap-3">
+                      {orderLogs.map((log, index) => {
+                        const isPositive = log.pointsChange > 0;
+                        const actionColors = {
+                          CREATE: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
+                          COMPLETED: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
+                          REFUND: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200' },
+                          PARTIAL_REFUND: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' },
+                        };
+                        const colors = actionColors[log.action as keyof typeof actionColors] || 
+                                      { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' };
+
+                        return (
+                          <View 
+                            key={log.id} 
+                            className={`bg-white border-2 ${colors.border} rounded-2xl p-4 shadow-sm`}
+                          >
+                            {/* Timeline dot */}
+                            {index !== orderLogs.length - 1 && (
+                              <View className="absolute left-6 top-16 bottom-0 w-0.5 bg-gray-200" />
+                            )}
+
+                            {/* Action Badge and Date */}
+                            <View className="flex-row items-center justify-between mb-3">
+                              <View className={`px-3 py-1.5 rounded-full ${colors.bg} border ${colors.border}`}>
+                                <Text className={`text-xs font-bold ${colors.text}`}>
+                                  {log.action.replace('_', ' ')}
+                                </Text>
+                              </View>
+                              <Text className="text-xs text-gray-500 font-medium">
+                                {new Date(log.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </Text>
+                            </View>
+
+                            {/* Actor and Target Info */}
+                            <View className="bg-gray-50 rounded-xl p-3 mb-3">
+                              <View className="gap-2">
+                                <View className="flex-row items-center">
+                                  <View className="w-7 h-7 rounded-full bg-blue-100 items-center justify-center mr-2">
+                                    <Text className="text-xs">👤</Text>
+                                  </View>
+                                  <View className="flex-1">
+                                    <Text className="text-xs text-gray-500">Actor</Text>
+                                    <Text className="text-sm text-gray-900 font-semibold">
+                                      {log.actorName}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <View className="flex-row items-center">
+                                  <View className="w-7 h-7 rounded-full bg-green-100 items-center justify-center mr-2">
+                                    <Text className="text-xs">🎯</Text>
+                                  </View>
+                                  <View className="flex-1">
+                                    <Text className="text-xs text-gray-500">Target User</Text>
+                                    <Text className="text-sm text-gray-900 font-semibold">
+                                      {log.targetUserName}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            </View>
+
+                            {/* Order Details */}
+                            <View className="flex-row bg-gray-50 rounded-xl p-3 gap-3">
+                              <View className="flex-1 items-center">
+                                <Text className="text-xs text-gray-500 mb-1">Quantity</Text>
+                                <View className="bg-white px-3 py-1.5 rounded-lg border border-gray-200">
+                                  <Text className="text-base font-bold text-gray-900">
+                                    {log.quantity}
+                                  </Text>
+                                </View>
+                              </View>
+                              <View className="w-px bg-gray-200" />
+                              <View className="flex-1 items-center">
+                                <Text className="text-xs text-gray-500 mb-1">Points Change</Text>
+                                <View className={`px-3 py-1.5 rounded-lg border ${
+                                  isPositive ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                                }`}>
+                                  <Text className={`text-base font-bold ${
+                                    isPositive ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {isPositive ? '+' : ''}{log.pointsChange}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+
+                            {/* Reason */}
+                            {log.reason && (
+                              <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3">
+                                <View className="flex-row items-start gap-2">
+                                  <Text className="text-base">💬</Text>
+                                  <View className="flex-1">
+                                    <Text className="text-xs text-amber-800 font-semibold mb-1">
+                                      Reason
+                                    </Text>
+                                    <Text className="text-sm text-amber-900">{log.reason}</Text>
+                                  </View>
+                                </View>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
               </ScrollView>
             </View>
           </View>
