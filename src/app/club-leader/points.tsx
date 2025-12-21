@@ -109,12 +109,22 @@ export default function ClubLeaderPointsPage() {
 
   // Load members and wallet on mount
   useEffect(() => {
-    // Only load if user exists
-    if (user) {
-      loadData();
-    } else {
-      setLoading(false);
-    }
+    let isMounted = true;
+    
+    const load = async () => {
+      // Only load if user exists and component is mounted
+      if (isMounted && user) {
+        await loadData();
+      } else {
+        setLoading(false);
+      }
+    };
+    
+    load();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const loadData = async () => {
@@ -997,7 +1007,15 @@ export default function ClubLeaderPointsPage() {
             {/* Sync Mode Toggle Buttons */}
             {!individualScores ? (
               <TouchableOpacity
-                onPress={() => setShowSyncModal(true)}
+                onPress={() => {
+                  Toast.show({
+                    type: 'info',
+                    text1: 'Information',
+                    text2: 'Please visit the web to view details in Member Activities Reports',
+                    visibilityTime: 4000,
+                    autoHide: true,
+                  });
+                }}
                 disabled={isDistributing}
                 className="rounded-xl px-3 py-2 flex-row items-center" style={{ backgroundColor: '#D1FAE5' }}
               >

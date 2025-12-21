@@ -5,15 +5,15 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 // Services
@@ -139,7 +139,12 @@ export default function ClubLeaderGiftPage() {
 
   // Load data
   const loadData = async () => {
-    if (!clubId) return;
+    // Early return if no clubId
+    if (!clubId) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
     try {
       const [productsData, tagsData, eventsData] = await Promise.all([
@@ -184,7 +189,18 @@ export default function ClubLeaderGiftPage() {
   };
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    
+    const load = async () => {
+      if (!isMounted || !clubId) return;
+      await loadData();
+    };
+    
+    load();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [clubId]);
 
   const onRefresh = async () => {

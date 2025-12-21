@@ -10,7 +10,7 @@ export interface TimeObject {
 
 // Event day structure for multi-day events
 export interface EventDay {
-  id: number;
+  id?: number;
   date: string; // Format: YYYY-MM-DD
   startTime: string; // Format: HH:MM
   endTime: string; // Format: HH:MM
@@ -163,7 +163,7 @@ export interface Event {
   id: number;
   name: string;
   description: string;
-  type: "PUBLIC" | "PRIVATE" | string;
+  type: "PUBLIC" | "PRIVATE" | "SPECIAL" | string;
   // Multi-day event fields (NEW)
   startDate?: string; // Format: YYYY-MM-DD
   endDate?: string; // Format: YYYY-MM-DD
@@ -180,6 +180,7 @@ export interface Event {
   currentCheckInCount: number;
   budgetPoints: number;
   commitPointCost?: number;
+  rewardPerParticipant?: number; // For PUBLIC events
   hostClub: {
     id: number;
     name: string;
@@ -235,19 +236,25 @@ export interface EventSummary {
   eventDate: string;
 }
 
+// Day input for creating multi-day events
+export interface CreateEventDayInput {
+  date: string; // Format: YYYY-MM-DD
+  startTime: string; // Format: HH:MM
+  endTime: string; // Format: HH:MM
+}
+
 export interface CreateEventPayload {
   hostClubId: number;
   coHostClubIds?: number[];
   name: string;
   description: string;
   type: "PUBLIC" | "PRIVATE" | "SPECIAL";
-  date: string; // Format: YYYY-MM-DD
-  startTime: string;  // Format: HH:MM (e.g., "09:00")
-  endTime: string;    // Format: HH:MM (e.g., "15:00")
+  days: CreateEventDayInput[]; // Array of days for multi-day events
   registrationDeadline: string; // Format: YYYY-MM-DD
   locationId: number;
   maxCheckInCount: number;
-  commitPointCost: number; // Ticket price in points
+  commitPointCost: number; // Ticket price in points (for PRIVATE/SPECIAL)
+  rewardPerParticipant: number; // Reward points (for PUBLIC)
 }
 
 export interface Location {

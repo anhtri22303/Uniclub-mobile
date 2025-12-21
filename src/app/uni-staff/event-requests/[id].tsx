@@ -6,13 +6,13 @@ import Sidebar from '@components/navigation/Sidebar';
 import RegistrationListModal from '@components/RegistrationListModal';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  Event,
-  EventSummary,
-  completeEvent,
-  getEventById,
-  getEventSettle,
-  getEventSummary,
-  rejectEvent
+    Event,
+    EventSummary,
+    completeEvent,
+    getEventById,
+    getEventSettle,
+    getEventSummary,
+    rejectEvent
 } from '@services/event.service';
 import FeedbackService, { Feedback } from '@services/feedback.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -20,14 +20,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -718,6 +718,7 @@ export default function UniStaffEventDetailPage() {
           onClose={() => setShowAttendeeListModal(false)}
           eventId={event.id}
           eventName={event.name}
+          eventType={event.type}
         />
       )}
 

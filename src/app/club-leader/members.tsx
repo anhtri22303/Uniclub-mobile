@@ -1,6 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import { ApiMembership, LeaveRequest, MembershipsService } from '@services/memberships.service';
@@ -9,15 +9,16 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View} from 'react-native';
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Club {
@@ -71,13 +72,29 @@ export default function ClubLeaderMembersPage() {
 
   // Load club info and members
   useEffect(() => {
-    loadInitialData();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (!isMounted || !user?.clubIds?.[0]) return;
+      await loadInitialData();
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user?.clubIds]);
 
   const loadInitialData = async () => {
+    // Early return if no user
+    if (!user?.clubIds?.[0]) {
+      return;
+    }
+    
     setLoading(true);
     try {
-      const clubId = user?.clubIds?.[0];
+      const clubId = user.clubIds[0];
       if (!clubId) {
         throw new Error('No club found for this leader');
       }

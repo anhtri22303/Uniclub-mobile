@@ -4,21 +4,21 @@ import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { ClubService } from '@services/club.service';
 import {
-    MemberApplication,
-    MemberApplicationService,
+  MemberApplication,
+  MemberApplicationService,
 } from '@services/memberApplication.service';
 import { useAuthStore } from '@stores/auth.store';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -293,59 +293,99 @@ export default function ClubLeaderApplicationPage() {
       <Sidebar role={user?.role} />
 
       {/* Header */}
-      <View className="bg-white px-6 py-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-800">        Membership Applications</Text>
-        <Text className="text-sm text-gray-600 mt-1">
+      <View className="bg-white px-6 py-5 border-b border-gray-100">
+        <Text className="text-3xl font-bold text-gray-900">Membership Applications</Text>
+        <Text className="text-sm text-gray-500 mt-2">
           Review and manage new applications
           {managedClubName ? ` for "${managedClubName}"` : ''}
         </Text>
       </View>
 
       {/* Tab Navigation */}
-      <View className="bg-white px-6 py-3 border-b border-gray-200">
-        <View className="flex-row space-x-2">
+      <View className="bg-white px-6 py-4 border-b border-gray-100">
+        <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={() => setActiveTab('pending')}
-            className={`flex-1 flex-row items-center justify-center px-4 py-3 rounded-xl ${
+            className={`flex-1 flex-row items-center justify-center px-4 py-3.5 rounded-2xl ${
               activeTab === 'pending'
                 ? 'bg-teal-600'
                 : 'bg-gray-100'
             }`}
+            style={activeTab === 'pending' ? {
+              shadowColor: '#0D9488',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4,
+            } : {}}
           >
-            <Ionicons
-              name="hourglass"
-              size={18}
-              color={activeTab === 'pending' ? 'white' : '#6B7280'}
-            />
+            <View className={`w-8 h-8 rounded-full items-center justify-center mr-2 ${
+              activeTab === 'pending' ? 'bg-white/20' : 'bg-gray-200'
+            }`}>
+              <Ionicons
+                name="hourglass"
+                size={16}
+                color={activeTab === 'pending' ? 'white' : '#6B7280'}
+              />
+            </View>
             <Text
-              className={`ml-2 font-semibold ${
+              className={`font-bold text-base ${
                 activeTab === 'pending' ? 'text-white' : 'text-gray-700'
               }`}
             >
-              Pending ({pendingApplications.length})
+              Pending
             </Text>
+            <View className={`ml-2 px-2.5 py-0.5 rounded-full ${
+              activeTab === 'pending' ? 'bg-white/20' : 'bg-teal-100'
+            }`}>
+              <Text className={`text-xs font-bold ${
+                activeTab === 'pending' ? 'text-white' : 'text-teal-700'
+              }`}>
+                {pendingApplications.length}
+              </Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => setActiveTab('reviewed')}
-            className={`flex-1 flex-row items-center justify-center px-4 py-3 rounded-xl ${
+            className={`flex-1 flex-row items-center justify-center px-4 py-3.5 rounded-2xl ${
               activeTab === 'reviewed'
                 ? 'bg-teal-600'
                 : 'bg-gray-100'
             }`}
+            style={activeTab === 'reviewed' ? {
+              shadowColor: '#0D9488',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4,
+            } : {}}
           >
-            <Ionicons
-              name="checkmark-done"
-              size={18}
-              color={activeTab === 'reviewed' ? 'white' : '#6B7280'}
-            />
+            <View className={`w-8 h-8 rounded-full items-center justify-center mr-2 ${
+              activeTab === 'reviewed' ? 'bg-white/20' : 'bg-gray-200'
+            }`}>
+              <Ionicons
+                name="checkmark-done"
+                size={16}
+                color={activeTab === 'reviewed' ? 'white' : '#6B7280'}
+              />
+            </View>
             <Text
-              className={`ml-2 font-semibold ${
+              className={`font-bold text-base ${
                 activeTab === 'reviewed' ? 'text-white' : 'text-gray-700'
               }`}
             >
-              Processed ({processedApplications.length})
+              Processed
             </Text>
+            <View className={`ml-2 px-2.5 py-0.5 rounded-full ${
+              activeTab === 'reviewed' ? 'bg-white/20' : 'bg-gray-200'
+            }`}>
+              <Text className={`text-xs font-bold ${
+                activeTab === 'reviewed' ? 'text-white' : 'text-gray-700'
+              }`}>
+                {processedApplications.length}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -361,113 +401,119 @@ export default function ClubLeaderApplicationPage() {
       >
         {activeTab === 'pending' ? (
           <>
-            {/* Bulk Actions */}
-            {pendingApplications.length > 0 && (
-              <View className="bg-teal-50 rounded-xl p-4 mb-4 border border-teal-200">
-                <Text className="text-sm text-gray-700 mb-3">
-                  {pendingApplications.length} pending application
-                  {pendingApplications.length > 1 ? 's' : ''}
-                </Text>
-                <View className="flex-row space-x-2">
-                  <TouchableOpacity
-                    onPress={handleBulkReject}
-                    disabled={bulkProcessing}
-                    className="flex-1 bg-red-500 rounded-xl py-3 flex-row items-center justify-center"
-                  >
-                    <Ionicons name="close-circle" size={18} color="white" />
-                    <Text className="text-white font-semibold ml-2">
-                      {bulkProcessing ? 'Processing...' : 'Reject All'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleBulkApprove}
-                    disabled={bulkProcessing}
-                    className="flex-1 bg-green-500 rounded-xl py-3 flex-row items-center justify-center"
-                  >
-                    <Ionicons name="checkmark-circle" size={18} color="white" />
-                    <Text className="text-white font-semibold ml-2">
-                      {bulkProcessing ? 'Processing...' : 'Approve All'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
             {/* Pending Applications */}
             {pendingApplications.length === 0 ? (
-              <View className="bg-white rounded-xl p-8 items-center">
-                <Ionicons name="checkmark-done" size={48} color="#D1D5DB" />
-                <Text className="text-lg font-semibold text-gray-800 mt-4">
-                  No Pending Applications
+              <View className="bg-white rounded-2xl p-12 items-center shadow-sm">
+                <View className="bg-teal-50 rounded-full p-6 mb-4">
+                  <Ionicons name="checkmark-done" size={48} color="#0D9488" />
+                </View>
+                <Text className="text-xl font-bold text-gray-900 mt-2">
+                  All Caught Up!
                 </Text>
-                <Text className="text-gray-600 text-center mt-2">
-                  All applications have been reviewed
+                <Text className="text-gray-500 text-center mt-2 text-base">
+                  No pending applications to review
                 </Text>
               </View>
             ) : (
               pendingApplications.map((app) => (
                 <View
                   key={app.applicationId}
-                  className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-200"
+                  className="bg-white rounded-2xl mb-3 shadow-md overflow-hidden"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 3,
+                  }}
                 >
-                  <View className="flex-row items-start justify-between mb-3">
-                    <View className="flex-1">
-                      <Text className="text-lg font-bold text-gray-800">
-                        {app.applicantName}
-                      </Text>
-                      {app.studentCode && (
-                        <Text className="text-sm text-gray-600 mt-1">
-                          Student Code: {app.studentCode}
-                        </Text>
-                      )}
-                      <Text className="text-xs text-gray-500 mt-1">
-                        Submitted: {formatDate(app.createdAt)}
+                  {/* Header */}
+                  <View className="px-4 pt-4 pb-2">
+                    <Text className="text-lg font-bold text-gray-900 mb-1">
+                      {app.applicantName}
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+                      <Text className="text-xs text-gray-500 ml-1">
+                        Submitted on {formatDate(app.createdAt)}
                       </Text>
                     </View>
                   </View>
 
+                  {/* Message */}
                   {app.message && (
-                    <View className="bg-gray-50 p-3 rounded-lg mb-3">
-                      <Text className="text-sm text-gray-700">
-                        "{app.message}"
-                      </Text>
+                    <View className="px-4 py-2 bg-gray-50">
+                      <View className="flex-row items-start">
+                        <Ionicons name="chatbox-ellipses" size={14} color="#0D9488" style={{ marginTop: 1 }} />
+                        <View className="flex-1 ml-1.5">
+                          <Text className="text-xs font-semibold text-gray-700 mb-0.5">Application Message</Text>
+                          <Text className="text-sm text-gray-700 leading-5 italic">
+                            "{app.message}"
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                   )}
 
-                  <View className="flex-row space-x-2">
+                  {/* Action Buttons */}
+                  <View className="px-4 py-3 flex-row gap-2 bg-white">
                     <TouchableOpacity
                       onPress={() => handleViewApplication(app)}
-                      className="flex-1 bg-blue-500 rounded-lg py-3 flex-row items-center justify-center"
+                      className="flex-1 bg-blue-500 rounded-xl py-2.5 flex-row items-center justify-center shadow-sm"
+                      style={{
+                        shadowColor: '#3B82F6',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 2,
+                      }}
                     >
                       <Ionicons name="eye" size={18} color="white" />
-                      <Text className="text-white font-medium ml-2">View</Text>
+                      <Text className="text-white font-bold ml-2 text-base">View</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       onPress={() => handleReject(app)}
                       disabled={processingIds.has(app.applicationId)}
-                      className="flex-1 bg-red-500 rounded-lg py-3 flex-row items-center justify-center"
+                      className="flex-1 bg-red-500 rounded-xl py-2.5 flex-row items-center justify-center shadow-sm"
+                      style={{
+                        shadowColor: '#EF4444',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 2,
+                      }}
                     >
-                      <Ionicons name="close-circle" size={18} color="white" />
-                      <Text className="text-white font-medium ml-2">
-                        Reject
-                      </Text>
+                      {processingIds.has(app.applicationId) ? (
+                        <ActivityIndicator size="small" color="white" />
+                      ) : (
+                        <>
+                          <Ionicons name="close-circle" size={18} color="white" />
+                          <Text className="text-white font-bold ml-2 text-base">Reject</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       onPress={() => handleApprove(app)}
                       disabled={processingIds.has(app.applicationId)}
-                      className="flex-1 bg-green-500 rounded-lg py-3 flex-row items-center justify-center"
+                      className="flex-1 bg-green-500 rounded-xl py-2.5 flex-row items-center justify-center shadow-sm"
+                      style={{
+                        shadowColor: '#10B981',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 2,
+                      }}
                     >
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={18}
-                        color="white"
-                      />
-                      <Text className="text-white font-medium ml-2">
-                        Approve
-                      </Text>
+                      {processingIds.has(app.applicationId) ? (
+                        <ActivityIndicator size="small" color="white" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-circle" size={18} color="white" />
+                          <Text className="text-white font-bold ml-2 text-base">Approve</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -478,75 +524,115 @@ export default function ClubLeaderApplicationPage() {
           <>
             {/* Processed Applications */}
             {processedApplications.length === 0 ? (
-              <View className="bg-white rounded-xl p-8 items-center">
-                <Ionicons name="time" size={48} color="#D1D5DB" />
-                <Text className="text-lg font-semibold text-gray-800 mt-4">
+              <View className="bg-white rounded-2xl p-12 items-center shadow-sm">
+                <View className="bg-gray-100 rounded-full p-6 mb-4">
+                  <Ionicons name="document-text" size={48} color="#9CA3AF" />
+                </View>
+                <Text className="text-xl font-bold text-gray-900 mt-2">
                   No Processed Applications
                 </Text>
-                <Text className="text-gray-600 text-center mt-2">
-                  Applications you've processed will appear here
+                <Text className="text-gray-500 text-center mt-2 text-base">
+                  Reviewed applications will appear here
                 </Text>
               </View>
             ) : (
               processedApplications.map((app) => (
                 <View
                   key={app.applicationId}
-                  className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-200"
+                  className="bg-white rounded-2xl mb-4 shadow-md overflow-hidden"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 3,
+                  }}
                 >
-                  <View className="flex-row items-start justify-between mb-3">
-                    <View className="flex-1">
-                      <Text className="text-lg font-bold text-gray-800">
-                        {app.applicantName}
-                      </Text>
-                      {app.studentCode && (
-                        <Text className="text-sm text-gray-600 mt-1">
-                          Student Code: {app.studentCode}
+                  {/* Header and Status */}
+                  <View className="p-5 bg-gray-50 border-b border-gray-100">
+                    <View className="flex-row items-start justify-between mb-3">
+                      <View className="flex-1">
+                        <Text className="text-lg font-bold text-gray-900 mb-2">
+                          {app.applicantName}
                         </Text>
-                      )}
-                      <Text className="text-xs text-gray-500 mt-1">
-                        Reviewed:{' '}
-                        {app.updatedAt
-                          ? formatDate(app.updatedAt)
-                          : 'Recently'}
-                      </Text>
+                        {app.studentCode && (
+                          <View className="flex-row items-center">
+                            <Ionicons name="school" size={13} color="#6B7280" />
+                            <Text className="text-sm text-gray-600 ml-1.5">
+                              {app.studentCode}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View
+                        className={`px-3 py-1.5 rounded-full ${
+                          app.status === 'APPROVED' 
+                            ? 'bg-green-100' 
+                            : 'bg-red-100'
+                        }`}
+                      >
+                        <View className="flex-row items-center">
+                          <Ionicons 
+                            name={app.status === 'APPROVED' ? 'checkmark-circle' : 'close-circle'} 
+                            size={14} 
+                            color={app.status === 'APPROVED' ? '#10B981' : '#EF4444'} 
+                          />
+                          <Text
+                            className={`text-xs font-bold ml-1 ${
+                              app.status === 'APPROVED' 
+                                ? 'text-green-700' 
+                                : 'text-red-700'
+                            }`}
+                          >
+                            {app.status}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
 
-                    <View
-                      className={`px-3 py-1 rounded-full border ${getStatusBadgeColor(
-                        app.status
-                      )}`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${getStatusTextColor(
-                          app.status
-                        )}`}
-                      >
-                        {app.status}
+                    <View className="flex-row items-center bg-white px-3 py-2 rounded-lg">
+                      <Ionicons name="calendar-outline" size={13} color="#6B7280" />
+                      <Text className="text-xs text-gray-600 ml-1.5">
+                        Reviewed on {app.updatedAt ? formatDate(app.updatedAt) : 'Recently'}
                       </Text>
                     </View>
                   </View>
 
-                  {app.message && (
-                    <View className="bg-gray-50 p-3 rounded-lg mb-2">
-                      <Text className="text-xs font-medium text-gray-700 mb-1">
-                        Application Message:
-                      </Text>
-                      <Text className="text-sm text-gray-700">
-                        "{app.message}"
-                      </Text>
-                    </View>
-                  )}
+                  {/* Messages */}
+                  <View className="p-4">
+                    {app.message && (
+                      <View className="bg-blue-50 p-3.5 rounded-xl mb-3 border border-blue-100">
+                        <View className="flex-row items-start">
+                          <Ionicons name="chatbox" size={14} color="#3B82F6" style={{ marginTop: 1 }} />
+                          <View className="flex-1 ml-2">
+                            <Text className="text-xs font-semibold text-blue-900 mb-1">
+                              Application Message
+                            </Text>
+                            <Text className="text-sm text-blue-800 leading-5">
+                              "{app.message}"
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
 
-                  {app.reason && (
-                    <View className="bg-red-50 p-3 rounded-lg">
-                      <Text className="text-xs font-medium text-red-700 mb-1">
-                        Review Note:
-                      </Text>
-                      <Text className="text-sm text-red-700">
-                        "{app.reason}"
-                      </Text>
-                    </View>
-                  )}
+                    {app.reason && (
+                      <View className="bg-amber-50 p-3.5 rounded-xl border border-amber-100">
+                        <View className="flex-row items-start">
+                          <Ionicons name="document-text" size={14} color="#F59E0B" style={{ marginTop: 1 }} />
+                          <View className="flex-1 ml-2">
+                            <Text className="text-xs font-semibold text-amber-900 mb-1">
+                              Review Note
+                            </Text>
+                            <Text className="text-sm text-amber-800 leading-5">
+                              "{app.reason}"
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </View>
                 </View>
               ))
             )}
@@ -554,53 +640,87 @@ export default function ClubLeaderApplicationPage() {
         )}
       </ScrollView>
 
-      {/* Application Detail Modal */}
       <Modal
         visible={showApplicationModal}
         animationType="slide"
         transparent={true}
         onRequestClose={() => setShowApplicationModal(false)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-gray-800">
-                Review Application
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowApplicationModal(false)}
-                className="bg-gray-100 p-2 rounded-full"
-              >
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
+        <View className="flex-1 bg-black/60 justify-end">
+          <View className="bg-white rounded-t-3xl max-h-[85%]"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 12,
+              elevation: 10,
+            }}
+          >
+            {/* Modal Header */}
+            <View className="px-6 pt-6 pb-4 border-b border-gray-100">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <Text className="text-2xl font-bold text-gray-900">Review Application</Text>
+                  <Text className="text-sm text-gray-500 mt-1">Make your decision carefully</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowApplicationModal(false)}
+                  className="bg-gray-100 p-2.5 rounded-full"
+                >
+                  <Ionicons name="close" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {selectedApplication && (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Applicant Info */}
-                <View className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Applicant
-                  </Text>
-                  <Text className="text-lg font-bold text-gray-800">
-                    {selectedApplication.applicantName}
-                  </Text>
-                  {selectedApplication.studentCode && (
-                    <Text className="text-sm text-gray-600 mt-1">
-                      Student Code: {selectedApplication.studentCode}
+              <ScrollView showsVerticalScrollIndicator={false} className="px-6 pt-4 pb-6">
+                {/* Applicant Info Card */}
+                <View className="bg-white rounded-2xl p-5 mb-4 border-2 border-teal-100"
+                  style={{
+                    shadowColor: '#0D9488',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 6,
+                    elevation: 2,
+                  }}
+                >
+                  <View className="mb-3">
+                    <Text className="text-xs font-bold text-teal-600 mb-2">APPLICANT</Text>
+                    <Text className="text-xl font-bold text-gray-900 mb-2">
+                      {selectedApplication.applicantName}
                     </Text>
-                  )}
+                    {selectedApplication.studentCode && (
+                      <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-lg self-start">
+                        <Ionicons name="school" size={14} color="#0D9488" />
+                        <Text className="text-sm text-gray-700 ml-1.5 font-medium">
+                          {selectedApplication.studentCode}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  
+                  <View className="bg-teal-50 px-3 py-2.5 rounded-xl border border-teal-100">
+                    <View className="flex-row items-center">
+                      <Ionicons name="calendar" size={14} color="#0D9488" />
+                      <Text className="text-xs text-teal-700 ml-1.5 font-medium">
+                        Submitted on {formatDate(selectedApplication.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
 
                 {/* Application Message */}
                 {selectedApplication.message && (
                   <View className="mb-4">
-                    <Text className="text-sm font-medium text-gray-700 mb-2">
-                      Application Message
-                    </Text>
-                    <View className="bg-gray-50 rounded-xl p-4">
-                      <Text className="text-sm text-gray-700">
-                        {selectedApplication.message}
+                    <View className="flex-row items-center mb-2">
+                      <Ionicons name="chatbox-ellipses" size={16} color="#0D9488" />
+                      <Text className="text-sm font-bold text-gray-900 ml-1.5">
+                        Application Message
+                      </Text>
+                    </View>
+                    <View className="bg-teal-50 rounded-2xl p-4 border border-teal-100">
+                      <Text className="text-base text-gray-800 leading-6 italic">
+                        "{selectedApplication.message}"
                       </Text>
                     </View>
                   </View>
@@ -608,22 +728,25 @@ export default function ClubLeaderApplicationPage() {
 
                 {/* Review Note Input */}
                 <View className="mb-6">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Review Note (Optional)
-                  </Text>
+                  <View className="flex-row items-center mb-2">
+                    <Ionicons name="create-outline" size={16} color="#6B7280" />
+                    <Text className="text-sm font-bold text-gray-900 ml-1.5">
+                      Review Note (Optional)
+                    </Text>
+                  </View>
                   <AppTextInput
                     value={reviewNote}
                     onChangeText={setReviewNote}
                     placeholder="Add a note about your decision..."
                     multiline
                     numberOfLines={4}
-                    className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-base text-gray-800"
+                    className="bg-white border-2 border-gray-200 rounded-2xl p-4 text-base text-gray-800"
                     textAlignVertical="top"
                   />
                 </View>
 
                 {/* Action Buttons */}
-                <View className="flex-row space-x-3">
+                <View className="flex-row gap-3">
                   <TouchableOpacity
                     onPress={async () => {
                       await handleReject(
@@ -632,10 +755,17 @@ export default function ClubLeaderApplicationPage() {
                       );
                       setShowApplicationModal(false);
                     }}
-                    className="flex-1 bg-red-500 rounded-xl py-4 flex-row items-center justify-center"
+                    className="flex-1 bg-red-500 rounded-2xl py-4 flex-row items-center justify-center"
+                    style={{
+                      shadowColor: '#EF4444',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 6,
+                      elevation: 3,
+                    }}
                   >
-                    <Ionicons name="close-circle" size={20} color="white" />
-                    <Text className="text-white font-semibold ml-2">
+                    <Ionicons name="close-circle" size={22} color="white" />
+                    <Text className="text-white font-bold ml-2 text-base">
                       Reject
                     </Text>
                   </TouchableOpacity>
@@ -645,14 +775,21 @@ export default function ClubLeaderApplicationPage() {
                       await handleApprove(selectedApplication);
                       setShowApplicationModal(false);
                     }}
-                    className="flex-1 bg-green-500 rounded-xl py-4 flex-row items-center justify-center"
+                    className="flex-1 bg-green-500 rounded-2xl py-4 flex-row items-center justify-center"
+                    style={{
+                      shadowColor: '#10B981',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 6,
+                      elevation: 3,
+                    }}
                   >
                     <Ionicons
                       name="checkmark-circle"
-                      size={20}
+                      size={22}
                       color="white"
                     />
-                    <Text className="text-white font-semibold ml-2">
+                    <Text className="text-white font-bold ml-2 text-base">
                       Approve
                     </Text>
                   </TouchableOpacity>

@@ -1,21 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { EventAttendee, getEventCheckin } from '../services/event.service';
+import { AppTextInput } from './ui';
 
 interface AttendeeListModalProps {
   visible: boolean;
   onClose: () => void;
   eventId: number;
   eventName?: string;
+  eventType?: string;
 }
 
 export default function AttendeeListModal({
@@ -23,9 +25,11 @@ export default function AttendeeListModal({
   onClose,
   eventId,
   eventName,
+  eventType,
 }: AttendeeListModalProps) {
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (visible) {
@@ -63,20 +67,45 @@ export default function AttendeeListModal({
   };
 
   const getAttendanceBadge = (level: string) => {
-    switch (level) {
-      case 'FULL':
-        return { bg: 'bg-green-100', text: 'text-green-800', label: 'Full' };
-      case 'PARTIAL':
-        return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Partial' };
-      case 'NONE':
-        return { bg: 'bg-gray-100', text: 'text-gray-800', label: 'None' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-800', label: 'None' };
-    }
+    const badges: Record<string, { label: string; bg: string; text: string }> = {
+      NONE: {
+        label: 'Not Attended',
+        bg: 'bg-gray-100',
+        text: 'text-gray-800',
+      },
+      HALF: {
+        label: '50% Attended',
+        bg: 'bg-yellow-100',
+        text: 'text-yellow-800',
+      },
+      FULL: {
+        label: '100% Attended',
+        bg: 'bg-green-100',
+        text: 'text-green-800',
+      },
+      SUSPICIOUS: {
+        label: 'Suspicious',
+        bg: 'bg-red-100',
+        text: 'text-red-800',
+      },
+    };
+
+    const badge = badges[level] || badges.NONE;
+    return { bg: badge.bg, text: badge.text, label: badge.label };
   };
+
+  // Filter attendees based on search term
+  const filteredAttendees = attendees.filter((attendee) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      attendee.fullName.toLowerCase().includes(searchLower) ||
+      attendee.email.toLowerCase().includes(searchLower)
+    );
+  });
 
   const renderAttendeeItem = ({ item, index }: { item: EventAttendee; index: number }) => {
     const badge = getAttendanceBadge(item.attendanceLevel);
+    const isPublic = eventType === 'PUBLIC';
     
     return (
       <View className="bg-white border border-gray-200 rounded-lg p-4 mb-3">
@@ -95,9 +124,11 @@ export default function AttendeeListModal({
               <Text className="text-gray-500 text-xs mt-0.5">{item.email}</Text>
             </View>
           </View>
-          <View className={`px-2 py-1 rounded-full ${badge.bg}`}>
-            <Text className={`text-xs font-medium ${badge.text}`}>{badge.label}</Text>
-          </View>
+          {!isPublic && (
+            <View className={`px-2 py-1 rounded-full ${badge.bg}`}>
+              <Text className={`text-xs font-medium ${badge.text}`}>{badge.label}</Text>
+            </View>
+          )}
         </View>
 
         {/* Check-in times */}
@@ -108,8 +139,8 @@ export default function AttendeeListModal({
             </View>
             {item.checkinAt ? (
               <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                <Text className="text-gray-700 text-xs ml-1">
+                <Ionicons name="checkmark-circle" size={14} color={isPublic ? "#10B981" : "#3B82F6"} />
+                <Text className={`text-xs ml-1 ${isPublic ? 'text-green-700' : 'text-blue-700'}`}>
                   {formatDateTime(item.checkinAt)}
                 </Text>
               </View>
@@ -121,43 +152,47 @@ export default function AttendeeListModal({
             )}
           </View>
 
-          <View className="flex-row items-center">
-            <View className="w-24">
-              <Text className="text-gray-600 text-xs font-medium">Check-mid:</Text>
-            </View>
-            {item.checkMidAt ? (
+          {!isPublic && (
+            <>
               <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                <Text className="text-gray-700 text-xs ml-1">
-                  {formatDateTime(item.checkMidAt)}
-                </Text>
+                <View className="w-24">
+                  <Text className="text-gray-600 text-xs font-medium">Check-mid:</Text>
+                </View>
+                {item.checkMidAt ? (
+                  <View className="flex-row items-center">
+                    <Ionicons name="checkmark-circle" size={14} color="#F97316" />
+                    <Text className="text-orange-700 text-xs ml-1">
+                      {formatDateTime(item.checkMidAt)}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center">
+                    <Ionicons name="close-circle" size={14} color="#9CA3AF" />
+                    <Text className="text-gray-400 text-xs ml-1">-</Text>
+                  </View>
+                )}
               </View>
-            ) : (
-              <View className="flex-row items-center">
-                <Ionicons name="close-circle" size={14} color="#9CA3AF" />
-                <Text className="text-gray-400 text-xs ml-1">-</Text>
-              </View>
-            )}
-          </View>
 
-          <View className="flex-row items-center">
-            <View className="w-24">
-              <Text className="text-gray-600 text-xs font-medium">Check-out:</Text>
-            </View>
-            {item.checkoutAt ? (
               <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                <Text className="text-gray-700 text-xs ml-1">
-                  {formatDateTime(item.checkoutAt)}
-                </Text>
+                <View className="w-24">
+                  <Text className="text-gray-600 text-xs font-medium">Check-out:</Text>
+                </View>
+                {item.checkoutAt ? (
+                  <View className="flex-row items-center">
+                    <Ionicons name="checkmark-circle" size={14} color="#9333EA" />
+                    <Text className="text-purple-700 text-xs ml-1">
+                      {formatDateTime(item.checkoutAt)}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center">
+                    <Ionicons name="close-circle" size={14} color="#9CA3AF" />
+                    <Text className="text-gray-400 text-xs ml-1">-</Text>
+                  </View>
+                )}
               </View>
-            ) : (
-              <View className="flex-row items-center">
-                <Ionicons name="close-circle" size={14} color="#9CA3AF" />
-                <Text className="text-gray-400 text-xs ml-1">-</Text>
-              </View>
-            )}
-          </View>
+            </>
+          )}
         </View>
       </View>
     );
@@ -201,24 +236,46 @@ export default function AttendeeListModal({
             </View>
           ) : (
             <View className="flex-1">
+              {/* Search Box */}
+              <View className="mx-4 mt-4">
+                <View className="flex-row items-center bg-white border border-gray-300 rounded-lg px-3 py-2">
+                  <Ionicons name="search" size={18} color="#9CA3AF" />
+                  <AppTextInput
+                    className="flex-1 ml-2 text-sm"
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                  />
+                </View>
+              </View>
+
               {/* Summary */}
               <View className="bg-blue-50 mx-4 mt-4 p-4 rounded-lg">
                 <View className="flex-row items-center">
                   <Ionicons name="checkmark-circle" size={20} color="#1E40AF" />
                   <Text className="text-blue-900 font-semibold ml-2">
-                    Total Check-ins: {attendees.length}
+                    Total Check-ins: {filteredAttendees.length}
+                    {filteredAttendees.length !== attendees.length && ` (filtered from ${attendees.length})`}
                   </Text>
                 </View>
               </View>
 
               {/* List */}
-              <FlatList
-                data={attendees}
-                keyExtractor={(item) => item.userId.toString()}
-                renderItem={renderAttendeeItem}
-                contentContainerStyle={{ padding: 16 }}
-                showsVerticalScrollIndicator={false}
-              />
+              {filteredAttendees.length === 0 ? (
+                <View className="flex-1 items-center justify-center py-12">
+                  <Ionicons name="search-outline" size={48} color="#9CA3AF" />
+                  <Text className="text-gray-500 mt-4">No attendees found</Text>
+                  <Text className="text-gray-400 text-sm">Try different search terms</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={filteredAttendees}
+                  keyExtractor={(item) => item.userId.toString()}
+                  renderItem={renderAttendeeItem}
+                  contentContainerStyle={{ padding: 16 }}
+                  showsVerticalScrollIndicator={false}
+                />
+              )}
             </View>
           )}
 

@@ -21,12 +21,15 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 interface Club {
   id: number;
   name: string;
   description: string;
   majorName: string;
+  majorId?: number; // ID của major từ API
+  majorColor?: string; // Thêm màu cho major (giống web)
   members: number;
   majorPolicyName: string;
   status: 'member' | 'pending' | 'none';
@@ -71,6 +74,17 @@ export default function StudentClubsPage() {
 
   // User's pending applications from API
   const [myApplications, setMyApplications] = useState<any[]>([]);
+  
+  // State cho modal xem mô tả đầy đủ (giống web)
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [selectedDescription, setSelectedDescription] = useState('');
+  const [selectedClubName, setSelectedClubName] = useState('');
+
+  // Auto-refresh data khi component mount (giống như F5)
+  useEffect(() => {
+    // Invalidate React Query cache để tự động fetch lại dữ liệu mới
+    // (Tương tự như web version)
+  }, []);
 
   // Get user's club IDs
   useEffect(() => {
@@ -98,7 +112,7 @@ export default function StudentClubsPage() {
       try {
         // Load applications first
         const applications = await MemberApplicationService.getMyMemberApplications();
-        console.log(' Loaded user applications:', applications);
+        console.log('✅ Loaded user applications:', applications);
         setMyApplications(applications);
         
         // Then load clubs with the applications data
@@ -124,11 +138,30 @@ export default function StudentClubsPage() {
       const clubsWithCounts = await Promise.all(
         response.map(async (club) => {
           const memberCount = await ClubService.getClubMemberCount(club.id);
+          
+          // Lấy tên major và màu từ danh sách majors (giống web)
+          // Club từ API đã được transform, có thuộc tính 'category' thay vì 'majorName'
+          let majorName = club.category || '';
+          let majorColor = '#E2E8F0'; // Default color
+          let majorId: number | undefined = undefined;
+          
+          if (majors.length > 0) {
+            // Tìm major theo tên (vì API response không có majorId sau khi transform)
+            const majorFromList = majors.find(m => m.name === club.category);
+            if (majorFromList) {
+              majorName = majorFromList.name;
+              majorColor = majorFromList.colorHex || '#E2E8F0';
+              majorId = majorFromList.id;
+            }
+          }
+          
           return {
             id: club.id,
             name: club.name,
             description: club.description || '',
-            majorName: club.category || '',
+            majorName: majorName,
+            majorId: majorId,
+            majorColor: majorColor, // Thêm màu major
             members: memberCount.activeMemberCount,
             majorPolicyName: club.policy || '',
             status: getClubStatus(club.id, applicationsToUse) as 'member' | 'pending' | 'none',
@@ -263,8 +296,29 @@ export default function StudentClubsPage() {
       }
     } catch (error: any) {
       console.error('Error submitting application:', error);
-      const message = error?.response?.data?.message || error?.message || 'Failed to submit application';
-      Alert.alert('Error', message);
+      
+      // Lấy thông báo lỗi từ API
+      let apiMessage = error?.response?.data?.error || error?.response?.data?.message || error?.message || 'Failed to submit application';
+      
+      // Kiểm tra nếu là lỗi giới hạn số lượng club (giống web)
+      if (typeof apiMessage === 'string' && apiMessage.toLowerCase().includes('maximum number of clubs')) {
+        // Trích xuất số lượng từ thông báo (ví dụ: "...maximum number of clubs (2)")
+        const match = apiMessage.match(/\((\d+)\)/);
+        const maxLimit = match ? match[1] : 'Policy';
+        
+        // Kiểm tra xem giới hạn có phải là 1 không
+        const isSingleClubLimit = maxLimit === '1';
+        
+        // Tạo thông báo tùy biến
+        const customMessage = isSingleClubLimit
+          ? `According to the major policy, you can only join 1 club.\n\nYou are already a member of a club. You must leave it before joining a new one.`
+          : `According to the major policy, you can join up to ${maxLimit} clubs.\n\nYou have now reached this limit.`;
+        
+        Alert.alert('Participation Limit Reached', customMessage);
+      } else {
+        // Hiển thị lỗi thông thường
+        Alert.alert('Error', apiMessage);
+      }
     } finally {
       setApplying(false);
     }
@@ -312,25 +366,45 @@ export default function StudentClubsPage() {
     }
   };
 
-  // Category colors
-  const categoryColors: Record<string, string> = {
-    'Software Engineering': '#0052CC',
-    'Artificial Intelligence': '#6A00FF',
-    'Information Assurance': '#243447',
-    'Data Science': '#00B8A9',
-    'Business Administration': '#1E2A78',
-    'Digital Marketing': '#FF3366',
-    'Graphic Design': '#FFC300',
-    'Multimedia Communication': '#FF6B00',
-    'Hospitality Management': '#E1B382',
-    'International Business': '#007F73',
-    'Finance and Banking': '#006B3C',
-    'Japanese Language': '#D80032',
-    'Korean Language': '#5DADEC',
+  // Get color for major - Ưu tiên sử dụng majorColor từ club (nếu có)
+  const getCategoryColor = (majorName: string, majorColor?: string) => {
+    // Ưu tiên sử dụng màu từ API (nếu có)
+    if (majorColor) return majorColor;
+    
+    // Fallback colors (hardcode) - Dùng khi API không trả về màu
+    // Sử dụng màu đậm hơn để text trắng đọc được tốt
+    const categoryColors: Record<string, string> = {
+      'Software Engineering': '#0052CC',
+      'Artificial Intelligence': '#7C3AED', // Purple đậm hơn
+      'Information Assurance': '#1E40AF', // Blue đậm
+      'Data Science': '#0891B2', // Cyan đậm
+      'Business Administration': '#7C2D12', // Brown đậm
+      'Digital Marketing': '#DC2626', // Red đậm
+      'Graphic Design': '#EA580C', // Orange đậm
+      'Multimedia Communication': '#C2410C', // Deep orange
+      'Hospitality Management': '#92400E', // Amber đậm
+      'International Business': '#047857', // Emerald đậm
+      'Finance and Banking': '#065F46', // Green đậm
+      'Japanese Language': '#BE123C', // Rose đậm
+      'Korean Language': '#0369A1', // Sky đậm
+    };
+    
+    return categoryColors[majorName] || '#0D9488'; // Teal đậm làm default
   };
 
-  const getCategoryColor = (category: string) => {
-    return categoryColors[category] || '#6B7280';
+  // Hàm tính độ sáng của màu (luminance) để quyết định text màu trắng hay đen
+  const getTextColorForBackground = (hexColor: string): string => {
+    // Chuyển hex sang RGB
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Tính luminance (độ sáng)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Nếu màu sáng (> 0.5) thì dùng text đen, ngược lại dùng text trắng
+    return luminance > 0.5 ? '#1F2937' : '#FFFFFF';
   };
 
   return (
@@ -361,7 +435,15 @@ export default function StudentClubsPage() {
                 </View>
               </View>
               <TouchableOpacity
-                onPress={() => setShowCreateModal(true)}
+                onPress={() => {
+                  Toast.show({
+                    type: 'info',
+                    text1: 'Feature Not Available',
+                    text2: 'Please use this feature on the web',
+                    position: 'top',
+                    visibilityTime: 3000,
+                  });
+                }}
                 className="bg-teal-500 px-5 py-3 rounded-2xl shadow-lg"
                 style={{ shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
               >
@@ -516,7 +598,7 @@ export default function StudentClubsPage() {
                     style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }}
                   >
                     {/* Colorful Top Bar */}
-                    <View className="h-2" style={{ backgroundColor: getCategoryColor(club.majorName) }} />
+                    <View className="h-2" style={{ backgroundColor: getCategoryColor(club.majorName, club.majorColor) }} />
                     
                     <View className="p-5">
                       {/* Club Header with Icon */}
@@ -524,9 +606,9 @@ export default function StudentClubsPage() {
                         <View className="mr-4">
                           <View 
                             className="w-16 h-16 rounded-2xl items-center justify-center shadow-md"
-                            style={{ backgroundColor: getCategoryColor(club.majorName) + '20' }}
+                            style={{ backgroundColor: getCategoryColor(club.majorName, club.majorColor) + '20' }}
                           >
-                            <Ionicons name="ribbon" size={32} color={getCategoryColor(club.majorName)} />
+                            <Ionicons name="ribbon" size={32} color={getCategoryColor(club.majorName, club.majorColor)} />
                           </View>
                         </View>
                         
@@ -545,25 +627,43 @@ export default function StudentClubsPage() {
                           
                           <View
                             className="self-start px-3 py-1.5 rounded-xl"
-                            style={{ backgroundColor: getCategoryColor(club.majorName) }}
+                            style={{ backgroundColor: getCategoryColor(club.majorName, club.majorColor) }}
                           >
-                            <Text className="text-white text-xs font-bold">{club.majorName || '-'}</Text>
+                            <Text 
+                              className="text-xs font-bold"
+                              style={{ color: getTextColorForBackground(getCategoryColor(club.majorName, club.majorColor)) }}
+                            >
+                              {club.majorName || '-'}
+                            </Text>
                           </View>
                         </View>
                       </View>
 
-                      {/* Description */}
+                      {/* Description with View Full button */}
                       {club.description && (
                         <View className="bg-gray-50 rounded-2xl p-4 mb-4">
                           <Text className="text-sm text-gray-700 leading-5" numberOfLines={3}>
                             {club.description}
                           </Text>
+                          {club.description.length > 100 && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setSelectedClubName(club.name);
+                                setSelectedDescription(club.description || '');
+                                setShowDescriptionModal(true);
+                              }}
+                              className="mt-2 flex-row items-center"
+                            >
+                              <Ionicons name="eye" size={16} color="#14B8A6" />
+                              <Text className="text-teal-600 text-sm font-semibold ml-1">View Full Description</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       )}
 
                       {/* Enhanced Stats */}
-                      <View className="flex-row items-center justify-between mb-4">
-                        <View className="flex-1 bg-teal-50 rounded-2xl p-3 mr-2 flex-row items-center">
+                      <View className="flex-row items-center mb-4">
+                        <View className="bg-teal-50 rounded-2xl p-3 flex-row items-center">
                           <View className="bg-teal-100 p-2 rounded-xl mr-2">
                             <Ionicons name="people" size={18} color="#14B8A6" />
                           </View>
@@ -572,19 +672,6 @@ export default function StudentClubsPage() {
                             <Text className="text-xs text-gray-600">Members</Text>
                           </View>
                         </View>
-                        
-                        {club.majorPolicyName && (
-                          <View className="flex-1 bg-purple-50 rounded-2xl p-3 ml-2 flex-row items-center">
-                            <View className="bg-purple-100 p-2 rounded-xl mr-2">
-                              <Ionicons name="shield-checkmark" size={18} color="#9333EA" />
-                            </View>
-                            <View className="flex-1">
-                              <Text className="text-xs font-bold text-purple-600" numberOfLines={2}>
-                                {club.majorPolicyName}
-                              </Text>
-                            </View>
-                          </View>
-                        )}
                       </View>
 
                       {/* Apply Button */}
@@ -735,7 +822,7 @@ export default function StudentClubsPage() {
                       </Text>
                     </View>
 
-                    {/* Major Selection */}
+                    {/* Major Selection with colors */}
                     <View>
                       <Text className="text-sm font-semibold text-gray-700 mb-2">Major</Text>
                       <ScrollView className="bg-gray-50 rounded-xl p-3 max-h-40" nestedScrollEnabled>
@@ -743,19 +830,28 @@ export default function StudentClubsPage() {
                           <TouchableOpacity
                             key={major.id}
                             onPress={() => setSelectedMajorId(major.id)}
-                            className={`flex-row items-center justify-between p-3 rounded-lg mb-2 ${
-                              selectedMajorId === major.id ? 'bg-teal-100' : 'bg-white'
-                            }`}
+                            className="flex-row items-center justify-between p-3 rounded-lg mb-2 bg-white shadow-sm"
+                            style={{
+                              borderWidth: selectedMajorId === major.id ? 2 : 0,
+                              borderColor: selectedMajorId === major.id ? (major.colorHex || '#14B8A6') : 'transparent',
+                            }}
                           >
-                            <Text
-                              className={`font-medium ${
-                                selectedMajorId === major.id ? 'text-teal-700' : 'text-gray-700'
-                              }`}
-                            >
-                              {major.name}
-                            </Text>
+                            <View className="flex-row items-center flex-1">
+                              {/* Color indicator */}
+                              <View
+                                className="w-4 h-4 rounded-full mr-3"
+                                style={{ backgroundColor: major.colorHex || '#E2E8F0' }}
+                              />
+                              <Text
+                                className={`font-medium flex-1 ${
+                                  selectedMajorId === major.id ? 'text-gray-900' : 'text-gray-700'
+                                }`}
+                              >
+                                {major.name}
+                              </Text>
+                            </View>
                             {selectedMajorId === major.id && (
-                              <Ionicons name="checkmark-circle" size={20} color="#14B8A6" />
+                              <Ionicons name="checkmark-circle" size={20} color={major.colorHex || '#14B8A6'} />
                             )}
                           </TouchableOpacity>
                         ))}
@@ -829,6 +925,54 @@ export default function StudentClubsPage() {
               </ScrollView>
             </View>
           </View>
+      </Modal>
+
+      {/* Modal xem mô tả đầy đủ (giống web) */}
+      <Modal
+        visible={showDescriptionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDescriptionModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50 px-4">
+          <View className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+            {/* Header */}
+            <View className="bg-teal-600 px-6 py-5 flex-row items-center justify-between">
+              <View className="flex-1 pr-4">
+                <Text className="text-white text-lg font-bold" numberOfLines={2}>
+                  {selectedClubName}
+                </Text>
+                <Text className="text-teal-100 text-sm mt-1">Full Description</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowDescriptionModal(false)}
+                className="bg-teal-700 p-2 rounded-full"
+              >
+                <Ionicons name="close" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Description Content */}
+            <ScrollView 
+              className="max-h-96 px-6 py-5"
+              showsVerticalScrollIndicator={true}
+            >
+              <Text className="text-gray-800 text-base leading-6">
+                {selectedDescription || 'No description provided.'}
+              </Text>
+            </ScrollView>
+
+            {/* Footer */}
+            <View className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <TouchableOpacity
+                onPress={() => setShowDescriptionModal(false)}
+                className="bg-teal-500 py-3 rounded-xl"
+              >
+                <Text className="text-white font-semibold text-center">Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Navigation Bar */}

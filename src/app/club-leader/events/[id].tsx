@@ -2,6 +2,7 @@ import AddStaffModal from '@components/AddStaffModal';
 import AttendeeListModal from '@components/AttendeeListModal';
 import EvaluateStaffModal from '@components/EvaluateStaffModal';
 import EvaluationDetailModal from '@components/EvaluationDetailModal';
+import EventDateTimeDisplay from '@components/EventDateTimeDisplay';
 import RegistrationListModal from '@components/RegistrationListModal';
 import TimeExtensionModal from '@components/TimeExtensionModal';
 import WalletHistoryModal from '@components/WalletHistoryModal';
@@ -12,12 +13,8 @@ import {
   isEventExpired as checkEventExpired,
   coHostRespond,
   completeEvent,
-  formatEventDateRange,
   getEventById,
-  getEventEndTime,
-  getEventStartTime,
   getEventSummary,
-  isMultiDayEvent,
   submitForUniversityApproval,
   timeObjectToString
 } from '@services/event.service';
@@ -713,78 +710,14 @@ export default function EventDetailPage() {
           {/* Divider */}
           <View className="h-px bg-gray-200 mx-6" />
 
-          {/* Date & Time - Support multi-day events */}
+          {/* Date & Time - Using EventDateTimeDisplay component */}
           <View className="p-6">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">Date & Time</Text>
+            <View className="flex-row items-center gap-2 mb-4">
+              <Ionicons name="calendar" size={20} color="#14B8A6" />
+              <Text className="text-lg font-semibold text-gray-900">Date & Time</Text>
+            </View>
             
-            {/* Date Display */}
-            <View className="bg-gray-50 p-4 rounded-lg flex-row items-center mb-3">
-              <View className="bg-teal-100 p-3 rounded-lg mr-4">
-                <Ionicons name="calendar" size={20} color="#0D9488" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-gray-900 font-medium">
-                  {formatEventDateRange(event)}
-                </Text>
-                {isMultiDayEvent(event) && event.days && (
-                  <Text className="text-blue-600 text-xs font-semibold mt-1">
-                    {event.days.length} days event
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {/* Time Display */}
-            <View className="bg-gray-50 p-4 rounded-lg flex-row items-center mb-3">
-              <View className="bg-teal-100 p-3 rounded-lg mr-4">
-                <Ionicons name="time" size={20} color="#0D9488" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-gray-900 font-medium">
-                  {(() => {
-                    const startTime = getEventStartTime(event);
-                    const endTime = getEventEndTime(event);
-                    return startTime && endTime ? `${startTime} - ${endTime}` : 'Time not set';
-                  })()}
-                </Text>
-                <Text className="text-gray-500 text-sm">
-                  {isMultiDayEvent(event) ? 'First to Last Day Times' : 'Event Duration'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Show individual days for multi-day events */}
-            {isMultiDayEvent(event) && event.days && event.days.length > 0 && (
-              <View className="bg-blue-50 p-4 rounded-lg border border-blue-200 mt-3">
-                <View className="flex-row items-center mb-3">
-                  <Ionicons name="list" size={16} color="#2563EB" />
-                  <Text className="text-blue-800 font-semibold ml-2">Event Schedule</Text>
-                </View>
-                {event.days.map((day, index) => (
-                  <View key={day.id || index} className="bg-white p-3 rounded-lg mb-2 border border-blue-100">
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center flex-1">
-                        <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center mr-3">
-                          <Text className="text-white text-xs font-bold">{index + 1}</Text>
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-gray-900 font-medium">
-                            {new Date(day.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </Text>
-                          <Text className="text-gray-600 text-sm">
-                            {day.startTime} - {day.endTime}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
+            <EventDateTimeDisplay event={event as any} variant="detailed" />
           </View>
 
           {/* Divider */}
@@ -794,33 +727,47 @@ export default function EventDetailPage() {
           <View className="px-6 py-4">
             <Text className="text-lg font-semibold text-gray-900 mb-3">Points Information</Text>
             <View className="flex-row gap-3 mb-0">
-              {/* Commit Point Cost - Only show for PRIVATE and SPECIAL events */}
-              {(event.type === 'PRIVATE' || event.type === 'SPECIAL') && (
-                <View className="flex-1 bg-gray-50 p-4 rounded-lg">
+              {/* For PUBLIC events - show Reward Point */}
+              {event.type === 'PUBLIC' ? (
+                <View className="flex-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
                   <View className="flex-row items-center gap-2 mb-2">
-                    <Ionicons name="ticket" size={16} color="#6B7280" />
-                    <Text className="text-xs text-gray-600">Commit Point Cost</Text>
+                    <Ionicons name="gift" size={16} color="#059669" />
+                    <Text className="text-xs text-emerald-700">Reward Point</Text>
                   </View>
-                  <Text className="text-2xl font-bold text-gray-800">{event.commitPointCost ?? 0}</Text>
-                  <Text className="text-xs text-gray-500 mt-1">points</Text>
+                  <Text className="text-2xl font-bold text-emerald-700">
+                    {event.rewardPerParticipant ?? 0}
+                  </Text>
+                  <Text className="text-xs text-emerald-600 mt-1">per participant</Text>
                 </View>
+              ) : (
+                <>
+                  {/* Commit Point Cost - Only show for PRIVATE and SPECIAL events */}
+                  <View className="flex-1 bg-gray-50 p-4 rounded-lg">
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <Ionicons name="ticket" size={16} color="#6B7280" />
+                      <Text className="text-xs text-gray-600">Commit Point Cost</Text>
+                    </View>
+                    <Text className="text-2xl font-bold text-gray-800">{event.commitPointCost ?? 0}</Text>
+                    <Text className="text-xs text-gray-500 mt-1">points</Text>
+                  </View>
+                  
+                  {/* Receive Point */}
+                  <View className="flex-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <Ionicons name="gift" size={16} color="#059669" />
+                      <Text className="text-xs text-emerald-700">Receive Point</Text>
+                    </View>
+                    <Text className="text-2xl font-bold text-emerald-700">
+                      {(() => {
+                        const budgetPoints = event.budgetPoints ?? 0
+                        const maxCheckInCount = event.maxCheckInCount ?? 1
+                        return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                      })()}
+                    </Text>
+                    <Text className="text-xs text-emerald-600 mt-1">per full attendance</Text>
+                  </View>
+                </>
               )}
-              
-              {/* Receive Point */}
-              <View className="flex-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="gift" size={16} color="#059669" />
-                  <Text className="text-xs text-emerald-700">Receive Point</Text>
-                </View>
-                <Text className="text-2xl font-bold text-emerald-700">
-                  {(() => {
-                    const budgetPoints = event.budgetPoints ?? 0
-                    const maxCheckInCount = event.maxCheckInCount ?? 1
-                    return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
-                  })()}
-                </Text>
-                <Text className="text-xs text-emerald-600 mt-1">per full attendance</Text>
-              </View>
             </View>
           </View>
 
@@ -921,7 +868,7 @@ export default function EventDetailPage() {
                     <Text className="text-blue-700 text-xs font-medium">
                       {event.type === 'PUBLIC' ? 'Total Check-ins' : 'Total Registrations'}
                     </Text>
-                    <View className="flex-row gap-1">
+                    <View className="flex-col gap-1">
                       <TouchableOpacity
                         onPress={() => setShowAttendeeListModal(true)}
                         className="bg-blue-600 px-2 py-1 rounded"
@@ -984,36 +931,6 @@ export default function EventDetailPage() {
                   <View className="bg-teal-100 px-3 py-1 rounded-full">
                     <Text className="text-teal-800 text-xs font-semibold">{staffList.length} Staff</Text>
                   </View>
-                )}
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <TouchableOpacity
-                  onPress={handleShowStaffList}
-                  disabled={loadingMembers}
-                  className="flex-1 bg-teal-600 rounded-lg py-3 items-center"
-                >
-                  <View className="flex-row items-center">
-                    {loadingMembers ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <>
-                        <Ionicons name="people" size={18} color="white" />
-                        <Text className="text-white font-semibold ml-2">View Staff List</Text>
-                      </>
-                    )}
-                  </View>
-                </TouchableOpacity>
-                {event.status === 'COMPLETED' && evaluations.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setShowEvaluationDetailModal(true)}
-                    className="flex-1 bg-blue-600 rounded-lg py-3 items-center"
-                  >
-                    <View className="flex-row items-center">
-                      <Ionicons name="star" size={18} color="white" />
-                      <Text className="text-white font-semibold ml-2">View Evaluations</Text>
-                    </View>
-                  </TouchableOpacity>
                 )}
               </View>
 
@@ -1383,6 +1300,7 @@ export default function EventDetailPage() {
           onClose={() => setShowAttendeeListModal(false)}
           eventId={event.id}
           eventName={event.name}
+          eventType={event.type}
         />
       )}
 

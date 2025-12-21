@@ -38,6 +38,7 @@ type ClubLeaderEvent = {
   points?: number;
   budgetPoints?: number;
   commitPointCost?: number;
+  rewardPerParticipant?: number;
   hostClub?: {
     id: number;
     name: string;
@@ -239,9 +240,16 @@ function getEventStatus(event: ClubLeaderEvent): string {
 // Helper function to sort events by date and time (newest to oldest)
 function sortEventsByDateTime(eventList: ClubLeaderEvent[]): ClubLeaderEvent[] {
   return eventList.sort((a, b) => {
-    // Parse dates for comparison
-    const dateA = new Date(a.date || '1970-01-01');
-    const dateB = new Date(b.date || '1970-01-01');
+    // Get start date for each event (support multi-day events)
+    const getStartDate = (event: ClubLeaderEvent): Date => {
+      if (event.days && event.days.length > 0) {
+        return new Date(event.days[0].date);
+      }
+      return new Date(event.startDate || event.date || '1970-01-01');
+    };
+
+    const dateA = getStartDate(a);
+    const dateB = getStartDate(b);
 
     // Compare dates first (newest first)
     if (dateA.getTime() !== dateB.getTime()) {
@@ -249,8 +257,15 @@ function sortEventsByDateTime(eventList: ClubLeaderEvent[]): ClubLeaderEvent[] {
     }
 
     // If dates are equal, compare times (latest startTime first)
-    const timeA = a.startTime || a.time || '00:00';
-    const timeB = b.startTime || b.time || '00:00';
+    const getStartTime = (event: ClubLeaderEvent): string => {
+      if (event.days && event.days.length > 0) {
+        return event.days[0].startTime;
+      }
+      return event.startTime || event.time || '00:00';
+    };
+
+    const timeA = getStartTime(a);
+    const timeB = getStartTime(b);
 
     // Convert time strings to comparable format
     const parseTime = (timeStr: string) => {
@@ -332,7 +347,7 @@ export default function Events() {
 
   // Filter events by search term, expiration status, and selected status
   const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
+    const filtered = events.filter((event) => {
       // Search term filter
       const matchesSearch = String(event.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       // Expiration filter
@@ -355,6 +370,9 @@ export default function Events() {
       const matchesStatus = selectedStatus === 'ALL' || event.status === selectedStatus;
       return matchesSearch && matchesExpirationFilter && matchesStatus;
     });
+    
+    // Sort filtered events by date and time (newest first)
+    return sortEventsByDateTime(filtered);
   }, [events, searchTerm, showExpiredEvents, selectedStatus]);
 
   // Create event handler - disabled for mobile, redirect to web
@@ -810,6 +828,11 @@ export default function Events() {
                           <Ionicons name="gift" size={12} color="white" />
                           <Text className="text-xs font-semibold text-white ml-1">
                             {(() => {
+                              // For PUBLIC events, use rewardPerParticipant
+                              if (event.type === 'PUBLIC') {
+                                return event.rewardPerParticipant ?? 0;
+                              }
+                              // For PRIVATE/SPECIAL events, calculate from budget
                               const budgetPoints = event.budgetPoints ?? 0
                               const maxCheckInCount = event.maxCheckInCount ?? 1
                               return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0

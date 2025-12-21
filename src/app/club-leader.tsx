@@ -78,8 +78,8 @@ export default function ClubLeaderPage() {
 
   // Load all data
   const loadData = async () => {
-    // Don't load if no user or no clubId
-    if (!user || !clubId) {
+    // Don't load if no user, no clubId, or not a club leader
+    if (!user || !clubId || user.role !== 'club_leader') {
       setLoading(false);
       return;
     }
@@ -146,7 +146,7 @@ export default function ClubLeaderPage() {
   };
 
   useEffect(() => {
-    if (user && clubId) {
+    if (user && clubId && user.role === 'club_leader') {
       loadData();
     } else {
       setLoading(false);
@@ -273,6 +273,11 @@ export default function ClubLeaderPage() {
       recentApplications,
     };
   }, [members, applications, events, coHostEvents, products, orders, walletData, transactions, attendanceHistory, clubId]);
+
+  // Don't render for non-club leaders
+  if (user && user.role !== 'club_leader') {
+    return null;
+  }
 
   if (loading && !refreshing) {
     return (

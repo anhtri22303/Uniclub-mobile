@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { EventRegistrationDetail, getEventRegistrations } from '../services/event.service';
+import { AppTextInput } from './ui';
 
 interface RegistrationListModalProps {
   visible: boolean;
@@ -26,6 +27,7 @@ export default function RegistrationListModal({
 }: RegistrationListModalProps) {
   const [registrations, setRegistrations] = useState<EventRegistrationDetail[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (visible) {
@@ -64,30 +66,35 @@ export default function RegistrationListModal({
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { label: string; bg: string; text: string }> = {
-      CHECKED_IN: {
-        label: 'Checked In',
-        bg: 'bg-green-100',
-        text: 'text-green-800',
+      PENDING: {
+        label: 'Pending',
+        bg: 'bg-yellow-100',
+        text: 'text-yellow-800',
       },
       CONFIRMED: {
         label: 'Confirmed',
         bg: 'bg-green-100',
         text: 'text-green-800',
       },
-      REGISTERED: {
-        label: 'Registered',
+      CHECKED_IN: {
+        label: 'Checked In',
         bg: 'bg-blue-100',
         text: 'text-blue-800',
       },
-      CANCELLED: {
-        label: 'Cancelled',
+      REWARDED: {
+        label: 'Rewarded',
+        bg: 'bg-purple-100',
+        text: 'text-purple-800',
+      },
+      NO_SHOW: {
+        label: 'No Show',
+        bg: 'bg-orange-100',
+        text: 'text-orange-800',
+      },
+      CANCELED: {
+        label: 'Canceled',
         bg: 'bg-red-100',
         text: 'text-red-800',
-      },
-      REFUNDED: {
-        label: 'Refunded',
-        bg: 'bg-yellow-100',
-        text: 'text-yellow-800',
       },
     };
 
@@ -98,6 +105,25 @@ export default function RegistrationListModal({
     };
 
     return badge;
+  };
+
+  // Filter registrations based on search term
+  const filteredRegistrations = registrations.filter((registration) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      registration.fullName.toLowerCase().includes(searchLower) ||
+      registration.email.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Calculate status counts from filtered registrations
+  const statusCounts = {
+    PENDING: filteredRegistrations.filter(r => r.status === 'PENDING').length,
+    CONFIRMED: filteredRegistrations.filter(r => r.status === 'CONFIRMED').length,
+    CHECKED_IN: filteredRegistrations.filter(r => r.status === 'CHECKED_IN').length,
+    REWARDED: filteredRegistrations.filter(r => r.status === 'REWARDED').length,
+    NO_SHOW: filteredRegistrations.filter(r => r.status === 'NO_SHOW').length,
+    CANCELED: filteredRegistrations.filter(r => r.status === 'CANCELED').length,
   };
 
   const renderRegistrationItem = ({ item, index }: { item: EventRegistrationDetail; index: number }) => {
@@ -186,24 +212,98 @@ export default function RegistrationListModal({
             </View>
           ) : (
             <View className="flex-1">
+              {/* Search Box */}
+              <View className="mx-4 mt-4">
+                <View className="flex-row items-center bg-white border border-gray-300 rounded-lg px-3 py-2">
+                  <Ionicons name="search" size={18} color="#9CA3AF" />
+                  <AppTextInput
+                    className="flex-1 ml-2 text-sm"
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                  />
+                </View>
+              </View>
+
               {/* Summary */}
               <View className="bg-purple-50 mx-4 mt-4 p-4 rounded-lg">
-                <View className="flex-row items-center">
+                <View className="flex-row items-center mb-3">
                   <Ionicons name="checkmark-circle" size={20} color="#7C3AED" />
                   <Text className="text-purple-900 font-semibold ml-2">
-                    Total Registrations: {registrations.length}
+                    Total Registrations: {filteredRegistrations.length}
+                    {filteredRegistrations.length !== registrations.length && ` (filtered from ${registrations.length})`}
                   </Text>
+                </View>
+
+                {/* Status breakdown */}
+                <View className="flex-row flex-wrap gap-2">
+                  {statusCounts.PENDING > 0 && (
+                    <View className="flex-row items-center gap-1">
+                      <View className="w-2 h-2 rounded-full bg-yellow-500" />
+                      <Text className="text-xs text-gray-700">
+                        Pending: <Text className="font-semibold">{statusCounts.PENDING}</Text>
+                      </Text>
+                    </View>
+                  )}
+                  {statusCounts.CONFIRMED > 0 && (
+                    <View className="flex-row items-center gap-1">
+                      <View className="w-2 h-2 rounded-full bg-green-500" />
+                      <Text className="text-xs text-gray-700">
+                        Confirmed: <Text className="font-semibold">{statusCounts.CONFIRMED}</Text>
+                      </Text>
+                    </View>
+                  )}
+                  {statusCounts.CHECKED_IN > 0 && (
+                    <View className="flex-row items-center gap-1">
+                      <View className="w-2 h-2 rounded-full bg-blue-500" />
+                      <Text className="text-xs text-gray-700">
+                        Checked In: <Text className="font-semibold">{statusCounts.CHECKED_IN}</Text>
+                      </Text>
+                    </View>
+                  )}
+                  {statusCounts.REWARDED > 0 && (
+                    <View className="flex-row items-center gap-1">
+                      <View className="w-2 h-2 rounded-full bg-purple-500" />
+                      <Text className="text-xs text-gray-700">
+                        Rewarded: <Text className="font-semibold">{statusCounts.REWARDED}</Text>
+                      </Text>
+                    </View>
+                  )}
+                  {statusCounts.NO_SHOW > 0 && (
+                    <View className="flex-row items-center gap-1">
+                      <View className="w-2 h-2 rounded-full bg-orange-500" />
+                      <Text className="text-xs text-gray-700">
+                        No Show: <Text className="font-semibold">{statusCounts.NO_SHOW}</Text>
+                      </Text>
+                    </View>
+                  )}
+                  {statusCounts.CANCELED > 0 && (
+                    <View className="flex-row items-center gap-1">
+                      <View className="w-2 h-2 rounded-full bg-red-500" />
+                      <Text className="text-xs text-gray-700">
+                        Canceled: <Text className="font-semibold">{statusCounts.CANCELED}</Text>
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
               {/* List */}
-              <FlatList
-                data={registrations}
-                keyExtractor={(item) => item.userId.toString()}
-                renderItem={renderRegistrationItem}
-                contentContainerStyle={{ padding: 16 }}
-                showsVerticalScrollIndicator={false}
-              />
+              {filteredRegistrations.length === 0 ? (
+                <View className="flex-1 items-center justify-center py-12">
+                  <Ionicons name="search-outline" size={48} color="#9CA3AF" />
+                  <Text className="text-gray-500 mt-4">No registrations found</Text>
+                  <Text className="text-gray-400 text-sm">Try different search terms</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={filteredRegistrations}
+                  keyExtractor={(item) => item.userId.toString()}
+                  renderItem={renderRegistrationItem}
+                  contentContainerStyle={{ padding: 16 }}
+                  showsVerticalScrollIndicator={false}
+                />
+              )}
             </View>
           )}
 

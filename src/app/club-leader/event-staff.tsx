@@ -192,18 +192,46 @@ export default function EventStaffPage() {
     );
   };
 
-  // Filter events based on status and time
-  const activeEvents = events.filter((event) => {
-    const isApprovedOrOngoing = ['APPROVED', 'ONGOING'].includes(event.status);
-    const expired = isEventExpired(event);
-    return isApprovedOrOngoing && !expired;
-  });
+  // Helper function to get event start date and time for sorting
+  const getEventStartDateTime = (event: Event): number => {
+    if (event.days && event.days.length > 0) {
+      // For multi-day events, get the earliest date with its start time
+      const firstDay = event.days.reduce((earliest, day) => {
+        const dayDateTime = new Date(`${day.date}T${day.startTime}`).getTime();
+        const earliestDateTime = new Date(`${earliest.date}T${earliest.startTime}`).getTime();
+        return dayDateTime < earliestDateTime ? day : earliest;
+      });
+      return new Date(`${firstDay.date}T${firstDay.startTime}`).getTime();
+    }
+    // Fallback to startDate with startTime
+    if (event.startDate) {
+      const startTime = getEventStartTime(event);
+      return new Date(`${event.startDate}T${startTime}`).getTime();
+    }
+    if (event.date) {
+      const startTime = getEventStartTime(event);
+      return new Date(`${event.date}T${startTime}`).getTime();
+    }
+    // Last resort fallback
+    return new Date().getTime();
+  };
 
-  const completedEvents = events.filter((event) => {
-    const expired = isEventExpired(event);
-    const isCompleted = event.status === 'COMPLETED';
-    return expired || isCompleted;
-  });
+  // Filter and sort events based on status and time
+  const activeEvents = events
+    .filter((event) => {
+      const isApprovedOrOngoing = ['APPROVED', 'ONGOING'].includes(event.status);
+      const expired = isEventExpired(event);
+      return isApprovedOrOngoing && !expired;
+    })
+    .sort((a, b) => getEventStartDateTime(b) - getEventStartDateTime(a));
+
+  const completedEvents = events
+    .filter((event) => {
+      const expired = isEventExpired(event);
+      const isCompleted = event.status === 'COMPLETED';
+      return expired || isCompleted;
+    })
+    .sort((a, b) => getEventStartDateTime(b) - getEventStartDateTime(a));
 
   const displayEvents = activeTab === 'active' ? activeEvents : completedEvents;
 

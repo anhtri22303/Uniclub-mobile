@@ -42,6 +42,7 @@ export default function Sidebar({ role }: SidebarProps) {
   const { profile, refreshProfile, hasClub, userClubs, isLoading: loadingProfile } = useProfile();
   const [isOpen, setIsOpen] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-SIDEBAR_WIDTH));
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // Draggable button position
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 48 })).current; // Default position (left edge, top: 48)
@@ -67,29 +68,45 @@ export default function Sidebar({ role }: SidebarProps) {
 
   // Load club wallet for club leaders
   useEffect(() => {
+    let isMounted = true;
+    
     const loadClubWallet = async () => {
+      // Don't load if logging out, no user, or component unmounted
+      if (isLoggingOut || !user || !isMounted) return;
+      
       if (role === 'club_leader' && !loadingProfile && user?.clubIds?.[0]) {
-        setClubWalletLoading(true);
+        if (isMounted) setClubWalletLoading(true);
         try {
           const clubId = user.clubIds[0];
           const wallet = await WalletService.getClubWallet(clubId);
-          setClubWallet(wallet);
+          if (isMounted && !isLoggingOut) {
+            setClubWallet(wallet);
+          }
         } catch (error) {
-          console.error('Failed to load club wallet:', error);
+          // Only log error if not logging out
+          if (!isLoggingOut) {
+            console.error('Failed to load club wallet:', error);
+          }
         } finally {
-          setClubWalletLoading(false);
+          if (isMounted) setClubWalletLoading(false);
         }
       }
     };
+    
     loadClubWallet();
-  }, [role, loadingProfile, user?.clubIds]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [role, loadingProfile, user?.clubIds, isLoggingOut]);
 
   // Refresh profile when sidebar opens
   useEffect(() => {
-    if (isOpen && user) {
+    // Don't refresh if logging out
+    if (isOpen && user && !isLoggingOut) {
       refreshProfile();
     }
-  }, [isOpen, user, refreshProfile]);
+  }, [isOpen, user, refreshProfile, isLoggingOut]);
 
   // Load button position from storage
   const loadButtonPosition = async () => {
@@ -710,23 +727,37 @@ export default function Sidebar({ role }: SidebarProps) {
   };
 
   const handleLogout = async () => {
-    // Close sidebar first to prevent any re-renders during logout
-    toggleSidebar();
-    
-    // Reset button position on logout
-    await resetButtonPosition();
-    
-    // Small delay to ensure sidebar animation completes
-    setTimeout(async () => {
+    try {
+      // Set logging out flag to prevent data loading
+      setIsLoggingOut(true);
+      
+      // Clear local state immediately
+      setClubWallet(null);
+      setSelectedWalletId('');
+      
+      // Close sidebar
+      setIsOpen(false);
+      
+      // Reset button position
+      await resetButtonPosition();
+      
+      // Logout immediately (this clears user data)
       await logout();
-      router.replace('/login' as any);
-    }, 300);
+      
+      // Navigate to login - use push instead of replace to clear stack
+      router.push('/login' as any);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if error, still try to navigate
+      router.push('/login' as any);
+    }
   };
 
   // Only show sidebar for CLUB_LEADER, UNIVERSITY_STAFF, and STUDENT
   const shouldShowSidebar = role === 'club_leader' || role === 'uni_staff' || role === 'student';
   
-  if (!shouldShowSidebar) {
+  // Early return if no user, logging out, or wrong role
+  if (!user || isLoggingOut || !shouldShowSidebar) {
     return null;
   }
 

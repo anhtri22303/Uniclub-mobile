@@ -492,25 +492,6 @@ const AddStaffModal: React.FC<AddStaffModalProps> = ({
                                 Assigned: {new Date(staff.assignedAt).toLocaleDateString('vi-VN')}
                               </Text>
                             </View>
-                            
-                            {/* Status Badge */}
-                            <View
-                              className={`px-2 py-0.5 rounded ml-2 ${
-                                staff.state === 'ACTIVE'
-                                  ? 'bg-green-100 border border-green-500'
-                                  : 'bg-gray-100 border border-gray-300'
-                              }`}
-                            >
-                              <Text
-                                className={`text-xs font-semibold ${
-                                  staff.state === 'ACTIVE'
-                                    ? 'text-green-700'
-                                    : 'text-gray-700'
-                                }`}
-                              >
-                                {staff.state}
-                              </Text>
-                            </View>
                           </View>
                           
                           {/* Action Buttons */}
