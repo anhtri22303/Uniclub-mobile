@@ -71,6 +71,11 @@ export default function ClubLeaderPointsPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [transactions, setTransactions] = useState<ClubToMemberTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [historyTypeFilter, setHistoryTypeFilter] = useState<string>('all');
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>('all');
+  const [historyTransactionTypeFilter, setHistoryTransactionTypeFilter] = useState<string>('all');
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
+  const [historyPageSize] = useState(8);
 
   // Point request modal
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -313,6 +318,92 @@ export default function ClubLeaderPointsPage() {
     return new Intl.NumberFormat('en-US').format(value);
   };
 
+  // Get badge color for transaction type
+  const getTransactionTypeBadgeColor = (type: string): { bg: string; text: string } => {
+    const colorMap: Record<string, { bg: string; text: string }> = {
+      ADD: { bg: 'bg-green-100', text: 'text-green-700' },
+      REDUCE: { bg: 'bg-red-100', text: 'text-red-700' },
+      TRANSFER: { bg: 'bg-blue-100', text: 'text-blue-700' },
+      UNI_TO_CLUB: { bg: 'bg-purple-100', text: 'text-purple-700' },
+      CLUB_TO_MEMBER: { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+      EVENT_BUDGET_GRANT: { bg: 'bg-teal-100', text: 'text-teal-700' },
+      EVENT_REFUND_REMAINING: { bg: 'bg-cyan-100', text: 'text-cyan-700' },
+      COMMIT_LOCK: { bg: 'bg-amber-100', text: 'text-amber-700' },
+      REFUND_COMMIT: { bg: 'bg-lime-100', text: 'text-lime-700' },
+      BONUS_REWARD: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+      MEMBER_PENALTY: { bg: 'bg-red-200', text: 'text-red-800' },
+      CLUB_FROM_PENALTY: { bg: 'bg-green-200', text: 'text-green-800' },
+      MEMBER_REWARD: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      CLUB_REWARD_DISTRIBUTE: { bg: 'bg-teal-200', text: 'text-teal-800' },
+    };
+    return colorMap[type] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+  };
+
+  // Get unique transaction types
+  const uniqueTransactionTypes = useMemo(() => {
+    const types = new Set(transactions.map(t => t.type));
+    return Array.from(types).sort();
+  }, [transactions]);
+
+  // Filter transactions
+  const filteredTransactions = useMemo(() => {
+    let filtered = [...transactions];
+
+    // Filter by incoming/outgoing
+    if (historyTypeFilter !== 'all') {
+      if (historyTypeFilter === 'incoming') {
+        filtered = filtered.filter(t => t.amount > 0);
+      } else if (historyTypeFilter === 'outgoing') {
+        filtered = filtered.filter(t => t.amount < 0);
+      }
+    }
+
+    // Filter by transaction type
+    if (historyTransactionTypeFilter !== 'all') {
+      filtered = filtered.filter(t => t.type === historyTransactionTypeFilter);
+    }
+
+    // Filter by date
+    if (historyDateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      filtered = filtered.filter(t => {
+        const transactionDate = new Date(t.createdAt);
+
+        switch (historyDateFilter) {
+          case 'today':
+            return transactionDate >= today;
+          case 'week':
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return transactionDate >= weekAgo;
+          case 'month':
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            return transactionDate >= monthAgo;
+          case 'year':
+            const yearAgo = new Date(today);
+            yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+            return transactionDate >= yearAgo;
+          default:
+            return true;
+        }
+      });
+    }
+
+    return filtered;
+  }, [transactions, historyTypeFilter, historyDateFilter, historyTransactionTypeFilter]);
+
+  // Paginate filtered transactions
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (historyCurrentPage - 1) * historyPageSize;
+    const endIndex = startIndex + historyPageSize;
+    return filteredTransactions.slice(startIndex, endIndex);
+  }, [filteredTransactions, historyCurrentPage, historyPageSize]);
+
+  const historyTotalPages = Math.ceil(filteredTransactions.length / historyPageSize);
+
   // Load transaction history
   const loadTransactionHistory = async () => {
     setTransactionsLoading(true);
@@ -335,6 +426,10 @@ export default function ClubLeaderPointsPage() {
   // Handle opening history modal
   const handleOpenHistoryModal = () => {
     setShowHistoryModal(true);
+    setHistoryTypeFilter('all');
+    setHistoryDateFilter('all');
+    setHistoryTransactionTypeFilter('all');
+    setHistoryCurrentPage(1);
     loadTransactionHistory();
   };
 
@@ -1418,6 +1513,7 @@ export default function ClubLeaderPointsPage() {
       >
         <View className="flex-1 bg-black/50">
           <View className="flex-1 mt-20 bg-white rounded-t-3xl">
+            {/* Header */}
             <View className="p-6 border-b border-gray-200">
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center">
@@ -1430,85 +1526,305 @@ export default function ClubLeaderPointsPage() {
                   <Ionicons name="close-circle" size={28} color="#6B7280" />
                 </TouchableOpacity>
               </View>
-              <Text className="text-gray-600">Club to member transactions</Text>
+              <Text className="text-gray-600 text-sm">All wallet transactions</Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 py-4">
-              {transactionsLoading ? (
-                <View className="items-center py-12">
-                  <ActivityIndicator size="large" color="#3B82F6" />
-                  <Text className="text-gray-600 mt-4">Loading transactions...</Text>
-                </View>
-              ) : transactions.length === 0 ? (
-                <View className="items-center py-12">
-                  <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
-                  <Text className="text-xl font-semibold text-gray-800 mt-4">
-                    No Transactions Yet
-                  </Text>
-                  <Text className="text-gray-600 mt-2">
-                    No club-to-member transactions found.
-                  </Text>
-                </View>
-              ) : (
-                transactions.map((transaction) => (
-                  <View
-                    key={transaction.id}
-                    className="bg-white rounded-2xl p-4 mb-3 border border-gray-200 shadow-sm"
-                  >
-                    <View className="flex-row items-center justify-between mb-2">
-                      <View className="flex-row items-center">
-                        <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
-                          <Ionicons name="arrow-up" size={20} color="#10B981" />
-                        </View>
-                        <View>
-                          <Text className="text-base font-bold text-gray-800">
-                            {transaction.type}
-                          </Text>
-                          <Text className="text-sm text-gray-600">
-                            ID: #{transaction.id}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text className="text-lg font-bold text-green-600">
-                        +{formatNumber(transaction.amount)} pts
-                      </Text>
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+              <View className="px-6 py-4">
+                {/* Filters */}
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold text-gray-700 mb-2">Filters</Text>
+                  <View className="flex-row gap-2 flex-wrap">
+                    {/* Type Filter */}
+                    <View className="flex-1 min-w-[45%]">
+                      <TouchableOpacity
+                        onPress={() => {
+                          const options = ['all', 'incoming', 'outgoing'];
+                          const currentIndex = options.indexOf(historyTypeFilter);
+                          const nextIndex = (currentIndex + 1) % options.length;
+                          setHistoryTypeFilter(options[nextIndex]);
+                          setHistoryCurrentPage(1);
+                        }}
+                        className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200"
+                      >
+                        <Text className="text-xs text-gray-600 mb-1">Direction</Text>
+                        <Text className="text-sm font-medium text-gray-800 capitalize">
+                          {historyTypeFilter === 'all' ? 'All Types' : historyTypeFilter}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
 
-                    <View className="mt-2 space-y-1">
-                      {transaction.senderName && (
-                        <View className="flex-row items-center">
-                          <Text className="text-sm text-gray-600 w-20">From:</Text>
-                          <Text className="text-sm font-medium text-purple-600">
-                            {transaction.senderName}
-                          </Text>
-                        </View>
-                      )}
-                      {transaction.receiverName && (
-                        <View className="flex-row items-center">
-                          <Text className="text-sm text-gray-600 w-20">To:</Text>
-                          <Text className="text-sm font-medium text-blue-600">
-                            {transaction.receiverName}
-                          </Text>
-                        </View>
-                      )}
-                      {transaction.description && (
-                        <View className="flex-row items-start">
-                          <Text className="text-sm text-gray-600 w-20">Note:</Text>
-                          <Text className="text-sm text-gray-700 flex-1">
-                            {transaction.description}
-                          </Text>
-                        </View>
-                      )}
-                      <View className="flex-row items-center">
-                        <Text className="text-sm text-gray-600 w-20">Date:</Text>
-                        <Text className="text-sm text-gray-700">
-                          {formatDate(transaction.createdAt)}
+                    {/* Date Filter */}
+                    <View className="flex-1 min-w-[45%]">
+                      <TouchableOpacity
+                        onPress={() => {
+                          const options = ['all', 'today', 'week', 'month', 'year'];
+                          const currentIndex = options.indexOf(historyDateFilter);
+                          const nextIndex = (currentIndex + 1) % options.length;
+                          setHistoryDateFilter(options[nextIndex]);
+                          setHistoryCurrentPage(1);
+                        }}
+                        className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200"
+                      >
+                        <Text className="text-xs text-gray-600 mb-1">Period</Text>
+                        <Text className="text-sm font-medium text-gray-800 capitalize">
+                          {historyDateFilter === 'all' ? 'All Time' : 
+                           historyDateFilter === 'today' ? 'Today' :
+                           historyDateFilter === 'week' ? 'This Week' :
+                           historyDateFilter === 'month' ? 'This Month' : 'This Year'}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                ))
-              )}
+
+                  {/* Transaction Type Filter - Scrollable horizontal list */}
+                  {uniqueTransactionTypes.length > 0 && (
+                    <View className="mt-2">
+                      <Text className="text-xs text-gray-600 mb-2">Transaction Type</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+                        <TouchableOpacity
+                          onPress={() => {
+                            setHistoryTransactionTypeFilter('all');
+                            setHistoryCurrentPage(1);
+                          }}
+                          className={`px-3 py-2 rounded-lg ${
+                            historyTransactionTypeFilter === 'all'
+                              ? 'bg-blue-600'
+                              : 'bg-gray-100'
+                          }`}
+                        >
+                          <Text className={`text-xs font-medium ${
+                            historyTransactionTypeFilter === 'all' ? 'text-white' : 'text-gray-700'
+                          }`}>
+                            All
+                          </Text>
+                        </TouchableOpacity>
+                        {uniqueTransactionTypes.map((type) => (
+                          <TouchableOpacity
+                            key={type}
+                            onPress={() => {
+                              setHistoryTransactionTypeFilter(type);
+                              setHistoryCurrentPage(1);
+                            }}
+                            className={`px-3 py-2 rounded-lg ${
+                              historyTransactionTypeFilter === type
+                                ? 'bg-blue-600'
+                                : 'bg-gray-100'
+                            }`}
+                          >
+                            <Text className={`text-xs font-medium ${
+                              historyTransactionTypeFilter === type ? 'text-white' : 'text-gray-700'
+                            }`}>
+                              {type.replace(/_/g, ' ')}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  {/* Clear Filters */}
+                  {(historyTypeFilter !== 'all' || historyDateFilter !== 'all' || historyTransactionTypeFilter !== 'all') && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setHistoryTypeFilter('all');
+                        setHistoryDateFilter('all');
+                        setHistoryTransactionTypeFilter('all');
+                        setHistoryCurrentPage(1);
+                      }}
+                      className="mt-2 flex-row items-center justify-center py-2"
+                    >
+                      <Ionicons name="close-circle" size={16} color="#EF4444" />
+                      <Text className="text-red-600 text-sm font-medium ml-1">Clear Filters</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Statistics */}
+                {!transactionsLoading && filteredTransactions.length > 0 && (
+                  <View className="flex-row gap-3 mb-4">
+                    <View className="flex-1 p-3 bg-green-50 rounded-lg border border-green-200">
+                      <Text className="text-xs text-green-600 font-medium mb-1">Total Incoming</Text>
+                      <Text className="text-xl font-bold text-green-700">
+                        +{formatNumber(filteredTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0))} pts
+                      </Text>
+                      <Text className="text-xs text-green-600/70 mt-0.5">
+                        {filteredTransactions.filter(t => t.amount > 0).length} transactions
+                      </Text>
+                    </View>
+                    <View className="flex-1 p-3 bg-red-50 rounded-lg border border-red-200">
+                      <Text className="text-xs text-red-600 font-medium mb-1">Total Outgoing</Text>
+                      <Text className="text-xl font-bold text-red-700">
+                        {formatNumber(filteredTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0))} pts
+                      </Text>
+                      <Text className="text-xs text-red-600/70 mt-0.5">
+                        {filteredTransactions.filter(t => t.amount < 0).length} transactions
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Transaction List */}
+                {transactionsLoading ? (
+                  <View className="items-center py-12">
+                    <ActivityIndicator size="large" color="#3B82F6" />
+                    <Text className="text-gray-600 mt-4">Loading transactions...</Text>
+                  </View>
+                ) : filteredTransactions.length === 0 ? (
+                  <View className="items-center py-12">
+                    <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
+                    <Text className="text-xl font-semibold text-gray-800 mt-4">
+                      {transactions.length === 0 ? 'No Transactions Yet' : 'No Matching Transactions'}
+                    </Text>
+                    <Text className="text-gray-600 mt-2 text-center">
+                      {transactions.length === 0 
+                        ? 'No transactions found.' 
+                        : 'Try adjusting your filters'}
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {paginatedTransactions.map((transaction) => {
+                      const colorStyle = getTransactionTypeBadgeColor(transaction.type);
+                      const isIncoming = transaction.amount > 0;
+                      
+                      return (
+                        <View
+                          key={transaction.id}
+                          className="bg-white rounded-2xl p-4 mb-3 border border-gray-200 shadow-sm"
+                        >
+                          <View className="flex-row items-center justify-between mb-2">
+                            <View className="flex-row items-center flex-1">
+                              <View className={`w-10 h-10 ${isIncoming ? 'bg-green-100' : 'bg-red-100'} rounded-full items-center justify-center mr-3`}>
+                                <Ionicons 
+                                  name={isIncoming ? 'arrow-down' : 'arrow-up'} 
+                                  size={20} 
+                                  color={isIncoming ? '#10B981' : '#EF4444'} 
+                                />
+                              </View>
+                              <View className="flex-1">
+                                <View className={`px-2 py-1 rounded ${colorStyle.bg} self-start mb-1`}>
+                                  <Text className={`text-xs font-medium ${colorStyle.text}`}>
+                                    {transaction.type.replace(/_/g, ' ')}
+                                  </Text>
+                                </View>
+                                <Text className="text-xs text-gray-600">
+                                  ID: #{transaction.id}
+                                </Text>
+                              </View>
+                            </View>
+                            <Text className={`text-lg font-bold ${isIncoming ? 'text-green-600' : 'text-red-600'}`}>
+                              {isIncoming ? '+' : ''}{formatNumber(transaction.amount)} pts
+                            </Text>
+                          </View>
+
+                          <View className="mt-2 space-y-1">
+                            {transaction.senderName && (
+                              <View className="flex-row items-center">
+                                <Text className="text-sm text-gray-600 w-20">From:</Text>
+                                <Text className="text-sm font-medium text-purple-600">
+                                  {transaction.senderName}
+                                </Text>
+                              </View>
+                            )}
+                            {transaction.receiverName && (
+                              <View className="flex-row items-center">
+                                <Text className="text-sm text-gray-600 w-20">To:</Text>
+                                <Text className="text-sm font-medium text-blue-600">
+                                  {transaction.receiverName}
+                                </Text>
+                              </View>
+                            )}
+                            {transaction.description && (
+                              <View className="flex-row items-start">
+                                <Text className="text-sm text-gray-600 w-20">Note:</Text>
+                                <Text className="text-sm text-gray-700 flex-1">
+                                  {transaction.description}
+                                </Text>
+                              </View>
+                            )}
+                            <View className="flex-row items-center">
+                              <Text className="text-sm text-gray-600 w-20">Date:</Text>
+                              <Text className="text-sm text-gray-700">
+                                {formatDate(transaction.createdAt)}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+
+                    {/* Pagination */}
+                    {historyTotalPages > 1 && (
+                      <View className="mt-4 mb-6">
+                        <Text className="text-center text-sm text-gray-600 mb-3">
+                          Showing {((historyCurrentPage - 1) * historyPageSize) + 1} to {Math.min(historyCurrentPage * historyPageSize, filteredTransactions.length)} of {filteredTransactions.length} transactions
+                        </Text>
+                        <View className="flex-row items-center justify-center gap-2">
+                          <TouchableOpacity
+                            onPress={() => setHistoryCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={historyCurrentPage === 1}
+                            className={`px-4 py-2 rounded-lg ${
+                              historyCurrentPage === 1 ? 'bg-gray-200' : 'bg-blue-600'
+                            }`}
+                          >
+                            <Text className={`font-semibold ${
+                              historyCurrentPage === 1 ? 'text-gray-400' : 'text-white'
+                            }`}>
+                              Previous
+                            </Text>
+                          </TouchableOpacity>
+
+                          <View className="flex-row items-center gap-2">
+                            {Array.from({ length: Math.min(5, historyTotalPages) }, (_, i) => {
+                              let pageNum;
+                              if (historyTotalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (historyCurrentPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (historyCurrentPage >= historyTotalPages - 2) {
+                                pageNum = historyTotalPages - 4 + i;
+                              } else {
+                                pageNum = historyCurrentPage - 2 + i;
+                              }
+                              
+                              return (
+                                <TouchableOpacity
+                                  key={pageNum}
+                                  onPress={() => setHistoryCurrentPage(pageNum)}
+                                  className={`w-10 h-10 rounded-lg items-center justify-center ${
+                                    historyCurrentPage === pageNum ? 'bg-blue-600' : 'bg-gray-100'
+                                  }`}
+                                >
+                                  <Text className={`font-semibold ${
+                                    historyCurrentPage === pageNum ? 'text-white' : 'text-gray-700'
+                                  }`}>
+                                    {pageNum}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+
+                          <TouchableOpacity
+                            onPress={() => setHistoryCurrentPage(prev => Math.min(historyTotalPages, prev + 1))}
+                            disabled={historyCurrentPage === historyTotalPages}
+                            className={`px-4 py-2 rounded-lg ${
+                              historyCurrentPage === historyTotalPages ? 'bg-gray-200' : 'bg-blue-600'
+                            }`}
+                          >
+                            <Text className={`font-semibold ${
+                              historyCurrentPage === historyTotalPages ? 'text-gray-400' : 'text-white'
+                            }`}>
+                              Next
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
             </ScrollView>
           </View>
         </View>

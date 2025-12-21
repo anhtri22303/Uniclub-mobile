@@ -794,15 +794,17 @@ export default function EventDetailPage() {
           <View className="px-6 py-4">
             <Text className="text-lg font-semibold text-gray-900 mb-3">Points Information</Text>
             <View className="flex-row gap-3 mb-0">
-              {/* Commit Point Cost */}
-              <View className="flex-1 bg-gray-50 p-4 rounded-lg">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="ticket" size={16} color="#6B7280" />
-                  <Text className="text-xs text-gray-600">Commit Point Cost</Text>
+              {/* Commit Point Cost - Only show for PRIVATE and SPECIAL events */}
+              {(event.type === 'PRIVATE' || event.type === 'SPECIAL') && (
+                <View className="flex-1 bg-gray-50 p-4 rounded-lg">
+                  <View className="flex-row items-center gap-2 mb-2">
+                    <Ionicons name="ticket" size={16} color="#6B7280" />
+                    <Text className="text-xs text-gray-600">Commit Point Cost</Text>
+                  </View>
+                  <Text className="text-2xl font-bold text-gray-800">{event.commitPointCost ?? 0}</Text>
+                  <Text className="text-xs text-gray-500 mt-1">points</Text>
                 </View>
-                <Text className="text-2xl font-bold text-gray-800">{event.commitPointCost ?? 0}</Text>
-                <Text className="text-xs text-gray-500 mt-1">points</Text>
-              </View>
+              )}
               
               {/* Receive Point */}
               <View className="flex-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
@@ -902,8 +904,8 @@ export default function EventDetailPage() {
                   onPress={() => setShowWalletHistoryModal(true)}
                   className="bg-teal-600 px-3 py-1.5 rounded-lg flex-row items-center"
                 >
-                  {/* <Ionicons name="time-outline" size={14} color="white" />
-                  <Text className="text-white text-xs font-semibold ml-1">History</Text> */}
+                  <Ionicons name="time-outline" size={14} color="white" />
+                  <Text className="text-white text-xs font-semibold ml-1">History</Text>
                 </TouchableOpacity>
               </View>
               <Text className="text-green-900 text-xl font-bold">
@@ -912,7 +914,7 @@ export default function EventDetailPage() {
             </View>
 
             {/* Event Summary */}
-            {(event.status === 'APPROVED' || event.status === 'ONGOING' || event.status === 'COMPLETED') && eventSummary && (
+            {(event.status === 'APPROVED' || event.status === 'ONGOING' || event.status === 'COMPLETED') && (
               <View className="flex-row gap-2 mb-4">
                 <View className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <View className="flex-row items-center justify-between mb-1">
@@ -937,17 +939,17 @@ export default function EventDetailPage() {
                     </View>
                   </View>
                   <Text className="text-blue-900 text-xl font-bold">
-                    {summaryLoading 
-                      ? '...' 
-                      : `${eventSummary.registrationsCount} ${event.type === 'PUBLIC' ? 'checked in' : 'registered'}`}
+                    {`${event.currentCheckInCount || 0} ${event.type === 'PUBLIC' ? 'checked in' : 'registered'}`}
                   </Text>
                 </View>
-                <View className="flex-1 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <Text className="text-amber-700 text-xs font-medium mb-1">Refunded</Text>
-                  <Text className="text-amber-900 text-xl font-bold">
-                    {summaryLoading ? '...' : eventSummary.refundedCount || 0}
-                  </Text>
-                </View>
+                {eventSummary && (
+                  <View className="flex-1 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <Text className="text-amber-700 text-xs font-medium mb-1">Refunded</Text>
+                    <Text className="text-amber-900 text-xl font-bold">
+                      {summaryLoading ? '...' : eventSummary.refundedCount || 0}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 

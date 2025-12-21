@@ -1,6 +1,6 @@
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Feedback, FeedbackService } from '@services/feedback.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -13,7 +13,8 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View} from 'react-native';
+  View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -506,13 +507,9 @@ export default function ClubLeaderFeedbacksPage() {
                         >
                           {/* Feedback Header */}
                           <View className="flex-row items-start justify-between mb-3">
-                            <View className="flex-1 mr-2">
-                              <View className="flex-row items-center">
-                                <Ionicons name="person" size={14} color="#6B7280" />
-                                <Text className="text-sm text-gray-600 ml-1 font-medium">
-                                  {feedback.memberName || 'Unknown'}
-                                </Text>
-                              </View>
+                            <View className="flex-1">
+                              {/* Rating Stars */}
+                              {renderStars(feedback.rating, 18)}
                             </View>
                             <View
                               className={`px-3 py-1 rounded-full border ${getRatingColor(
@@ -528,9 +525,6 @@ export default function ClubLeaderFeedbacksPage() {
                               </Text>
                             </View>
                           </View>
-
-                          {/* Rating Stars */}
-                          <View className="mb-3">{renderStars(feedback.rating, 18)}</View>
 
                           {/* Comment */}
                           <View className="bg-gray-50 rounded-lg p-3 mb-3">

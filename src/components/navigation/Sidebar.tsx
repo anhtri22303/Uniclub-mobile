@@ -364,6 +364,11 @@ export default function Sidebar({ role }: SidebarProps) {
       walletsList = [clubWalletEntry, ...walletsList];
     }
 
+    // Filter out USER wallet for club leaders (only show club wallets)
+    if (role === 'club_leader') {
+      walletsList = walletsList.filter(w => w.ownerType !== 'USER');
+    }
+
     // Map data - rename personal wallet to "My Points"
     return walletsList.map((w: any) => ({
       walletId: w.walletId,

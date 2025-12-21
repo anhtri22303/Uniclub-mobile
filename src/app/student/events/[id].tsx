@@ -713,20 +713,22 @@ export default function StudentEventDetailPage() {
             </Text>
 
             <View className="flex-row mb-0 gap-3">
-              {/* Commit Point Cost */}
-              <View className="flex-1 bg-gray-50 p-4 rounded-lg">
-                <View className="flex-row items-center mb-2">
-                  <Ionicons name="ticket" size={16} color="#6B7280" />
-                  <Text className="text-xs text-gray-600 ml-1">Commit Cost</Text>
+              {/* Commit Point Cost - Hidden for PUBLIC events */}
+              {event.type !== 'PUBLIC' && (
+                <View className="flex-1 bg-gray-50 p-4 rounded-lg">
+                  <View className="flex-row items-center mb-2">
+                    <Ionicons name="ticket" size={16} color="#6B7280" />
+                    <Text className="text-xs text-gray-600 ml-1">Commit Cost</Text>
+                  </View>
+                  <Text className="text-xl font-bold text-gray-900">
+                    {event.commitPointCost ?? 0}
+                  </Text>
+                  <Text className="text-xs text-gray-500 mt-1">points</Text>
                 </View>
-                <Text className="text-xl font-bold text-gray-900">
-                  {event.commitPointCost ?? 0}
-                </Text>
-                <Text className="text-xs text-gray-500 mt-1">points</Text>
-              </View>
+              )}
 
               {/* Receive Points */}
-              <View className="flex-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+              <View className={`${event.type === 'PUBLIC' ? 'w-full' : 'flex-1'} bg-emerald-50 p-4 rounded-lg border border-emerald-200`}>
                 <View className="flex-row items-center mb-2">
                   <Ionicons name="gift" size={16} color="#059669" />
                   <Text className="text-xs text-emerald-700 ml-1">Receive Point</Text>

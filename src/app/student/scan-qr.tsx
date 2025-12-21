@@ -23,7 +23,6 @@ export default function ScanQRPage() {
     setScanned(true);
     console.log('QR Code scanned:', data);
 
-    // Check if scanned data contains a token or URL
     try {
       // Case 1: Direct token (just the token string) - legacy format
       if (data && !data.includes('://') && !data.includes('/')) {
@@ -32,107 +31,59 @@ export default function ScanQRPage() {
         return;
       }
 
-      // Case 2: Expo dev URL format (exp://192.168.x.x:8081/--/student/checkin/TIME/TOKEN)
-      if (data.startsWith('exp://')) {
-        console.log('Expo dev URL detected:', data);
+      // Case 2: Check if URL contains "/public/" for public event checkin
+      if (data.includes('/public/')) {
+        console.log('Public event check-in URL detected:', data);
         
-        // Parse the Expo URL manually
-        // Format: exp://192.168.1.50:8081/--/student/checkin/START/token
-        const expUrlMatch = data.match(/exp:\/\/[^\/]+\/--\/(.+)/);
-        if (expUrlMatch) {
-          const pathAfterSeparator = expUrlMatch[1]; // student/checkin/START/token
-          const pathParts = pathAfterSeparator.split('/').filter(Boolean);
-          console.log('Expo URL path parts:', pathParts);
-          
-          // Find checkin in path
-          const checkinIndex = pathParts.findIndex(part => part.toLowerCase() === 'checkin');
-          
-          if (checkinIndex !== -1) {
-            const time = pathParts[checkinIndex + 1];  // START, MID, END
-            const token = pathParts[checkinIndex + 2]; // JWT token
-            
-            if (time && token) {
-              console.log('Expo check-in detected - time:', time, 'token:', token.substring(0, 30) + '...');
-              router.push(`/student/checkin/${time}/${token}` as any);
-              return;
-            }
-          }
-        }
-        
-        // Fallback: try to extract from path without "--"
-        const simpleExpMatch = data.match(/exp:\/\/[^\/]+\/(.+)/);
-        if (simpleExpMatch) {
-          const pathParts = simpleExpMatch[1].split('/').filter(p => p !== '--' && p);
-          console.log('Simple Expo path parts:', pathParts);
-          
-          const checkinIndex = pathParts.findIndex(part => part.toLowerCase() === 'checkin');
-          if (checkinIndex !== -1 && pathParts[checkinIndex + 1] && pathParts[checkinIndex + 2]) {
-            const time = pathParts[checkinIndex + 1];
-            const token = pathParts[checkinIndex + 2];
-            console.log('Fallback Expo check-in - time:', time, 'token:', token.substring(0, 30) + '...');
-            router.push(`/student/checkin/${time}/${token}` as any);
-            return;
-          }
-        }
-      }
-
-      // Case 3: Standard URL format (https://uniclub.id.vn/student/checkin/...)
-      const url = new URL(data);
-      console.log('Parsed URL:', url.href);
-      console.log('URL pathname:', url.pathname);
-      
-      // Handle URL format with "--" separator
-      let pathParts = url.pathname.split('/').filter(Boolean);
-      console.log('Path parts:', pathParts);
-      
-      // Remove "--" if present (Expo deep link format)
-      if (pathParts[0] === '--') {
-        pathParts = pathParts.slice(1);
-      }
-      
-      // Find "checkin" in path
-      const checkinIndex = pathParts.findIndex(part => 
-        part.toLowerCase() === 'checkin'
-      );
-      
-      if (checkinIndex !== -1) {
-        const nextPart = pathParts[checkinIndex + 1];
-        const thirdPart = pathParts[checkinIndex + 2];
-        
-        // Check if it's a public event checkin: /student/checkin/public/CODE
-        if (nextPart && nextPart.toLowerCase() === 'public' && thirdPart) {
-          const checkInCode = thirdPart;
-          console.log('Public event check-in detected, code:', checkInCode);
+        // Extract path after /public/
+        const publicMatch = data.match(/\/public\/([^\/\s?#]+)/);
+        if (publicMatch && publicMatch[1]) {
+          const checkInCode = publicMatch[1];
+          console.log('Public event check-in code:', checkInCode);
           router.push(`/student/checkin/public/${checkInCode}` as any);
           return;
         }
-        
-        // New format: /student/checkin/TIME/TOKEN
-        const time = nextPart;
-        const token = thirdPart;
-        
-        if (time && token) {
-          console.log('Extracted time:', time, 'token:', token.substring(0, 20) + '...');
-          router.push(`/student/checkin/${time}/${token}` as any);
-          return;
-        }
-        
-        // Legacy format: /student/checkin/TOKEN (no time)
-        if (time && !token) {
-          console.log('Legacy format detected, token:', time.substring(0, 20) + '...');
-          router.push(`/student/checkin/NONE/${time}` as any);
-          return;
-        }
       }
 
-      // Check for token in query params (fallback)
-      const tokenParam = url.searchParams.get('token');
-      const phaseParam = url.searchParams.get('phase') || url.searchParams.get('time');
-      if (tokenParam) {
-        const phase = phaseParam || 'NONE';
-        console.log('Token from query param:', tokenParam.substring(0, 20) + '...', 'phase:', phase);
-        router.push(`/student/checkin/${phase}/${tokenParam}` as any);
+      // Case 3: Standard check-in URL (without /public/)
+      // Supports both:
+      // - https://uniclub.id.vn/student/checkin/START/TOKEN
+      // - exp://192.168.x.x:8081/--/student/checkin/START/TOKEN
+      console.log('Standard check-in URL detected:', data);
+      
+      // Extract path parts after "checkin"
+      const checkinMatch = data.match(/\/checkin\/([^\/\s?#]+)\/([^\/\s?#]+)/);
+      if (checkinMatch && checkinMatch[1] && checkinMatch[2]) {
+        const time = checkinMatch[1];   // START, MID, END
+        const token = checkinMatch[2];  // JWT token
+        
+        console.log('Check-in extracted - time:', time, 'token:', token.substring(0, 30) + '...');
+        router.push(`/student/checkin/${time}/${token}` as any);
         return;
+      }
+
+      // Case 4: Legacy format - /checkin/TOKEN (no time)
+      const legacyMatch = data.match(/\/checkin\/([^\/\s?#]+)$/);
+      if (legacyMatch && legacyMatch[1]) {
+        const token = legacyMatch[1];
+        console.log('Legacy format detected, token:', token.substring(0, 20) + '...');
+        router.push(`/student/checkin/NONE/${token}` as any);
+        return;
+      }
+
+      // Case 5: Check for token in query params (fallback)
+      try {
+        const url = new URL(data);
+        const tokenParam = url.searchParams.get('token');
+        const phaseParam = url.searchParams.get('phase') || url.searchParams.get('time');
+        if (tokenParam) {
+          const phase = phaseParam || 'NONE';
+          console.log('Token from query param:', tokenParam.substring(0, 20) + '...', 'phase:', phase);
+          router.push(`/student/checkin/${phase}/${tokenParam}` as any);
+          return;
+        }
+      } catch (urlError) {
+        // Not a valid URL for query params, continue to error
       }
 
       // If we get here, couldn't find token

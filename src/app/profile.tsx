@@ -203,6 +203,11 @@ export default function ProfileScreen() {
           }
         }
         
+        // Filter out USER wallet for club leaders (only show club wallets)
+        if (user?.role === 'club_leader') {
+          walletsList = walletsList.filter(w => w.ownerType !== 'USER');
+        }
+        
         setMemberships(walletsList);
       }
 
@@ -1061,61 +1066,46 @@ export default function ProfileScreen() {
         {/* Wallet Cards - Only for Students and Club Leaders */}
         {!isAdminRole && (
           <View className="mb-6">
-            {memberships.length > 0 ? (
-              memberships.map((membership) => {
-                const pointsStyle = getPointsCardStyle(membership.balancePoints);
-                return (
-                  <TouchableOpacity
-                    key={membership.walletId}
-                    onPress={() => {
-                      if (user?.role === 'club_leader') {
-                        router.push('/club-leader/points' as any);
-                      } else if (user?.role === 'student') {
-                        router.push('/student/history?tab=wallet' as any);
-                      }
-                    }}
-                    className="rounded-3xl p-6 shadow-lg mb-3"
-                    style={{
-                      backgroundColor: pointsStyle.cardBgColors[0],
-                    }}
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-1">
-                        <Text className={`text-sm font-medium ${pointsStyle.textColor}`}>
-                          {membership.clubName}
-                        </Text>
-                        <Text className={`text-3xl font-bold ${pointsStyle.textColor}`}>
-                          {membership.balancePoints.toLocaleString()}
-                        </Text>
-                      </View>
-                      <Animated.View
-                        className={`${pointsStyle.iconBg} p-3 rounded-full`}
-                        style={{
-                          transform: [{ scale: flameAnimation }],
-                          opacity: Animated.add(0.7, Animated.multiply(glowAnimation, 0.3)),
-                        }}
-                      >
-                        <Ionicons name="flame" size={24} color={pointsStyle.iconColor} />
-                      </Animated.View>
+            {/* Show memberships for students or club leaders with member wallets */}
+            {memberships.length > 0 && memberships.map((membership) => {
+              const pointsStyle = getPointsCardStyle(membership.balancePoints);
+              return (
+                <TouchableOpacity
+                  key={membership.walletId}
+                  onPress={() => {
+                    if (user?.role === 'club_leader') {
+                      router.push('/club-leader/points' as any);
+                    } else if (user?.role === 'student') {
+                      router.push('/student/history?tab=wallet' as any);
+                    }
+                  }}
+                  className="rounded-3xl p-6 shadow-lg mb-3"
+                  style={{
+                    backgroundColor: pointsStyle.cardBgColors[0],
+                  }}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className={`text-sm font-medium ${pointsStyle.textColor}`}>
+                        {membership.clubName}
+                      </Text>
+                      <Text className={`text-3xl font-bold ${pointsStyle.textColor}`}>
+                        {membership.balancePoints.toLocaleString()}
+                      </Text>
                     </View>
-                  </TouchableOpacity>
-                );
-              })
-            ) : (
-              <View className="rounded-3xl p-6 shadow-lg bg-gray-100">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-500">
-                      No Club Memberships
-                    </Text>
-                    <Text className="text-3xl font-bold text-gray-800">0</Text>
+                    <Animated.View
+                      className={`${pointsStyle.iconBg} p-3 rounded-full`}
+                      style={{
+                        transform: [{ scale: flameAnimation }],
+                        opacity: Animated.add(0.7, Animated.multiply(glowAnimation, 0.3)),
+                      }}
+                    >
+                      <Ionicons name="flame" size={24} color={pointsStyle.iconColor} />
+                    </Animated.View>
                   </View>
-                  <View className="bg-gray-200 p-3 rounded-full">
-                    <Ionicons name="flame" size={24} color="#6B7280" />
-                  </View>
-                </View>
-              </View>
-            )}
+                </TouchableOpacity>
+              );
+            })}
 
             {/* Club Wallet Card for Club Leaders */}
             {user?.role === 'club_leader' && (
@@ -1154,6 +1144,23 @@ export default function ProfileScreen() {
                   </View>
                 </TouchableOpacity>
               ) : null
+            )}
+
+            {/* Show "No Club Memberships" only for students without any wallet */}
+            {user?.role === 'student' && memberships.length === 0 && (
+              <View className="rounded-3xl p-6 shadow-lg bg-gray-100">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-gray-500">
+                      No Club Memberships
+                    </Text>
+                    <Text className="text-3xl font-bold text-gray-800">0</Text>
+                  </View>
+                  <View className="bg-gray-200 p-3 rounded-full">
+                    <Ionicons name="flame" size={24} color="#6B7280" />
+                  </View>
+                </View>
+              </View>
             )}
           </View>
         )}

@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import {
-    Dimensions,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface Event {
@@ -489,8 +489,8 @@ export default function CalendarModal({
                             </Text>
                           </View>
 
-                          {/* Commit Points */}
-                          {event.commitPointCost !== undefined && event.commitPointCost > 0 && (
+                          {/* Commit Points - Hidden for PUBLIC events */}
+                          {event.type !== 'PUBLIC' && event.commitPointCost !== undefined && event.commitPointCost > 0 && (
                             <View className="bg-amber-50 px-2 py-1 rounded border border-amber-200">
                               <Text className="text-[10px] font-semibold text-amber-700">
                                 {event.commitPointCost} pts
