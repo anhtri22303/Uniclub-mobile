@@ -46,10 +46,42 @@ export interface CreateClubAccountBody {
  * Fetches club applications from the backend.
  * Returns the data array from the API response structure: { success, message, data }
  */
-export async function getClubApplications(): Promise<ClubApplication[]> {
+export async function getClubApplications(params?: {
+  page?: number;
+  size?: number;
+  sort?: string | string[];
+}): Promise<ClubApplication[]> {
   try {
-    const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApplication[] }>("/api/club-applications/all");
-    return response.data.data;
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page !== undefined) {
+      queryParams.append('page', params.page.toString());
+    }
+    
+    if (params?.size !== undefined) {
+      queryParams.append('size', params.size.toString());
+    }
+    
+    if (params?.sort) {
+      const sortArray = Array.isArray(params.sort) ? params.sort : [params.sort];
+      sortArray.forEach(s => queryParams.append('sort', s));
+    }
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `/api/club-applications/all?${queryString}` : '/api/club-applications/all';
+    
+    const response = await axiosClient.get<{ success: boolean; message: string; data: ClubApplication[] | { content: ClubApplication[] } }>(url);
+    
+    // Handle both paginated and non-paginated responses
+    const responseData = response.data.data;
+    if (responseData && typeof responseData === 'object' && 'content' in responseData && Array.isArray(responseData.content)) {
+      return responseData.content;
+    }
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    return [];
   } catch (error) {
     console.error("  Error fetching club applications:", error);
     throw error;

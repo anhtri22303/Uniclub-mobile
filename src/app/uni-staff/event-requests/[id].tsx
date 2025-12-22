@@ -1,18 +1,20 @@
 import ApproveBudgetModal from '@components/ApproveBudgetModal';
 import AttendeeListModal from '@components/AttendeeListModal';
+import EventDateTimeDisplay from '@components/EventDateTimeDisplay';
 import EventWalletHistoryModal from '@components/EventWalletHistoryModal';
 import NavigationBar from '@components/navigation/NavigationBar';
 import Sidebar from '@components/navigation/Sidebar';
 import RegistrationListModal from '@components/RegistrationListModal';
 import { Ionicons } from '@expo/vector-icons';
 import {
-    Event,
-    EventSummary,
-    completeEvent,
-    getEventById,
-    getEventSettle,
-    getEventSummary,
-    rejectEvent
+  Event,
+  EventSummary,
+  cancelEvent,
+  completeEvent,
+  getEventById,
+  getEventSettle,
+  getEventSummary,
+  rejectEvent
 } from '@services/event.service';
 import FeedbackService, { Feedback } from '@services/feedback.service';
 import { useAuthStore } from '@stores/auth.store';
@@ -20,14 +22,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -57,6 +59,9 @@ export default function UniStaffEventDetailPage() {
   const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   // Feedback states
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
@@ -157,6 +162,38 @@ export default function UniStaffEventDetailPage() {
       );
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleCancelEvent = () => {
+    if (!event) return;
+    // Show modal to get cancel reason
+    setCancelReason('');
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!event || !cancelReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for cancellation');
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      await cancelEvent(event.id, cancelReason);
+      // Refresh event data
+      const updatedData = await getEventById(eventId);
+      setEvent(updatedData);
+      Alert.alert('Success', `Event ${event.name} has been cancelled`);
+      setShowCancelModal(false);
+    } catch (err: any) {
+      console.error('Cancel event failed', err);
+      Alert.alert(
+        'Error',
+        err?.response?.data?.message || err?.message || 'Failed to cancel event'
+      );
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -338,27 +375,10 @@ export default function UniStaffEventDetailPage() {
               <Text className="text-sm text-gray-700">{event.description}</Text>
             </View>
 
-            <View className="flex-row gap-2">
-              <View className="flex-1">
-                <Text className="text-xs font-medium text-gray-500 mb-1">Date</Text>
-                <View className="flex-row items-center">
-                  <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-                  <Text className="text-sm text-gray-700 ml-1">
-                    {event.date ? new Date(event.date).toLocaleDateString() : 'N/A'}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-1">
-                <Text className="text-xs font-medium text-gray-500 mb-1">Time</Text>
-                <View className="flex-row items-center">
-                  <Ionicons name="time-outline" size={14} color="#6B7280" />
-                  <Text className="text-sm text-gray-700 ml-1">
-                    {event.startTime && event.endTime
-                      ? `${event.startTime} - ${event.endTime}`
-                      : 'N/A'}
-                  </Text>
-                </View>
-              </View>
+            {/* Date/Time using EventDateTimeDisplay component */}
+            <View>
+              <Text className="text-xs font-medium text-gray-500 mb-2">Schedule</Text>
+              <EventDateTimeDisplay event={event as any} variant="detailed" />
             </View>
 
             <View>
@@ -416,11 +436,15 @@ export default function UniStaffEventDetailPage() {
               <View className="flex-1 bg-gray-50 rounded-xl p-3">
                 <Text className="text-xs text-gray-600 mb-1">Current Check-ins</Text>
                 <Text className="text-xl font-bold text-gray-800">
-                  {summaryLoading
-                    ? 'Loading...'
-                    : eventSummary
-                    ? `${eventSummary.registrationsCount}/${event.maxCheckInCount}`
-                    : `${event.currentCheckInCount}/${event.maxCheckInCount}`}
+                  {event.status === 'APPROVED' ||
+                  event.status === 'ONGOING' ||
+                  event.status === 'COMPLETED'
+                    ? summaryLoading
+                      ? 'Loading...'
+                      : eventSummary
+                      ? `${Math.max(eventSummary.registrationsCount || 0, event.currentCheckInCount || 0)} / ${event.maxCheckInCount}`
+                      : `${event.currentCheckInCount || 0} / ${event.maxCheckInCount}`
+                    : `${event.currentCheckInCount || 0} / ${event.maxCheckInCount}`}
                 </Text>
               </View>
             </View>
@@ -467,13 +491,15 @@ export default function UniStaffEventDetailPage() {
                       </View>
                     </View>
                     <Text className="text-lg font-bold text-blue-900">
-                      {summaryLoading ? 'Loading...' : `${eventSummary.registrationsCount} ${event.type === 'PUBLIC' ? 'checked in' : 'registered'}`}
+                      {summaryLoading
+                        ? 'Loading...'
+                        : `${eventSummary.registrationsCount || 0} ${event.type === 'PUBLIC' ? 'checked in' : 'registered'}`}
                     </Text>
                   </View>
                   <View className="bg-amber-50 rounded-xl p-3 border border-amber-200">
                     <Text className="text-xs font-medium text-amber-700 mb-1">Refunded</Text>
                     <Text className="text-lg font-bold text-amber-900">
-                      {summaryLoading ? 'Loading...' : `${eventSummary.refundedCount} refunds`}
+                      {summaryLoading ? 'Loading...' : `${eventSummary.refundedCount || 0} refunds`}
                     </Text>
                   </View>
                 </View>
@@ -578,6 +604,23 @@ export default function UniStaffEventDetailPage() {
 
         {/* Action Buttons */}
         <View className="mb-8 gap-3">
+          {effectiveStatus === 'APPROVED' && (
+            <TouchableOpacity
+              onPress={handleCancelEvent}
+              disabled={cancelling}
+              className="bg-red-600 py-3 rounded-xl flex-row items-center justify-center"
+            >
+              {cancelling ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Ionicons name="close-circle" size={20} color="white" />
+                  <Text className="text-white font-semibold ml-2">Cancel Event</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
           {effectiveStatus === 'COMPLETED' && (
             <TouchableOpacity
               onPress={handleSettle}
@@ -703,6 +746,52 @@ export default function UniStaffEventDetailPage() {
                   <>
                     <Ionicons name="close-circle" size={16} color="white" />
                     <Text className="text-white font-semibold ml-1">Confirm Reject</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Cancel Event Modal */}
+      {showCancelModal && (
+        <View className="absolute inset-0 bg-black/50 justify-center items-center p-6">
+          <View className="bg-white rounded-2xl w-full max-w-md p-6">
+            <Text className="text-xl font-bold text-gray-800 mb-2">Cancel Event</Text>
+            <Text className="text-sm text-gray-600 mb-4">
+              Please provide a reason for cancelling this event. This action cannot be undone.
+            </Text>
+            <TextInput
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              placeholder="Type your reason here..."
+              multiline
+              numberOfLines={4}
+              className="border border-gray-300 rounded-xl p-3 mb-4 text-gray-800"
+              style={{ minHeight: 100, textAlignVertical: 'top' }}
+            />
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setShowCancelModal(false)}
+                disabled={cancelling}
+                className="flex-1 bg-gray-200 py-3 rounded-xl items-center"
+              >
+                <Text className="text-gray-700 font-semibold">Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmCancel}
+                disabled={cancelling || !cancelReason.trim()}
+                className={`flex-1 py-3 rounded-xl items-center flex-row justify-center ${
+                  cancelling || !cancelReason.trim() ? 'bg-gray-300' : 'bg-red-600'
+                }`}
+              >
+                {cancelling ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Ionicons name="close-circle" size={16} color="white" />
+                    <Text className="text-white font-semibold ml-1">Confirm Cancel</Text>
                   </>
                 )}
               </TouchableOpacity>

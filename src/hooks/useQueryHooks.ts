@@ -205,7 +205,7 @@ export function useEvents() {
   return useQuery({
     queryKey: queryKeys.eventsList(),
     queryFn: async () => {
-      const events = await fetchEvent();
+      const events = await fetchEvent({ size: 200 });
       return events;
     },
     staleTime: 3 * 60 * 1000, // 3 minutes - events change more frequently
@@ -658,7 +658,7 @@ export function useClubApplications() {
   return useQuery({
     queryKey: queryKeys.clubApplicationsList(),
     queryFn: async () => {
-      const applications = await getClubApplications();
+      const applications = await getClubApplications({ size: 200 });
       return applications;
     },
     staleTime: 3 * 60 * 1000, // 3 minutes - applications may change frequently

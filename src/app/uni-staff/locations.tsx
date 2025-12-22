@@ -1,23 +1,24 @@
+import LocationEventsCalendarModal from '@components/LocationEventsCalendarModal';
 import Sidebar from '@components/navigation/Sidebar';
 import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import LocationService, {
-    CreateLocationRequest,
-    Location,
-    UpdateLocationRequest,
+  CreateLocationRequest,
+  Location,
+  UpdateLocationRequest,
 } from '@services/location.service';
 import { Stack } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 type SortField = 'name' | 'capacity' | 'id';
@@ -46,6 +47,10 @@ export default function UniStaffLocationsPage() {
     address: '',
     capacity: 0,
   });
+
+  // Calendar modal state
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [selectedLocationForCalendar, setSelectedLocationForCalendar] = useState<Location | null>(null);
 
   // Fetch locations
   useEffect(() => {
@@ -410,14 +415,19 @@ export default function UniStaffLocationsPage() {
               filteredLocations.map((location) => {
                 const badge = getCapacityBadge(location.capacity);
                 return (
-                  <TouchableOpacity
+                  <View
                     key={location.id}
-                    onPress={() => handleEditClick(location)}
                     className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
                   >
                     {/* Header */}
                     <View className="flex-row items-start justify-between mb-3">
-                      <View className="flex-1 mr-2">
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSelectedLocationForCalendar(location);
+                          setCalendarModalOpen(true);
+                        }}
+                        className="flex-1 mr-2"
+                      >
                         <View className="flex-row items-center mb-1">
                           <Text
                             className="text-base font-bold text-gray-900 flex-1"
@@ -444,15 +454,26 @@ export default function UniStaffLocationsPage() {
                             </Text>
                           </View>
                         </View>
-                      </View>
-
-                      {/* Delete Button */}
-                      <TouchableOpacity
-                        onPress={() => handleDeleteLocation(location)}
-                        className="bg-red-50 p-2 rounded-lg"
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
                       </TouchableOpacity>
+
+                      {/* Action Buttons */}
+                      <View className="flex-row gap-2">
+                        {/* Edit Button */}
+                        <TouchableOpacity
+                          onPress={() => handleEditClick(location)}
+                          className="bg-blue-50 p-2 rounded-lg"
+                        >
+                          <Ionicons name="pencil-outline" size={18} color="#3B82F6" />
+                        </TouchableOpacity>
+
+                        {/* Delete Button */}
+                        <TouchableOpacity
+                          onPress={() => handleDeleteLocation(location)}
+                          className="bg-red-50 p-2 rounded-lg"
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     {/* Address */}
@@ -483,7 +504,7 @@ export default function UniStaffLocationsPage() {
                         {location.capacity}
                       </Text>
                     </View>
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
 
@@ -664,6 +685,16 @@ export default function UniStaffLocationsPage() {
             </View>
           </View>
         </Modal>
+
+        {/* Location Events Calendar Modal */}
+        <LocationEventsCalendarModal
+          location={selectedLocationForCalendar}
+          isOpen={calendarModalOpen}
+          onClose={() => {
+            setCalendarModalOpen(false);
+            setSelectedLocationForCalendar(null);
+          }}
+        />
       </View>
     </>
   );

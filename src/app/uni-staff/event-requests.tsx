@@ -1,6 +1,7 @@
+import EventDateTimeDisplay from '@components/EventDateTimeDisplay';
 import NavigationBar from '@components/navigation/NavigationBar';
-import { AppTextInput } from '@components/ui';
 import Sidebar from '@components/navigation/Sidebar';
+import { AppTextInput } from '@components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Club,
@@ -9,8 +10,10 @@ import {
   fetchEvent,
   fetchLocation,
   getEventSettle,
+  isEventExpired as isEventExpiredUtil,
   Location,
-  putEventStatus
+  putEventStatus,
+  rejectEvent
 } from '@services/event.service';
 import { useAuthStore } from '@stores/auth.store';
 import { useRouter } from 'expo-router';
@@ -42,6 +45,39 @@ export default function UniStaffEventRequestsPage() {
   const [activeTab, setActiveTab] = useState<string>("pending");
   const [settledEventIds, setSettledEventIds] = useState<Set<number>>(new Set());
 
+  // Helper functions to safely get event date
+  const getEventDate = (event: Event): Date | null => {
+    // Multi-day event: use startDate or first day's date
+    if (event.days && event.days.length > 0) {
+      return event.days[0].date ? new Date(event.days[0].date) : null;
+    }
+    // Single-day event: use date field
+    if (event.date) {
+      return new Date(event.date);
+    }
+    return null;
+  };
+
+  const getEventDateString = (event: Event): string => {
+    const date = getEventDate(event);
+    return date ? date.toISOString().split('T')[0] : '';
+  };
+
+  // Helper function to check if event has valid date/time
+  const hasValidDateTime = (event: Event): boolean => {
+    // Check if event has multi-day format (days array)
+    const isMultiDay = !!(event.days && event.days.length > 0);
+
+    // Check if event has single-day format (date and endTime)
+    const isSingleDay = !!(event.date || event.endTime);
+
+    // Event must have either multi-day or single-day date/time
+    return isMultiDay || isSingleDay;
+  };
+
+  // Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
+  const isEventExpired = isEventExpiredUtil;
+
   const getLocationById = (id: string | number | undefined) => {
     if (id === undefined || id === null) return null;
     return locations.find((l) => String(l.id) === String(id)) ?? null;
@@ -56,7 +92,7 @@ export default function UniStaffEventRequestsPage() {
   const fetchData = async () => {
     try {
       const [eventsRes, locationsRes, clubsRes, settledEventsRes] = await Promise.all([
-        fetchEvent(),
+        fetchEvent({ size: 200 }),
         fetchLocation(),
         fetchClub(),
         getEventSettle().catch(err => {
@@ -80,6 +116,15 @@ export default function UniStaffEventRequestsPage() {
         Array.isArray(settledEventsRes)
           ? settledEventsRes.map((e: any) => e.id)
           : []
+      );
+      
+      console.log('=== EVENT REQUESTS DEBUG ===');
+      console.log('Total events fetched:', eventsContent.length);
+      console.log('Events by status:', 
+        eventsContent.reduce((acc: any, e: Event) => {
+          acc[e.status] = (acc[e.status] || 0) + 1;
+          return acc;
+        }, {})
       );
       
       setEvents(eventsContent);
@@ -111,8 +156,8 @@ export default function UniStaffEventRequestsPage() {
   };
 
   // Filter events based on tabs and search
-  const getFilteredRequests = (tabType: "pending" | "processed" | "completed") => {
-    return events.filter((evt) => {
+  const getFilteredRequests = (tabType: "pending" | "processed" | "completed" | "ongoing") => {
+    const filtered = events.filter((evt) => {
       const q = searchTerm.trim().toLowerCase();
       const matchSearch =
         q === "" ||
@@ -121,52 +166,52 @@ export default function UniStaffEventRequestsPage() {
 
       const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter;
 
-      // Check if event is expired (using endTime and Vietnam timezone)
-      const isExpired = (() => {
-        if (!evt.date) return false;
-        try {
-          const now = new Date();
-          if (evt.endTime) {
-            // Parse endTime with Vietnam timezone
-            const endTimeStr = typeof evt.endTime === 'string' ? evt.endTime : String(evt.endTime);
-            const timeParts = endTimeStr.split(':');
-            const hours = parseInt(timeParts[0] || '0', 10);
-            const minutes = parseInt(timeParts[1] || '0', 10);
-            const eventEndDateTimeStr = `${evt.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
-            const eventEndDateTime = new Date(eventEndDateTimeStr);
-            return now > eventEndDateTime;
-          } else {
-            // If no endTime, check end of day Vietnam time
-            const eventEndDateTimeStr = `${evt.date}T23:59:59+07:00`;
-            const eventEndDateTime = new Date(eventEndDateTimeStr);
-            return now > eventEndDateTime;
-          }
-        } catch (error) {
-          console.error('Error checking event expiration:', error);
-          return false;
-        }
-      })();
+      // Filter out events without valid date/time (draft events)
+      if (!hasValidDateTime(evt)) {
+        return false;
+      }
 
       let matchStatus = false;
       if (tabType === "pending") {
-        // Only show non-expired events with PENDING_UNISTAFF or PENDING_COCLUB based on filter
-        matchStatus = !isExpired && (evt.status ?? "").toUpperCase() === pendingFilter;
+        // Show all pending events (expired or not) so staff can review them
+        // PENDING_UNISTAFF and PENDING_COCLUB events should be visible regardless of expiration
+        matchStatus = (evt.status ?? "").toUpperCase() === pendingFilter;
       } else if (tabType === "completed") {
         // Show all COMPLETED events regardless of expiration
         matchStatus = (evt.status ?? "").toUpperCase() === "COMPLETED";
+      } else if (tabType === "ongoing") {
+        // Show all ONGOING events
+        matchStatus = (evt.status ?? "").toUpperCase() === "ONGOING";
       } else {
-        // Processed tab: APPROVED or REJECTED
+        // Processed tab: APPROVED, REJECTED, or CANCELLED
         matchStatus = (evt.status ?? "").toUpperCase() === "APPROVED" || 
-                      (evt.status ?? "").toUpperCase() === "REJECTED";
+                      (evt.status ?? "").toUpperCase() === "REJECTED" ||
+                      (evt.status ?? "").toUpperCase() === "CANCELLED";
       }
 
       return matchSearch && matchStatus && matchType;
     });
+
+    // Sort by date (newest first)
+    const sorted = filtered.sort((a, b) => {
+      const dateA = getEventDate(a);
+      const dateB = getEventDate(b);
+      
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      
+      return dateB.getTime() - dateA.getTime(); // Newest first
+    });
+
+    console.log(`Filtered ${tabType}:`, sorted.length, 'events');
+    return sorted;
   };
 
   const pendingRequests = getFilteredRequests("pending");
   const processedRequests = getFilteredRequests("processed");
   const completedRequests = getFilteredRequests("completed");
+  const ongoingRequests = getFilteredRequests("ongoing");
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -187,6 +232,12 @@ export default function UniStaffEventRequestsPage() {
         return (
           <View className="bg-green-100 px-2 py-1 rounded-full">
             <Text className="text-green-700 text-xs font-medium">Approved</Text>
+          </View>
+        );
+      case "ONGOING":
+        return (
+          <View className="bg-purple-100 px-2 py-1 rounded-full">
+            <Text className="text-purple-700 text-xs font-medium">Ongoing</Text>
           </View>
         );
       case "COMPLETED":
@@ -210,59 +261,29 @@ export default function UniStaffEventRequestsPage() {
     }
   };
 
-  // Compute counts by status
+  // Compute counts by status from ALL events
   const totalCount = events.length;
-  const pendingUnistaffCount = events.filter((e) => {
-    const isExpired = (() => {
-      if (!e.date) return false;
-      try {
-        const now = new Date();
-        if (e.endTime) {
-          const endTimeStr = typeof e.endTime === 'string' ? e.endTime : String(e.endTime);
-          const timeParts = endTimeStr.split(':');
-          const hours = parseInt(timeParts[0] || '0', 10);
-          const minutes = parseInt(timeParts[1] || '0', 10);
-          const eventEndDateTimeStr = `${e.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
-          const eventEndDateTime = new Date(eventEndDateTimeStr);
-          return now > eventEndDateTime;
-        } else {
-          const eventEndDateTimeStr = `${e.date}T23:59:59+07:00`;
-          const eventEndDateTime = new Date(eventEndDateTimeStr);
-          return now > eventEndDateTime;
-        }
-      } catch (error) {
-        return false;
-      }
-    })();
-    return !isExpired && (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF";
-  }).length;
-  const pendingCoclubCount = events.filter((e) => {
-    const isExpired = (() => {
-      if (!e.date) return false;
-      try {
-        const now = new Date();
-        if (e.endTime) {
-          const endTimeStr = typeof e.endTime === 'string' ? e.endTime : String(e.endTime);
-          const timeParts = endTimeStr.split(':');
-          const hours = parseInt(timeParts[0] || '0', 10);
-          const minutes = parseInt(timeParts[1] || '0', 10);
-          const eventEndDateTimeStr = `${e.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
-          const eventEndDateTime = new Date(eventEndDateTimeStr);
-          return now > eventEndDateTime;
-        } else {
-          const eventEndDateTimeStr = `${e.date}T23:59:59+07:00`;
-          const eventEndDateTime = new Date(eventEndDateTimeStr);
-          return now > eventEndDateTime;
-        }
-      } catch (error) {
-        return false;
-      }
-    })();
-    return !isExpired && (e.status ?? "").toUpperCase() === "PENDING_COCLUB";
-  }).length;
-  const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length;
-  const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length;
-  const completedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "COMPLETED").length;
+  const pendingUnistaffCount = events.filter((e) => 
+    (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF"
+  ).length;
+  const pendingCoclubCount = events.filter((e) => 
+    (e.status ?? "").toUpperCase() === "PENDING_COCLUB"
+  ).length;
+  const approvedCount = events.filter((e) => 
+    (e.status ?? "").toUpperCase() === "APPROVED"
+  ).length;
+  const rejectedCount = events.filter((e) => 
+    (e.status ?? "").toUpperCase() === "REJECTED"
+  ).length;
+  const cancelledCount = events.filter((e) => 
+    (e.status ?? "").toUpperCase() === "CANCELLED"
+  ).length;
+  const completedCount = events.filter((e) => 
+    (e.status ?? "").toUpperCase() === "COMPLETED"
+  ).length;
+  const ongoingCount = events.filter((e) => 
+    (e.status ?? "").toUpperCase() === "ONGOING"
+  ).length;
 
   const handleApproveEvent = async (eventId: string | number) => {
     if (processingId) return;
@@ -308,8 +329,6 @@ export default function UniStaffEventRequestsPage() {
             
             setProcessingId(eventId);
             try {
-              // Import rejectEvent from event.service
-              const { rejectEvent } = await import('@services/event.service');
               await rejectEvent(eventId, reason);
               await fetchData();
               Alert.alert('Success', 'Event rejected successfully');
@@ -327,7 +346,11 @@ export default function UniStaffEventRequestsPage() {
   };
 
   const renderEventItem = ({ item: request }: { item: Event }) => (
-    <View className="bg-white rounded-2xl p-4 shadow-lg mb-4">
+    <TouchableOpacity 
+      onPress={() => router.push(`/uni-staff/event-requests/${request.id}` as any)}
+      className="bg-white rounded-2xl p-4 shadow-lg mb-4"
+      activeOpacity={0.7}
+    >
       {/* Header with title and badges */}
       <View className="mb-3">
         <View className="flex-row items-center mb-2">
@@ -364,56 +387,38 @@ export default function UniStaffEventRequestsPage() {
 
       {/* Event details in grid layout - 2 columns */}
       <View className="space-y-2 mb-4">
-        {/* Row 1: Date and Location */}
+        {/* Row 1: Date/Time (full width for multi-day support) */}
+        <View className="bg-gray-50 rounded-lg p-2">
+          <EventDateTimeDisplay event={request as any} variant="compact" />
+        </View>
+
+        {/* Row 2: Location and Capacity */}
         <View className="flex-row gap-2">
           <View className="flex-1 bg-gray-50 rounded-lg p-2">
             <View className="flex-row items-center">
-              <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-              <Text className="text-xs text-gray-600 ml-1" numberOfLines={1}>
-                {request.date ? new Date(request.date).toLocaleDateString() : (request as any).eventDate}
+              <Ionicons name="location-outline" size={14} color="#6B7280" />
+              <Text className="text-xs text-gray-600 ml-1 flex-1" numberOfLines={1}>
+                {request.locationName || '-'}
               </Text>
             </View>
           </View>
           <View className="flex-1 bg-gray-50 rounded-lg p-2">
             <View className="flex-row items-center">
-              <Ionicons name="location-outline" size={14} color="#6B7280" />
-              <Text className="text-xs text-gray-600 ml-1 flex-1" numberOfLines={1}>
-                {(() => {
-                  const loc = locations.find((l) => String(l.id) === String(request.locationId));
-                  if (loc && loc.name) return loc.name;
-                  if ((request as any).venue) return (request as any).venue;
-                  return `Loc #${request.locationId ?? "N/A"}`;
-                })()}
+              <Ionicons name="people-outline" size={14} color="#6B7280" />
+              <Text className="text-xs text-gray-600 ml-1" numberOfLines={1}>
+                {typeof request.maxCheckInCount === 'number' ? `${request.maxCheckInCount} max` : '-'}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Row 2: Capacity and Club */}
+        {/* Row 3: Club */}
         <View className="flex-row gap-2">
-          <View className="flex-1 bg-gray-50 rounded-lg p-2">
-            <View className="flex-row items-center">
-              <Ionicons name="people-outline" size={14} color="#6B7280" />
-              <Text className="text-xs text-gray-600 ml-1" numberOfLines={1}>
-                {(() => {
-                  const cap = getLocationCapacity(request.locationId);
-                  if (cap !== null && cap !== undefined) return `${cap}`;
-                  if ((request as any).expectedAttendees) return `${(request as any).expectedAttendees}`;
-                  return "-";
-                })()}
-              </Text>
-            </View>
-          </View>
           <View className="flex-1 bg-gray-50 rounded-lg p-2">
             <View className="flex-row items-center">
               <Ionicons name="business-outline" size={14} color="#6B7280" />
               <Text className="text-xs text-gray-600 ml-1 flex-1" numberOfLines={1}>
-                {(() => {
-                  const club = clubs.find((c) => String(c.id) === String(request.clubId));
-                  if (club && club.name) return club.name;
-                  if ((request as any).requestedBy) return (request as any).requestedBy;
-                  return `Club #${request.clubId || "?"}`;
-                })()}
+                {request.hostClub?.name || request.clubName || '-'}
               </Text>
             </View>
           </View>
@@ -445,7 +450,7 @@ export default function UniStaffEventRequestsPage() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -488,12 +493,51 @@ export default function UniStaffEventRequestsPage() {
 
           <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
             <View className="flex-row items-center">
+              <View className="bg-purple-500 p-2 rounded-lg mr-2">
+                <Ionicons name="play-circle" size={18} color="white" />
+              </View>
+              <View>
+                <Text className="text-lg font-bold text-purple-900">{ongoingCount}</Text>
+                <Text className="text-xs text-purple-600">Ongoing</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Second row of stats */}
+        <View className="flex-row gap-2 mb-4">
+          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
+            <View className="flex-row items-center">
               <View className="bg-blue-500 p-2 rounded-lg mr-2">
                 <Ionicons name="checkmark-done" size={18} color="white" />
               </View>
               <View>
                 <Text className="text-lg font-bold text-blue-900">{completedCount}</Text>
                 <Text className="text-xs text-blue-600">Completed</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
+            <View className="flex-row items-center">
+              <View className="bg-red-500 p-2 rounded-lg mr-2">
+                <Ionicons name="close-circle" size={18} color="white" />
+              </View>
+              <View>
+                <Text className="text-lg font-bold text-red-900">{rejectedCount}</Text>
+                <Text className="text-xs text-red-600">Rejected</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
+            <View className="flex-row items-center">
+              <View className="bg-gray-500 p-2 rounded-lg mr-2">
+                <Ionicons name="ban" size={18} color="white" />
+              </View>
+              <View>
+                <Text className="text-lg font-bold text-gray-900">{cancelledCount}</Text>
+                <Text className="text-xs text-gray-600">Cancelled</Text>
               </View>
             </View>
           </View>
@@ -572,42 +616,65 @@ export default function UniStaffEventRequestsPage() {
 
         {/* Tabs */}
         <View className="bg-white rounded-xl p-2 shadow-sm mb-4">
-          <View className="flex-row">
+          <View className="flex-row flex-wrap gap-2">
             <TouchableOpacity
               onPress={() => setActiveTab("pending")}
-              className={`flex-1 py-2 px-3 rounded-lg ${
+              className={`flex-1 py-2 px-2 rounded-lg ${
                 activeTab === "pending" ? "bg-emerald-500" : "bg-transparent"
               }`}
+              style={{ minWidth: '22%' }}
             >
               <View className="flex-row items-center justify-center">
                 <Ionicons 
                   name="time" 
-                  size={16} 
+                  size={14} 
                   color={activeTab === "pending" ? "white" : "#6B7280"} 
                 />
-                <Text className={`ml-2 font-medium text-xs ${
+                <Text className={`ml-1 font-medium text-xs ${
                   activeTab === "pending" ? "text-white" : "text-gray-600"
-                }`}>
+                }`} numberOfLines={1}>
                   Pending ({pendingRequests.length})
                 </Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
+              onPress={() => setActiveTab("ongoing")}
+              className={`flex-1 py-2 px-2 rounded-lg ${
+                activeTab === "ongoing" ? "bg-emerald-500" : "bg-transparent"
+              }`}
+              style={{ minWidth: '22%' }}
+            >
+              <View className="flex-row items-center justify-center">
+                <Ionicons 
+                  name="play-circle" 
+                  size={14} 
+                  color={activeTab === "ongoing" ? "white" : "#6B7280"} 
+                />
+                <Text className={`ml-1 font-medium text-xs ${
+                  activeTab === "ongoing" ? "text-white" : "text-gray-600"
+                }`} numberOfLines={1}>
+                  Ongoing ({ongoingRequests.length})
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => setActiveTab("completed")}
-              className={`flex-1 py-2 px-3 rounded-lg ${
+              className={`flex-1 py-2 px-2 rounded-lg ${
                 activeTab === "completed" ? "bg-emerald-500" : "bg-transparent"
               }`}
+              style={{ minWidth: '22%' }}
             >
               <View className="flex-row items-center justify-center">
                 <Ionicons 
                   name="checkmark-done" 
-                  size={16} 
+                  size={14} 
                   color={activeTab === "completed" ? "white" : "#6B7280"} 
                 />
-                <Text className={`ml-2 font-medium text-xs ${
+                <Text className={`ml-1 font-medium text-xs ${
                   activeTab === "completed" ? "text-white" : "text-gray-600"
-                }`}>
+                }`} numberOfLines={1}>
                   Completed ({completedRequests.length})
                 </Text>
               </View>
@@ -615,19 +682,20 @@ export default function UniStaffEventRequestsPage() {
 
             <TouchableOpacity
               onPress={() => setActiveTab("processed")}
-              className={`flex-1 py-2 px-3 rounded-lg ${
+              className={`flex-1 py-2 px-2 rounded-lg ${
                 activeTab === "processed" ? "bg-emerald-500" : "bg-transparent"
               }`}
+              style={{ minWidth: '22%' }}
             >
               <View className="flex-row items-center justify-center">
                 <Ionicons 
                   name="list" 
-                  size={16} 
+                  size={14} 
                   color={activeTab === "processed" ? "white" : "#6B7280"} 
                 />
-                <Text className={`ml-2 font-medium text-xs ${
+                <Text className={`ml-1 font-medium text-xs ${
                   activeTab === "processed" ? "text-white" : "text-gray-600"
-                }`}>
+                }`} numberOfLines={1}>
                   Other ({processedRequests.length})
                 </Text>
               </View>
@@ -640,6 +708,8 @@ export default function UniStaffEventRequestsPage() {
           data={
             activeTab === "pending" 
               ? pendingRequests 
+              : activeTab === "ongoing"
+              ? ongoingRequests
               : activeTab === "completed" 
               ? completedRequests 
               : processedRequests

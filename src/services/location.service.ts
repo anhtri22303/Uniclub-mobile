@@ -38,6 +38,56 @@ export interface ApiSuccessResponse<T> {
 }
 
 /**
+ * Event day information
+ */
+export interface EventDay {
+  id: number;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+}
+
+/**
+ * Event club information (host or co-host)
+ */
+export interface EventClub {
+  id: number;
+  name: string;
+  coHostStatus: "APPROVED" | "REJECTED" | "PENDING";
+}
+
+/**
+ * Location event details
+ */
+export interface LocationEvent {
+  id: number;
+  name: string;
+  description: string;
+  type: "PUBLIC" | "PRIVATE" | "SPECIAL";
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  days: EventDay[];
+  status: "COMPLETED" | "ONGOING" | "UPCOMING" | "CANCELLED";
+  checkInCode: string;
+  budgetPoints: number;
+  locationName: string;
+  maxCheckInCount: number;
+  currentCheckInCount: number;
+  commitPointCost: number;
+  hostClub: EventClub;
+  coHostedClubs: EventClub[];
+}
+
+/**
+ * Location events API response
+ */
+export interface LocationEventsResponse {
+  success: boolean;
+  message: string;
+  data: LocationEvent[];
+}
+
+/**
  * Pageable interface for pagination
  */
 export interface Pageable {
@@ -169,6 +219,22 @@ export class LocationService {
       await axiosClient.delete(`/api/locations/${locationId}`);
     } catch (error) {
       console.error('Error deleting location:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get events by location ID
+   * GET /api/events/by-location/{locationId}
+   */
+  static async getLocationEvents(locationId: number | string): Promise<LocationEvent[]> {
+    try {
+      const response = await axiosClient.get<LocationEventsResponse>(
+        `/api/events/by-location/${locationId}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching events for location ${locationId}:`, error);
       throw error;
     }
   }

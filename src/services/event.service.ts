@@ -270,18 +270,81 @@ export interface Club {
   name: string;
 }
 
+// Pagination response interface
+export interface PaginatedResponse<T> {
+  content: T[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      sorted: boolean;
+      empty: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    empty: boolean;
+    unsorted: boolean;
+  };
+  numberOfElements: number;
+  empty: boolean;
+}
+
 /**
- * Fetch all events from the backend.
+ * Fetch all events from the backend with optional pagination parameters.
  */
-export const fetchEvent = async (): Promise<Event[]> => {
+/**
+ * Fetch all events from the backend with optional pagination parameters.
+ */
+export const fetchEvent = async (params?: {
+  page?: number;
+  size?: number;
+  sort?: string | string[];
+}): Promise<Event[]> => {
   try {
-    const response = await axiosClient.get("api/events");
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page !== undefined) {
+      queryParams.append('page', params.page.toString());
+    }
+    
+    if (params?.size !== undefined) {
+      queryParams.append('size', params.size.toString());
+    }
+    
+    if (params?.sort) {
+      const sortArray = Array.isArray(params.sort) ? params.sort : [params.sort];
+      sortArray.forEach(s => queryParams.append('sort', s));
+    }
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `api/events?${queryString}` : 'api/events';
+    
+    const response = await axiosClient.get(url);
     const data: any = response.data;
     
-    // Handle different response structures
-    if (data && Array.isArray(data)) return data;
-    if (data && Array.isArray(data.content)) return data.content;
-    return data || [];
+    // Handle paginated response structure
+    if (data && data.content && Array.isArray(data.content)) {
+      return data.content;
+    }
+    
+    // Fallback for non-paginated response
+    if (data && Array.isArray(data)) {
+      return data;
+    }
+    
+    return [];
   } catch (error) {
     console.error("Error fetching events:", error);
     throw error;
@@ -757,6 +820,21 @@ export const rejectEvent = async (eventId: string | number, reason: string) => {
 };
 
 /**
+ * Cancel event (Admin/Staff cancel approved event)
+ * PUT /api/events/{eventId}/cancel
+ */
+export const cancelEvent = async (eventId: string | number, reason: string) => {
+  try {
+    const response = await axiosClient.put(`/api/events/${eventId}/cancel`, { reason });
+    const data: any = response.data;
+    return data;
+  } catch (error) {
+    console.error(`Error cancelling event ${eventId}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Settle a completed event
  * POST /api/events/{eventId}/settle
  */
@@ -921,6 +999,7 @@ export default {
   cancelEventRegistration,
   eventTimeExtend,
   rejectEvent,
+  cancelEvent,
   eventSettle,
   getEventSettle,
   refundEventProduct,
